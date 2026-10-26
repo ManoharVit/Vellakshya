@@ -19,13 +19,33 @@
             </div>
             <div class="brand-title">Vellakshya</div>
             <span class="brand-tag" id="headerDocPill" title="Active workspace document">No Document Active</span>
-            <div class="collab-presence-bar" id="collabPresenceBar" title="Active document collaborators">
+            <button type="button" class="btn-integrity-pill" id="btnHeaderIntegrity" style="display: none;" title="Cryptographic Integrity: Ed25519 Signed Manifest">
+                <span class="integrity-dot"></span>
+                <span id="integrityLabel">Verified ✓</span>
+            </button>
+            <button type="button" class="btn-version-pill" id="btnHeaderVersion" style="display: none;" title="Document Version History">
+                <span id="versionLabel">v1.0 (Signed)</span>
+            </button>
+            <div class="collab-presence-bar" id="collabPresenceBar" title="Active document collaborators (Click to view comments)">
                 <span class="collab-status-dot" id="collabStatusDot" title="Live Collaboration Active"></span>
                 <span class="collab-status-label" id="collabStatusLabel">Live Sync</span>
                 <div class="collab-avatars" id="collabAvatarsList"></div>
             </div>
         </div>
         <div class="header-actions">
+            <button type="button" class="btn-hdr-action" id="btnToggleThumbnails" style="display: none;" title="Toggle Page Thumbnails Filmstrip">
+                <span>📑</span> <span class="btn-hdr-text">Pages</span>
+            </button>
+            <button type="button" class="btn-hdr-action" id="btnToggleHistoryDrawer" title="Version History & Cryptographic Manifests">
+                <span>📜</span> <span class="btn-hdr-text">Revisions</span>
+            </button>
+            <button type="button" class="btn-hdr-action" id="btnToggleCollabDrawer" title="Collaborators & Discussion Comments">
+                <span>💬</span> <span class="btn-hdr-text">Comments</span>
+                <span class="comment-count-badge" id="commentCountBadge">2</span>
+            </button>
+            <button type="button" class="btn-hdr-action" id="btnToggleSecurityDrawer" title="Sandbox & Security Model">
+                <span>🛡️</span> <span class="btn-hdr-text">Security</span>
+            </button>
             <button type="button" class="btn-hdr-action" id="btnHeaderUndo" disabled title="Undo last action (Ctrl+Z / Cmd+Z)">
                 <span>↩️</span> <span class="btn-hdr-text">Undo</span>
                 <span class="undo-badge" id="undoBadge" style="display: none;">0</span>
@@ -119,6 +139,13 @@
                 <li class="nav-item" data-tool="sanitize"><span>🧹</span> Sanitize Metadata</li>
             </ul>
 
+            <div class="sidebar-category">Governance & Audit</div>
+            <ul class="sidebar-nav">
+                <li class="nav-item" data-tool="version-history"><span>📜</span> Version History & Manifests</li>
+                <li class="nav-item" data-tool="collaboration-hub"><span>👥</span> Real-Time Collaboration</li>
+                <li class="nav-item" data-tool="security-audit"><span>🛡️</span> Security & Sandbox Model</li>
+            </ul>
+
             <div class="sidebar-category">Forms & Export</div>
             <ul class="sidebar-nav">
                 <li class="nav-item highlight-export" data-tool="export-hub"><span>⬇️</span> Export & Download Hub</li>
@@ -146,6 +173,17 @@
                 <section class="tool-panel" id="toolConfigPanel">
                     <!-- Dynamic Tool Options Injected By JS -->
                 </section>
+
+                <!-- Page Thumbnails Strip (Retractable Adobe Acrobat style) -->
+                <aside class="thumbnail-strip" id="thumbnailStrip" style="display: none;">
+                    <div class="thumbnail-strip-header">
+                        <div class="thumbnail-strip-title"><span>📑</span> Pages</div>
+                        <span class="thumbnail-badge" id="thumbStripCount">0</span>
+                    </div>
+                    <div class="thumbnail-strip-scroll" id="thumbnailStripItems">
+                        <!-- Dynamic page thumbnail cards injected by JS -->
+                    </div>
+                </aside>
 
                 <!-- Live Preview / Output Canvas -->
                 <section class="preview-panel" id="previewPanel">
@@ -235,6 +273,120 @@
             </div>
         </main>
     </div>
+
+    <!-- Slide-Over Drawers Backdrop -->
+    <div class="drawer-backdrop" id="drawerBackdrop" style="display: none;"></div>
+
+    <!-- 1. Version History & Cryptographic Manifests Drawer -->
+    <aside class="app-drawer" id="drawerVersionHistory" style="display: none;">
+        <div class="drawer-header">
+            <div class="drawer-title">
+                <span>📜</span> Document Revisions & Manifests
+            </div>
+            <button type="button" class="btn-drawer-close" id="btnCloseVersionHistory" title="Close drawer">&times;</button>
+        </div>
+        <div class="drawer-body" id="versionHistoryDrawerBody">
+            <div class="drawer-summary-box">
+                <div class="drawer-summary-title">Immutable Content Store</div>
+                <div class="drawer-summary-sub">Every operation creates an immutable parent-linked revision with an Ed25519 digital signature and SHA-256 digest.</div>
+            </div>
+            <div class="version-timeline" id="versionTimelineList"></div>
+            <div style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 6px;">
+                <button type="button" class="btn-primary" id="btnVerifyAllIntegrity" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <span>🛡️</span> Run Full Tamper & Manifest Verification
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 2. Live Collaboration & Threaded Comments Drawer -->
+    <aside class="app-drawer" id="drawerCollaboration" style="display: none;">
+        <div class="drawer-header">
+            <div class="drawer-title">
+                <span>💬</span> Live Collaboration & Comments
+            </div>
+            <button type="button" class="btn-drawer-close" id="btnCloseCollaboration" title="Close drawer">&times;</button>
+        </div>
+        <div class="drawer-body" id="collaborationDrawerBody">
+            <div class="drawer-summary-box">
+                <div class="drawer-summary-title">Multi-User Room: <span id="collabRoomId" style="font-family: monospace; color: #38bdf8;">vellakshya-main</span></div>
+                <div class="drawer-summary-sub">WebSocket real-time presence synchronization and threaded annotation discussions.</div>
+            </div>
+            <div class="collab-peers-section">
+                <div class="section-label">Active Collaborators</div>
+                <div class="collab-peer-list" id="collabPeersList"></div>
+            </div>
+            <div class="collab-comments-section" style="margin-top: 16px;">
+                <div class="section-label">Threaded Document Comments</div>
+                <div class="comments-thread-list" id="commentsThreadList"></div>
+                <div class="comment-compose-box" style="margin-top: 12px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="font-size: 11px; color: var(--text-muted);">Anchor to page:</span>
+                        <select id="commentPageSelect" class="input-select" style="padding: 2px 8px; font-size: 11px; width: auto;"></select>
+                    </div>
+                    <textarea id="commentInputText" class="input-textarea" rows="2" placeholder="Write a comment or annotation note..."></textarea>
+                    <button type="button" class="btn-primary" id="btnPostComment" style="width: 100%; margin-top: 6px; font-size: 12px; padding: 6px;">
+                        <span>💬</span> Post Comment
+                    </button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 3. Security Model & Sandbox Architecture Drawer -->
+    <aside class="app-drawer" id="drawerSecurity" style="display: none;">
+        <div class="drawer-header">
+            <div class="drawer-title">
+                <span>🛡️</span> Security & Sandbox Model
+            </div>
+            <button type="button" class="btn-drawer-close" id="btnCloseSecurity" title="Close drawer">&times;</button>
+        </div>
+        <div class="drawer-body" id="securityDrawerBody">
+            <div class="drawer-summary-box">
+                <div class="drawer-summary-title">Adversarial Defense Matrix</div>
+                <div class="drawer-summary-sub">All PDF transformations execute within an isolated subprocess with strict memory and CPU quotas.</div>
+            </div>
+            <div class="security-metrics-grid">
+                <div class="security-metric-card">
+                    <div class="smc-label">Execution Isolation</div>
+                    <div class="smc-value" style="color: #34d399;">Subprocess Sandboxed</div>
+                    <div class="smc-sub">RLIMIT_AS &amp; RLIMIT_CPU active</div>
+                </div>
+                <div class="security-metric-card">
+                    <div class="smc-label">Memory Budget</div>
+                    <div class="smc-value">512 MB Max</div>
+                    <div class="smc-sub">OOM bomb neutralization</div>
+                </div>
+                <div class="security-metric-card">
+                    <div class="smc-label">CPU Timeout</div>
+                    <div class="smc-value">30 Seconds</div>
+                    <div class="smc-sub">Prevents parser hang / DOS</div>
+                </div>
+                <div class="security-metric-card">
+                    <div class="smc-label">HTML Security</div>
+                    <div class="smc-value" style="color: #38bdf8;">script-src 'none'</div>
+                    <div class="smc-sub">Strict Content Security Policy</div>
+                </div>
+                <div class="security-metric-card">
+                    <div class="smc-label">Upload Payload Limit</div>
+                    <div class="smc-value">50 MB Hard Cap</div>
+                    <div class="smc-sub">HTTP 413 Payload Too Large</div>
+                </div>
+                <div class="security-metric-card">
+                    <div class="smc-label">Retention Control</div>
+                    <div class="smc-value" style="color: #a78bfa;">Owner-Restricted</div>
+                    <div class="smc-sub">DELETE /api/v2/documents/{id}</div>
+                </div>
+            </div>
+            <div style="margin-top: 16px; padding: 12px; background: #12141c; border-radius: 6px; border: 1px solid #232738;">
+                <div style="font-size: 12px; font-weight: 600; color: #f1f5f9; margin-bottom: 4px;">Integrity Algorithm</div>
+                <div style="font-size: 11px; color: #94a3b8;">
+                    SHA-256 linear hash chaining: <code>event_hash = SHA256(canonical || prev_hash)</code>.
+                    Manifest signatures verified using RFC 8032 Ed25519 public keys.
+                </div>
+            </div>
+        </div>
+    </aside>
 
     <!-- Vendor Libraries -->
     <script src="/vendor/pdf.min.js"></script>

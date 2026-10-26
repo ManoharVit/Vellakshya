@@ -99,4 +99,63 @@ test.describe('Vellakshya REST API Contract Tests', () => {
     expect(data.detail.safe).toBe(false);
     expect(data.detail.error_type).toBe('INVALID_HEADER_POLYGLOT');
   });
+
+  test('POST /api/auth lifecycle: register, login, store document, delete, and assert 404', async ({ request }) => {
+    const email = `playwright_${Date.now()}@vellakshya.io`;
+    const password = 'PlaywrightSecure123!';
+
+    // 1. Register
+    const regRes = await request.post('/api/auth/register', {
+      data: { email, password, role: 'editor' },
+    });
+    expect(regRes.status()).toBe(200);
+
+    // 2. Login
+    const loginRes = await request.post('/api/auth/login', {
+      data: { email, password },
+    });
+    expect(loginRes.status()).toBe(200);
+    const { token } = await loginRes.json();
+    expect(token).toBeDefined();
+
+    // 3. Store document
+    const fileBuffer = fs.readFileSync(SAMPLE_PDF_PATH);
+    const docRes = await request.post('/api/documents', {
+      headers: { Authorization: `Bearer ${token}` },
+      multipart: {
+        file: {
+          name: 'sample.pdf',
+          mimeType: 'application/pdf',
+          buffer: fileBuffer,
+        },
+      },
+    });
+    expect(docRes.status()).toBe(200);
+    const { doc_id } = await docRes.json();
+    expect(doc_id).toBeDefined();
+
+    // 4. Retrieve document
+    const getRes = await request.get(`/api/documents/${doc_id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(getRes.status()).toBe(200);
+
+    // 5. Delete document
+    const delRes = await request.delete(`/api/documents/${doc_id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(delRes.status()).toBe(200);
+
+    // 6. Direct URL now returns 404
+    const notFoundRes = await request.get(`/api/documents/${doc_id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(notFoundRes.status()).toBe(404);
+
+    // 7. Logout
+    const logoutRes = await request.post('/api/auth/logout', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(logoutRes.status()).toBe(200);
+  });
 });

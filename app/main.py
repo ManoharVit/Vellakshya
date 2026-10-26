@@ -5,14 +5,15 @@ Comprehensive PDF manipulation matching Adobe Acrobat Pro features with high-fid
 from __future__ import annotations
 import json
 from pathlib import Path
-from typing import Optional
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+import secrets
+from typing import Any, Optional
+from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import STATIC_DIR, config
-from app.services import collaboration, converter, editor, forms, inspection, organizer, security, signatures
+from app.services import auth, collaboration, converter, editor, forms, inspection, organizer, security, signatures
 
 app = FastAPI(
     title=config.title,
@@ -833,6 +834,221 @@ async def validate_document_security(
             detail=validation_report,
         )
     return validation_report
+
+
+# -------------------------------------------------------------
+# 11. AUTHENTICATION, RBAC & DOCUMENT LIFECYCLE ENDPOINTS
+# -------------------------------------------------------------
+
+def _resolve_user(token: Optional[str] = None, authorization: Optional[str] = None) -> Optional[dict[str, Any]]:
+    active_token = token
+    if not active_token and authorization and authorization.startswith("Bearer "):
+        active_token = authorization.split(" ")[1].strip()
+    if active_token:
+        return auth.get_current_user_from_token(active_token)
+    return None
+
+
+@app.post("/api/auth/register")
+async def auth_register(request: Request):
+    """
+    Registers a new user account with role.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        form = await request.form()
+        data = dict(form)
+
+    email = str(data.get("email", "")).strip()
+    password = str(data.get("password", "")).strip()
+    role = str(data.get("role", "editor")).strip()
+
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email and password are required.")
+
+    try:
+        res = auth.register_user(email=email, password=password, role=role)
+        return res
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/auth/login")
+async def auth_login(request: Request):
+    """
+    Logs in a user and returns an active session token.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        form = await request.form()
+        data = dict(form)
+
+    email = str(data.get("email", "")).strip()
+    password = str(data.get("password", "")).strip()
+
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email and password are required.")
+
+    try:
+        session = auth.login_user(email=email, password=password)
+        return session
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+
+@app.post("/api/auth/logout")
+async def auth_logout(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    token: Optional[str] = Form(None),
+):
+    """
+    Logs out a user and invalidates their session.
+    """
+    active_token = token
+    if not active_token and authorization and authorization.startswith("Bearer "):
+        active_token = authorization.split(" ")[1].strip()
+    if not active_token:
+        try:
+            data = await request.json()
+            active_token = data.get("token")
+        except Exception:
+            pass
+
+    if not active_token:
+        raise HTTPException(status_code=400, detail="Session token required.")
+
+    success = auth.logout_user(active_token)
+    return {"success": success}
+
+
+@app.post("/api/documents")
+async def upload_managed_document(
+    file: UploadFile = File(...),
+    token: Optional[str] = Form(None),
+    authorization: Optional[str] = Header(None),
+):
+    """
+    Uploads and stores a document in the managed document store.
+    """
+    user = _resolve_user(token, authorization)
+    if user and not auth.verify_role_permission(user["role"], "upload"):
+        raise HTTPException(status_code=403, detail="Role not permitted to upload documents.")
+
+    pdf_bytes = await file.read()
+    if not pdf_bytes.startswith(b"%PDF"):
+        raise HTTPException(status_code=400, detail="Uploaded file is not a valid PDF.")
+
+    doc_id = secrets.token_hex(12)
+    owner = user["email"] if user else "anonymous"
+    meta = auth.store_document(doc_id=doc_id, content=pdf_bytes, owner=owner)
+    return meta
+
+
+@app.get("/api/documents/{doc_id}")
+async def get_managed_document(
+    doc_id: str,
+    download: bool = Query(False),
+    token: Optional[str] = Query(None),
+    authorization: Optional[str] = Header(None),
+):
+    """
+    Retrieves document content. Enforces RBAC download restrictions and 404 for deleted files.
+    """
+    user = _resolve_user(token, authorization)
+    if download and user:
+        if not auth.verify_role_permission(user["role"], "download"):
+            raise HTTPException(status_code=403, detail="Viewer role cannot download restricted files.")
+
+    content = auth.get_document(doc_id)
+    if content is None:
+        raise HTTPException(status_code=404, detail="Document not found or has been deleted.")
+
+    headers = {
+        "Content-Disposition": f"{'attachment' if download else 'inline'}; filename={doc_id}.pdf"
+    }
+    return Response(content=content, media_type="application/pdf", headers=headers)
+
+
+@app.delete("/api/documents/{doc_id}")
+async def delete_managed_document(
+    doc_id: str,
+    token: Optional[str] = Form(None),
+    authorization: Optional[str] = Header(None),
+):
+    """
+    Soft-deletes a document. Subsequent requests to this document URL will return 404.
+    """
+    rec = auth.get_document_record(doc_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Document not found or already deleted.")
+
+    auth.delete_document(doc_id)
+    return {"success": True, "detail": "Document successfully deleted."}
+
+
+@app.post("/api/documents/{doc_id}/edit")
+async def edit_managed_document(
+    doc_id: str,
+    file: UploadFile = File(...),
+    base_version: int = Form(1),
+    token: Optional[str] = Form(None),
+    authorization: Optional[str] = Header(None),
+):
+    """
+    Applies edits with optimistic concurrency control. Rejects silent overwrites with 409 Conflict.
+    Enforces viewer editing restriction with 403 Forbidden.
+    """
+    user = _resolve_user(token, authorization)
+    if user and not auth.verify_role_permission(user["role"], "edit"):
+        raise HTTPException(status_code=403, detail="Viewer role cannot edit restricted files.")
+
+    new_bytes = await file.read()
+    try:
+        updated = auth.update_document_content(doc_id, new_bytes, expected_version=base_version)
+        return updated
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Document not found or has been deleted.")
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@app.post("/api/sessions/draft")
+async def save_draft_state(request: Request):
+    """
+    Preserves in-progress session draft edits against sudden expiration or disconnects.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        form = await request.form()
+        data = dict(form)
+        if isinstance(data.get("draft_state"), str):
+            try:
+                data["draft_state"] = json.loads(data["draft_state"])
+            except Exception:
+                pass
+
+    session_id = data.get("session_id")
+    draft_state = data.get("draft_state")
+    if not session_id or draft_state is None:
+        raise HTTPException(status_code=400, detail="session_id and draft_state are required.")
+
+    auth.save_session_draft(session_id, draft_state)
+    return {"status": "DRAFT_SAVED", "session_id": session_id}
+
+
+@app.get("/api/sessions/draft/{session_id}")
+async def recover_draft_state(session_id: str):
+    """
+    Recovers in-progress draft edits for a given session.
+    """
+    draft = auth.recover_session_draft(session_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found for this session.")
+    return {"session_id": session_id, "draft_state": draft}
 
 
 # Mount static directory for the single-page application UI

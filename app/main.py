@@ -42,6 +42,49 @@ async def health_check():
     }
 
 
+@app.get("/api/sample/{sample_type}")
+async def get_sample_document(sample_type: str = "invoice"):
+    """
+    Generates synthetic high-quality sample PDF documents for instant testing and relief from the blank page.
+    """
+    import fitz
+    doc = fitz.open()
+
+    if sample_type == "report":
+        p1 = doc.new_page(width=595, height=842)
+        p1.insert_text((50, 70), "Vellakshya Enterprise Document Audit", fontsize=20, color=(0.1, 0.2, 0.5))
+        p1.insert_text((50, 100), "Executive Preflight & Compliance Report", fontsize=14, color=(0.4, 0.4, 0.4))
+        p1.insert_text((50, 140), "1. Executive Summary\nThis document benchmarks rendering fidelity, typographic metrics, and\naccessibility tagging across multi-page enterprise records.", fontsize=11, color=(0, 0, 0))
+
+        p2 = doc.new_page(width=595, height=842)
+        p2.insert_text((50, 70), "2. Security & Compliance", fontsize=16, color=(0.1, 0.2, 0.5))
+        p2.insert_text((50, 100), "Digital signature digest: SHA-256 authenticated.\nBitmask permissions: Printing Allowed, Copying Allowed, Annotations Allowed.", fontsize=11, color=(0, 0, 0))
+
+        p3 = doc.new_page(width=595, height=842)
+        p3.insert_text((50, 70), "3. Operational Sign-Off", fontsize=16, color=(0.1, 0.2, 0.5))
+        p3.insert_text((50, 100), "Lead Architect: Giri Manohar Vemula\nStatus: APPROVED FOR PRODUCTION", fontsize=11, color=(0.1, 0.5, 0.2))
+        filename = "Sample_Enterprise_Report.pdf"
+    else:
+        p1 = doc.new_page(width=595, height=842)
+        p1.insert_text((50, 70), "INVOICE #INV-2026-001", fontsize=20, color=(0.1, 0.2, 0.5))
+        p1.insert_text((50, 100), "Date: October 26, 2026", fontsize=11, color=(0.4, 0.4, 0.4))
+        p1.insert_text((50, 125), "Billed To: Acros Global Enterprises Inc.", fontsize=12, color=(0, 0, 0))
+        p1.insert_text((50, 165), "Description                          Qty    Unit Price    Total", fontsize=10, color=(0.3, 0.3, 0.3))
+        p1.insert_text((50, 185), "PDF Enterprise Workstation License     1     $1,200.00   $1,200.00", fontsize=10, color=(0, 0, 0))
+        p1.insert_text((50, 205), "Maintenance & SLA Support (Year 1)     1       $350.00     $350.00", fontsize=10, color=(0, 0, 0))
+        p1.insert_text((50, 245), "Total Due: $1,550.00", fontsize=14, color=(0.1, 0.5, 0.2))
+        filename = "Sample_Invoice.pdf"
+
+    pdf_bytes = doc.tobytes()
+    doc.close()
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
 # -------------------------------------------------------------
 # 1. CONVERSION ENDPOINTS
 # -------------------------------------------------------------

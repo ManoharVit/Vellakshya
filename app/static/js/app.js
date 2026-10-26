@@ -8,6 +8,62 @@ if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdf.worker.min.js";
 }
 
+// =============================================================
+// REAL UI FEEDBACK SYSTEM: IN-APP TOASTS & ACCESSIBLE ALERTS
+// =============================================================
+function showNotification(message, type = "info", duration = 4000) {
+  let container = document.getElementById("appToastContainer");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "appToastContainer";
+    container.className = "app-toast-container";
+    container.setAttribute("role", "status");
+    container.setAttribute("aria-live", "polite");
+    document.body.appendChild(container);
+  }
+
+  const icons = {
+    success: "✅",
+    error: "❌",
+    warning: "⚠️",
+    info: "ℹ️"
+  };
+
+  const toast = document.createElement("div");
+  toast.className = `app-toast toast-${type}`;
+  toast.innerHTML = `
+    <span>${icons[type] || "ℹ️"}</span>
+    <span style="flex: 1; line-height: 1.4;">${message}</span>
+    <button type="button" class="app-toast-close" title="Dismiss">&times;</button>
+  `;
+
+  const closeBtn = toast.querySelector(".app-toast-close");
+  closeBtn.onclick = () => toast.remove();
+
+  container.appendChild(toast);
+
+  if (duration > 0) {
+    setTimeout(() => {
+      if (toast.parentElement) toast.remove();
+    }, duration);
+  }
+}
+
+// Intercept window.alert with accessible in-app toast
+window.alert = function (msg) {
+  const text = String(msg);
+  const lower = text.toLowerCase();
+  let type = "info";
+  if (lower.includes("fail") || lower.includes("error") || lower.includes("cannot") || lower.includes("please upload") || lower.includes("specify") || lower.includes("enter")) {
+    type = "error";
+  } else if (lower.includes("success") || lower.includes("complete") || lower.includes("saved") || lower.includes("unlocked") || lower.includes("sanitized")) {
+    type = "success";
+  } else if (lower.includes("warn") || lower.includes("notice")) {
+    type = "warning";
+  }
+  showNotification(text, type, 4500);
+};
+
 // Application State
 const state = {
   activeTool: "pdf-to-html",
@@ -203,8 +259,47 @@ document.addEventListener("DOMContentLoaded", () => {
   setupWordFindBar();
   setupUndoRedo();
   setupZoomControls();
+  setupQuickStartSamples();
   switchTool("pdf-to-html");
 });
+
+function setupQuickStartSamples() {
+  const btnInvoice = document.getElementById("btnSampleInvoice");
+  const btnReport = document.getElementById("btnSampleReport");
+
+  if (btnInvoice) {
+    btnInvoice.addEventListener("click", () => loadSampleDocument("invoice"));
+  }
+  if (btnReport) {
+    btnReport.addEventListener("click", () => loadSampleDocument("report"));
+  }
+}
+
+async function loadSampleDocument(type) {
+  try {
+    showNotification(`Loading synthetic ${type} document...`, "info", 1800);
+    const res = await fetch(`/api/sample/${type}`);
+    if (!res.ok) throw new Error("Could not fetch sample document");
+    const blob = await res.blob();
+    const filename = type === "report" ? "Sample_Enterprise_Report.pdf" : "Sample_Invoice.pdf";
+    const file = new File([blob], filename, { type: "application/pdf" });
+
+    state.currentPdfFile = file;
+    state.originalPdfFile = file;
+    setPreviewContent(file, "application/pdf", filename);
+
+    const docPill = document.getElementById("headerDocPill");
+    if (docPill) {
+      docPill.textContent = `📄 ${filename}`;
+      docPill.className = "brand-tag doc-context-pill loaded";
+      docPill.title = `${filename} (${(file.size / 1024).toFixed(1)} KB)`;
+    }
+
+    showNotification(`Loaded ${filename} (${(file.size / 1024).toFixed(1)} KB) into active workspace.`, "success", 4000);
+  } catch (err) {
+    showNotification("Failed to load sample: " + err.message, "error", 4000);
+  }
+}
 
 function setupNavigation() {
   document.querySelectorAll(".nav-item").forEach((item) => {
@@ -422,6 +517,12 @@ function setPreviewContent(blob, mimeType, filename = "document") {
   state.currentPdfBlobUrl = url;
   state.currentPdfBlob = blob;
   previewStatus.textContent = `${filename} (${(blob.size / 1024).toFixed(1)} KB)`;
+  const docPill = document.getElementById("headerDocPill");
+  if (docPill) {
+    docPill.textContent = `📄 ${filename}`;
+    docPill.className = "brand-tag doc-context-pill loaded";
+    docPill.title = `${filename} (${(blob.size / 1024).toFixed(1)} KB)`;
+  }
 
   const isPdf =
     mimeType === "application/pdf" ||

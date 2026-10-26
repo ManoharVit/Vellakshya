@@ -426,7 +426,7 @@ def pdf_to_html_semantic(pdf_bytes: bytes, title: str = "Converted Document") ->
             --text-color: #1e293b;
             --card-bg: #ffffff;
             --border-color: #e2e8f0;
-            --primary-color: #0284c7;
+            --primary-color: #0369a1;
         }}
         body {{
             font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;

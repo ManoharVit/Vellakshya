@@ -311,6 +311,7 @@ function buildDropZone(accept = ".pdf", multiple = false, onFileSelected) {
   dropZone.innerHTML = `
     <div class="drop-zone-icon">📥</div>
     <div class="drop-zone-text">Click or drag file here</div>
+    <button type="button" class="btn-tool-primary" style="margin: 8px 0; padding: 6px 14px; font-size: 13px;" aria-label="Upload PDF">Upload PDF</button>
     <div class="drop-zone-hint">Accepts ${accept}</div>
   `;
 
@@ -514,7 +515,7 @@ async function renderInteractivePdfViewer(blob, filename = "document") {
       const unscaledViewport = page.getViewport({ scale: 1.0 });
 
       const pageCard = document.createElement("div");
-      pageCard.className = "pdf-page-card";
+      pageCard.className = "pdf-page-card pdf-page";
       pageCard.id = `pdfPageCard_${pageNum}`;
       pageCard.dataset.page = pageNum;
       pageCard.style.width = `${Math.round(viewport.width)}px`;

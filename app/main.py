@@ -30,6 +30,18 @@ app.add_middleware(
 )
 
 
+@app.get("/api/health")
+async def health_check():
+    """
+    Health check endpoint for container orchestrators, monitors, and k6 load tests.
+    """
+    return {
+        "status": "healthy",
+        "app": "Vellakshya",
+        "version": config.version,
+    }
+
+
 # -------------------------------------------------------------
 # 1. CONVERSION ENDPOINTS
 # -------------------------------------------------------------

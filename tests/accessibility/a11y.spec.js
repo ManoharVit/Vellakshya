@@ -41,13 +41,10 @@ test.describe('Automated Accessibility Audits (axe-core + WCAG 2.1 AA)', () => {
     await page.setContent(htmlContent);
 
     // Analyze with axe-core
-    const scanResults = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa'])
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze();
 
-    const criticalViolations = scanResults.violations.filter(
-      (v) => v.impact === 'critical'
-    );
-    expect(criticalViolations).toEqual([]);
+    expect(results.violations).toEqual([]);
   });
 });

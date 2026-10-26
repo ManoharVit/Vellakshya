@@ -49,4 +49,28 @@ test.describe('Vellakshya Web End-to-End User Experience', () => {
     await expect(btnUndo).toBeDisabled();
     await expect(btnRedo).toBeDisabled();
   });
+
+  test('user can upload and open a PDF', async ({ page }) => {
+    await page.goto('/');
+    const uploadBtn = page.getByRole('button', { name: /upload/i }).first();
+    if (await uploadBtn.isVisible()) {
+      await uploadBtn.click();
+    }
+    await page.setInputFiles('input[type="file"]', SAMPLE_PDF_PATH);
+    await expect(page.getByText(/sample\.pdf/i).first()).toBeVisible();
+    await expect(page.locator('canvas, .pdf-page').first()).toBeVisible({ timeout: 15000 });
+  });
+
+  test('user can convert PDF to Word / HTML format', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('[data-tool="pdf-to-html"]').click();
+    await page.setInputFiles('input[type="file"]', SAMPLE_PDF_PATH);
+    const convertBtn = page.getByRole('button', { name: /convert/i }).first();
+    if (await convertBtn.isVisible()) {
+      await convertBtn.click();
+    }
+    await expect(page.locator('#previewFrame, #previewStatus, canvas').first()).toBeVisible({
+      timeout: 15000,
+    });
+  });
 });

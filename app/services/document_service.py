@@ -499,3 +499,29 @@ class DocumentService:
             }
             for ev in ordered
         ]
+
+    @classmethod
+    def delete_document(cls, db: Session, doc_id: str, actor_id: str) -> None:
+        """
+        Permanently purges a document, its immutable binary objects, versions, and metadata.
+        Requires 'owner' permission (RBAC).
+        """
+        doc = db.query(Document).filter_by(id=doc_id).first()
+        if not doc:
+            raise DocumentNotFoundError(f"Document {doc_id} not found.")
+
+        # Enforce owner-only deletion
+        cls.check_permission(db, doc_id, actor_id, required_role="owner")
+
+        # 1. Purge all stored binary objects from storage
+        versions = db.query(DocumentVersion).filter_by(document_id=doc_id).all()
+        for ver in versions:
+            try:
+                storage_instance.delete_object(ver.object_key)
+            except Exception:
+                pass
+
+        # 2. Delete database records
+        db.delete(doc)
+        db.commit()
+

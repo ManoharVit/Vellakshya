@@ -155,6 +155,7 @@ def pdf_to_html_fixed(pdf_bytes: bytes, title: str = "Converted Document") -> st
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; script-src 'none';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>{html.escape(title)} — Converted HTML</title>
     <style>
@@ -418,6 +419,7 @@ def pdf_to_html_semantic(pdf_bytes: bytes, title: str = "Converted Document") ->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:; img-src data: blob:; script-src 'none';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{html.escape(title)} — Semantic HTML</title>
     <style>

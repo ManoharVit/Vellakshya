@@ -185,11 +185,15 @@ async def create_document_direct(
     Creates a new managed document and initializes Version 1 with signed integrity manifest.
     """
     pdf_bytes = await file.read()
+    if len(pdf_bytes) > 50 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Payload Too Large: File exceeds 50MB limit.")
     if not pdf_bytes.startswith(b"%PDF"):
         raise HTTPException(status_code=400, detail="Uploaded file is not a valid PDF.")
 
     _ensure_user_exists(db, actor_id)
-    doc_title = title or Path(file.filename or "Document.pdf").stem
+    safe_filename = Path(file.filename or "Document.pdf").name
+    clean_stem = Path(safe_filename).stem.replace("..", "").replace("/", "").replace("\\", "")
+    doc_title = title or clean_stem or "Document"
 
     doc, ver = DocumentService.create_document(
         db=db,
@@ -239,7 +243,10 @@ async def get_upload_url(
     Obtains a bounded, time-limited presigned upload URL for binary ingestion.
     """
     _ensure_user_exists(db, actor_id)
-    target_key = f"documents/{doc_id}/uploads/{filename}"
+    safe_filename = Path(filename).name
+    if not safe_filename or ".." in safe_filename:
+        safe_filename = "document.pdf"
+    target_key = f"documents/{doc_id}/uploads/{safe_filename}"
     presigned_url = storage_instance.generate_presigned_url(target_key, expires_in_seconds=300, method="PUT")
     return {
         "document_id": doc_id,
@@ -259,14 +266,14 @@ async def get_document(
     Reads document metadata and authorization status.
     """
     _ensure_user_exists(db, actor_id)
+    doc = db.query(Document).filter_by(id=doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
     try:
         role = DocumentService.check_permission(db, doc_id, actor_id, required_role="viewer")
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))
-
-    doc = db.query(Document).filter_by(id=doc_id).first()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found.")
 
     return {
         "id": doc.id,
@@ -279,6 +286,26 @@ async def get_document(
         "created_at": doc.created_at.isoformat(),
         "updated_at": doc.updated_at.isoformat(),
     }
+
+
+@router.delete("/documents/{doc_id}")
+async def delete_document(
+    doc_id: str,
+    actor_id: str = Depends(_get_current_actor),
+    db: Session = Depends(get_db),
+):
+    """
+    Deletes document metadata, versions, and purges all binary objects from storage.
+    Strictly restricted to document 'owner'.
+    """
+    _ensure_user_exists(db, actor_id)
+    try:
+        DocumentService.delete_document(db, doc_id, actor_id)
+        return {"status": "deleted", "document_id": doc_id}
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except DocumentNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/documents/{doc_id}/versions")

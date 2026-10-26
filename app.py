@@ -1,5 +1,5 @@
 """
-Vellakshya PDF Workstation — Hugging Face Space & FastAPI Entrypoint.
+Vellakshya PDF Workstation — Production Workstation Entrypoint.
 Architect & Lead Developer: Giri Manohar Vemula
 LinkedIn: https://www.linkedin.com/in/manoharv511
 GitHub: https://github.com/ManoharVit

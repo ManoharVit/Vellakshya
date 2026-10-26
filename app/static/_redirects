@@ -1,2 +1,3 @@
+# Dynamic Netlify Edge Reverse Proxy Rules
 /api/*  https://vellakshya.onrender.com/api/:splat  200!
 /*      /index.html                   200

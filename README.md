@@ -1,14 +1,3 @@
----
-title: Vellakshya PDF Workstation
-emoji: 📑
-colorFrom: blue
-colorTo: indigo
-sdk: gradio
-sdk_version: 5.20.0
-app_file: app.py
-pinned: false
----
-
 # Vellakshya (वेल्लक्ष्य)
 ### Enterprise Swiss Army Knife PDF Workstation & Document Intelligence Platform
 
@@ -22,6 +11,7 @@ pinned: false
 - **LinkedIn Profile:** [https://www.linkedin.com/in/manoharv511](https://www.linkedin.com/in/manoharv511)
 - **GitHub Profile:** [https://github.com/ManoharVit](https://github.com/ManoharVit)
 - **Repository:** [https://github.com/ManoharVit/Vellakshya.git](https://github.com/ManoharVit/Vellakshya.git)
+- **Production Deployment (Netlify):** [https://vellakshya.netlify.app](https://vellakshya.netlify.app)
 
 ---
 

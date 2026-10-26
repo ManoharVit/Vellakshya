@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY app/ ./app/
 COPY README.md .
 
-# Expose server port (configurable via PORT env var, defaults to 7860 for Hugging Face Spaces)
+# Expose server port (configurable via PORT env var)
 ENV PORT=7860
 EXPOSE 7860
 

@@ -1,0 +1,67 @@
+{
+  "roles": {
+    "admin": {
+      "permissions": [
+        "view",
+        "upload",
+        "edit",
+        "annotate",
+        "convert",
+        "sign",
+        "download",
+        "delete",
+        "manage_users"
+      ],
+      "can_download_restricted": true,
+      "can_edit_restricted": true
+    },
+    "editor": {
+      "permissions": [
+        "view",
+        "upload",
+        "edit",
+        "annotate",
+        "convert",
+        "sign",
+        "download"
+      ],
+      "can_download_restricted": true,
+      "can_edit_restricted": true
+    },
+    "viewer": {
+      "permissions": [
+        "view",
+        "render"
+      ],
+      "can_download_restricted": false,
+      "can_edit_restricted": false
+    },
+    "external_auditor": {
+      "permissions": [
+        "view",
+        "inspect",
+        "audit_signatures"
+      ],
+      "can_download_restricted": false,
+      "can_edit_restricted": false
+    }
+  },
+  "synthetic_test_users": [
+    {
+      "email": "admin.synth@vellakshya.test",
+      "role": "admin"
+    },
+    {
+      "email": "editor.synth@vellakshya.test",
+      "role": "editor"
+    },
+    {
+      "email": "viewer.restricted@vellakshya.test",
+      "role": "viewer"
+    },
+    {
+      "email": "auditor.external@vellakshya.test",
+      "role": "external_auditor"
+    }
+  ]
+}

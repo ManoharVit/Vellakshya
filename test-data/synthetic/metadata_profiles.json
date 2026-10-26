@@ -1,0 +1,26 @@
+{
+  "corporate_report": {
+    "title": "Synthetic Q3 Financial Performance Evaluation",
+    "author": "Lead Architect Giri Manohar Vemula",
+    "subject": "Enterprise Auditing & Performance Metrics",
+    "keywords": "finance;synthetic;audit;performance;q3",
+    "creator": "Vellakshya PDF Studio",
+    "producer": "PyMuPDF High-Fidelity Engine"
+  },
+  "legal_contract": {
+    "title": "Master Services Agreement (Template)",
+    "author": "Corporate Legal Department",
+    "subject": "Confidential Non-Disclosure and IP Rights",
+    "keywords": "legal;agreement;contract;nda;intellectual-property",
+    "creator": "Vellakshya Contract Author",
+    "producer": "PyMuPDF Crypto Signer"
+  },
+  "multilingual_spec": {
+    "title": "Global Architecture Specification (Internationalized)",
+    "author": "Systems Engineering Council",
+    "subject": "Internationalization, RTL Text, CJK Character Encodings",
+    "keywords": "i18n;unicode;cjk;rtl;bidi;typography",
+    "creator": "Vellakshya Multilingual Core",
+    "producer": "PyMuPDF Font Engine"
+  }
+}

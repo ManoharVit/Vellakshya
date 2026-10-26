@@ -295,6 +295,10 @@ async function loadSampleDocument(type) {
       docPill.title = `${filename} (${(file.size / 1024).toFixed(1)} KB)`;
     }
 
+    if (state.activeTool) {
+      switchTool(state.activeTool);
+    }
+
     showNotification(`Loaded ${filename} (${(file.size / 1024).toFixed(1)} KB) into active workspace.`, "success", 4000);
   } catch (err) {
     showNotification("Failed to load sample: " + err.message, "error", 4000);
@@ -401,6 +405,39 @@ function buildDropZone(accept = ".pdf", multiple = false, onFileSelected) {
   const container = document.createElement("div");
   container.className = "form-group";
 
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = accept;
+  input.multiple = multiple;
+  input.style.display = "none";
+
+  if (!multiple && state.currentPdfFile) {
+    const fileCard = document.createElement("div");
+    fileCard.className = "active-file-card";
+    fileCard.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+          <span style="font-size: 16px;">📄</span>
+          <div style="min-width: 0;">
+            <div class="file-pill-name" title="${state.currentPdfFile.name}">${state.currentPdfFile.name}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">${(state.currentPdfFile.size / 1024).toFixed(1)} KB • Active Document</div>
+          </div>
+        </div>
+        <button type="button" class="btn-secondary" style="padding: 4px 10px; font-size: 11px; white-space: nowrap;" aria-label="Change File">Change</button>
+      </div>
+    `;
+    const changeBtn = fileCard.querySelector("button");
+    changeBtn.addEventListener("click", () => input.click());
+    input.addEventListener("change", (e) => {
+      if (e.target.files[0]) {
+        onFileSelected(e.target.files[0]);
+      }
+    });
+    container.appendChild(fileCard);
+    container.appendChild(input);
+    return container;
+  }
+
   const dropZone = document.createElement("div");
   dropZone.className = "drop-zone";
   dropZone.innerHTML = `
@@ -409,12 +446,6 @@ function buildDropZone(accept = ".pdf", multiple = false, onFileSelected) {
     <button type="button" class="btn-tool-primary" style="margin: 8px 0; padding: 6px 14px; font-size: 13px;" aria-label="Upload PDF">Upload PDF</button>
     <div class="drop-zone-hint">Accepts ${accept}</div>
   `;
-
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = accept;
-  input.multiple = multiple;
-  input.style.display = "none";
 
   dropZone.addEventListener("click", () => input.click());
   input.addEventListener("change", (e) => {

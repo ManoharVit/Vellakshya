@@ -1,0 +1,15 @@
+# Netlify Edge & Static Deployment Configuration
+# Provides continuous deployment from GitHub to https://vellakshya.netlify.app
+[build]
+  publish = "app/static"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://manoharvit-vellakshya.hf.space/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

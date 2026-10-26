@@ -1,0 +1,13 @@
+# Render Blueprint Specification for Vellakshya PDF Workstation
+# Provides continuous deployment from GitHub to https://vellakshya.onrender.com
+services:
+  - type: web
+    name: vellakshya
+    env: docker
+    plan: free
+    dockerfilePath: Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 8000

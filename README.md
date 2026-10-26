@@ -1,3 +1,13 @@
+---
+title: Vellakshya PDF Workstation
+emoji: 📑
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 8000
+pinned: false
+---
+
 # Vellakshya (वेल्लक्ष्य)
 ### Enterprise Swiss Army Knife PDF Workstation & Document Intelligence Platform
 

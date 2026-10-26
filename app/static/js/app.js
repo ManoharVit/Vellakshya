@@ -225,6 +225,11 @@ const toolsConfig = {
     icon: "🧹",
     render: renderSanitizeTool,
   },
+  "export-hub": {
+    title: "Export & Download Hub",
+    icon: "⬇️",
+    render: renderExportHubTool,
+  },
   "forms": {
     title: "AcroForms & Field Inspection",
     icon: "📋",
@@ -260,6 +265,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupUndoRedo();
   setupZoomControls();
   setupQuickStartSamples();
+  setupGlobalExportHandlers();
   switchTool("pdf-to-html");
 });
 
@@ -354,7 +360,7 @@ function switchTool(toolKey) {
   if (!tool) return;
 
   currentToolTitle.innerHTML = `<span>${tool.icon}</span> ${tool.title}`;
-  workspaceActions.innerHTML = "";
+  updateWorkspaceActions();
 
   // Update crosshair pointer mode and pointer events on interaction layers
   const isPointerInteractive = toolKey === "insert-text" || toolKey === "whiteout" || toolKey === "crop-pages";
@@ -411,33 +417,6 @@ function buildDropZone(accept = ".pdf", multiple = false, onFileSelected) {
   input.multiple = multiple;
   input.style.display = "none";
 
-  if (!multiple && state.currentPdfFile) {
-    const fileCard = document.createElement("div");
-    fileCard.className = "active-file-card";
-    fileCard.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-        <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
-          <span style="font-size: 16px;">📄</span>
-          <div style="min-width: 0;">
-            <div class="file-pill-name" title="${state.currentPdfFile.name}">${state.currentPdfFile.name}</div>
-            <div style="font-size: 11px; color: var(--text-muted);">${(state.currentPdfFile.size / 1024).toFixed(1)} KB • Active Document</div>
-          </div>
-        </div>
-        <button type="button" class="btn-secondary" style="padding: 4px 10px; font-size: 11px; white-space: nowrap;" aria-label="Change File">Change</button>
-      </div>
-    `;
-    const changeBtn = fileCard.querySelector("button");
-    changeBtn.addEventListener("click", () => input.click());
-    input.addEventListener("change", (e) => {
-      if (e.target.files[0]) {
-        onFileSelected(e.target.files[0]);
-      }
-    });
-    container.appendChild(fileCard);
-    container.appendChild(input);
-    return container;
-  }
-
   const dropZone = document.createElement("div");
   dropZone.className = "drop-zone";
   dropZone.innerHTML = `
@@ -447,14 +426,53 @@ function buildDropZone(accept = ".pdf", multiple = false, onFileSelected) {
     <div class="drop-zone-hint">Accepts ${accept}</div>
   `;
 
+  const renderActiveCard = (file) => {
+    if (multiple) return;
+    let existingCard = container.querySelector(".active-file-card");
+    if (!existingCard) {
+      existingCard = document.createElement("div");
+      existingCard.className = "active-file-card";
+      container.insertBefore(existingCard, container.firstChild);
+    }
+    existingCard.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+          <span style="font-size: 16px;">📄</span>
+          <div style="min-width: 0;">
+            <div class="file-pill-name" title="${file.name}">${file.name}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">${(file.size / 1024).toFixed(1)} KB • Active Document</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <button type="button" class="btn-primary btn-card-dl" style="padding: 4px 10px; font-size: 11px; white-space: nowrap;" title="Download active document">⬇️ Download</button>
+          <button type="button" class="btn-secondary btn-card-ch" style="padding: 4px 10px; font-size: 11px; white-space: nowrap;" title="Change file">Change</button>
+        </div>
+      </div>
+    `;
+    const dlBtn = existingCard.querySelector(".btn-card-dl");
+    const changeBtn = existingCard.querySelector(".btn-card-ch");
+    if (dlBtn) dlBtn.addEventListener("click", downloadCurrentPdf);
+    if (changeBtn) changeBtn.addEventListener("click", () => input.click());
+    dropZone.style.display = "none";
+  };
+
   dropZone.addEventListener("click", () => input.click());
   input.addEventListener("change", (e) => {
     if (multiple) {
       onFileSelected(Array.from(e.target.files));
     } else if (e.target.files[0]) {
-      onFileSelected(e.target.files[0]);
+      const file = e.target.files[0];
+      renderActiveCard(file);
+      onFileSelected(file);
     }
   });
+
+  if (!multiple && state.currentPdfFile) {
+    renderActiveCard(state.currentPdfFile);
+  }
+
+  container.appendChild(dropZone);
+  container.appendChild(input);
 
   dropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
@@ -573,6 +591,7 @@ function setPreviewContent(blob, mimeType, filename = "document") {
     previewFrame.style.display = "block";
     previewFrame.src = url;
   }
+  updateWorkspaceActions();
 }
 
 function setHtmlPreview(htmlString, title = "Converted HTML") {
@@ -1474,6 +1493,169 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
+function downloadCurrentPdf() {
+  const docBlob = state.currentPdfBlob || state.currentPdfFile;
+  if (!docBlob) {
+    return alert("No active document loaded. Please upload or select a document first.");
+  }
+  const originalName = state.currentPdfFile ? state.currentPdfFile.name : "document.pdf";
+  const downloadName =
+    state.editCount > 0 && !originalName.startsWith("edited_")
+      ? `edited_${originalName}`
+      : originalName;
+  downloadBlob(docBlob, downloadName);
+  showNotification(`Downloaded "${downloadName}"`, "success", 3000);
+}
+
+async function exportToHtml(mode = "fixed") {
+  if (!state.currentPdfFile) {
+    return alert("Please upload or open a PDF document first to export as HTML.");
+  }
+  const baseName = state.currentPdfFile.name.replace(/\.pdf$/i, "");
+  showNotification(`Converting ${baseName} to ${mode === "semantic" ? "Semantic" : "Fixed"} HTML...`, "info", 3000);
+
+  try {
+    const formData = new FormData();
+    formData.append("file", state.currentPdfFile);
+    formData.append("mode", mode);
+
+    const res = await fetch("/api/convert/html", { method: "POST", body: formData });
+    if (!res.ok) throw new Error(await res.text());
+
+    const html = await res.text();
+    const blob = new Blob([html], { type: "text/html" });
+    downloadBlob(blob, `${baseName}.html`);
+    showNotification(`Exported "${baseName}.html" successfully!`, "success", 4000);
+  } catch (err) {
+    alert("HTML Export failed: " + err.message);
+  }
+}
+
+async function exportToMarkdown() {
+  if (!state.currentPdfFile) {
+    return alert("Please upload or open a PDF document first to export as Markdown.");
+  }
+  const baseName = state.currentPdfFile.name.replace(/\.pdf$/i, "");
+  showNotification(`Extracting Markdown from ${baseName}...`, "info", 3000);
+
+  try {
+    const formData = new FormData();
+    formData.append("file", state.currentPdfFile);
+
+    const res = await fetch("/api/convert/markdown", { method: "POST", body: formData });
+    if (!res.ok) throw new Error(await res.text());
+
+    const data = await res.json();
+    const blob = new Blob([data.markdown || ""], { type: "text/markdown" });
+    downloadBlob(blob, `${baseName}.md`);
+    showNotification(`Exported "${baseName}.md" successfully!`, "success", 4000);
+  } catch (err) {
+    alert("Markdown Export failed: " + err.message);
+  }
+}
+
+async function exportToImagesZip(dpi = 150) {
+  if (!state.currentPdfFile) {
+    return alert("Please upload or open a PDF document first to export images.");
+  }
+  const baseName = state.currentPdfFile.name.replace(/\.pdf$/i, "");
+  showNotification(`Rendering page images at ${dpi} DPI...`, "info", 4000);
+
+  try {
+    const formData = new FormData();
+    formData.append("file", state.currentPdfFile);
+    formData.append("dpi", dpi);
+    formData.append("format", "png");
+
+    const res = await fetch("/api/convert/images", { method: "POST", body: formData });
+    if (!res.ok) throw new Error(await res.text());
+
+    const blob = await res.blob();
+    downloadBlob(blob, `${baseName}_images.zip`);
+    showNotification(`Exported "${baseName}_images.zip" successfully!`, "success", 4000);
+  } catch (err) {
+    alert("Images ZIP Export failed: " + err.message);
+  }
+}
+
+function updateWorkspaceActions() {
+  const btnPreviewExport = document.getElementById("btnPreviewExport");
+  const hasDoc = Boolean(state.currentPdfFile || state.currentPdfBlob);
+
+  if (btnPreviewExport) {
+    btnPreviewExport.style.display = hasDoc ? "inline-flex" : "none";
+  }
+
+  if (!workspaceActions) return;
+
+  if (!hasDoc) {
+    workspaceActions.innerHTML = "";
+    return;
+  }
+
+  const editsText = state.editCount > 0 ? ` (${state.editCount} edit${state.editCount > 1 ? "s" : ""})` : "";
+  workspaceActions.innerHTML = `
+    <button type="button" class="btn-primary" id="btnWorkspaceDlPdf" style="font-size:12px; padding:5px 12px; display:inline-flex; align-items:center; gap:6px;" title="Download active document with all edits">
+      <span>⬇️</span> Download PDF${editsText}
+    </button>
+  `;
+
+  const btnDl = document.getElementById("btnWorkspaceDlPdf");
+  if (btnDl) {
+    btnDl.onclick = downloadCurrentPdf;
+  }
+}
+
+function setupGlobalExportHandlers() {
+  const btnHeaderExport = document.getElementById("btnHeaderExport");
+  const exportDropdownMenu = document.getElementById("exportDropdownMenu");
+  const btnPreviewExport = document.getElementById("btnPreviewExport");
+
+  if (btnHeaderExport && exportDropdownMenu) {
+    btnHeaderExport.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isVisible = exportDropdownMenu.style.display !== "none";
+      exportDropdownMenu.style.display = isVisible ? "none" : "flex";
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!btnHeaderExport.contains(e.target) && !exportDropdownMenu.contains(e.target)) {
+        exportDropdownMenu.style.display = "none";
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && exportDropdownMenu.style.display !== "none") {
+        exportDropdownMenu.style.display = "none";
+      }
+    });
+
+    document.getElementById("menuExportPdf")?.addEventListener("click", () => {
+      exportDropdownMenu.style.display = "none";
+      downloadCurrentPdf();
+    });
+
+    document.getElementById("menuExportHtml")?.addEventListener("click", () => {
+      exportDropdownMenu.style.display = "none";
+      exportToHtml("fixed");
+    });
+
+    document.getElementById("menuExportMarkdown")?.addEventListener("click", () => {
+      exportDropdownMenu.style.display = "none";
+      exportToMarkdown();
+    });
+
+    document.getElementById("menuExportImages")?.addEventListener("click", () => {
+      exportDropdownMenu.style.display = "none";
+      exportToImagesZip(150);
+    });
+  }
+
+  if (btnPreviewExport) {
+    btnPreviewExport.addEventListener("click", downloadCurrentPdf);
+  }
+}
+
 function escapeHtml(str) {
   if (!str) return "";
   return String(str)
@@ -1678,6 +1860,7 @@ function setActivePdf(file) {
   state.historyIndex = 0;
   updateUndoRedoUI();
   setPreviewContent(file, "application/pdf", file.name);
+  updateWorkspaceActions();
 }
 
 function updateActivePdfFromBlob(blob, actionDesc = "edit") {
@@ -1692,13 +1875,7 @@ function updateActivePdfFromBlob(blob, actionDesc = "edit") {
   pushHistory(blob, updatedFile, actionDesc);
 
   setPreviewContent(blob, "application/pdf", `${baseName} (${state.editCount} edits saved)`);
-
-  workspaceActions.innerHTML = `
-    <button class="btn-primary btn-blue" id="btnDlEdited">⬇️ Download Edited PDF (${state.editCount} edit${state.editCount > 1 ? 's' : ''})</button>
-  `;
-  document.getElementById("btnDlEdited").onclick = () => {
-    downloadBlob(blob, newName);
-  };
+  updateWorkspaceActions();
 
   showHistoryToast(`Saved: ${actionDesc} (Rev ${state.historyIndex})`);
 }
@@ -1783,14 +1960,13 @@ function renderPdfToHtmlTool() {
 
   uploadArea.appendChild(
     buildDropZone(".pdf", false, (file) => {
-      state.currentPdfFile = file;
+      setActivePdf(file);
       fileInfo.innerHTML = `
         <div class="file-pill">
           <span class="file-pill-name">📄 ${file.name}</span>
           <span>${(file.size / 1024).toFixed(1)} KB</span>
         </div>
       `;
-      setPreviewContent(file, "application/pdf", file.name);
     })
   );
 
@@ -3990,4 +4166,132 @@ function renderInspectTool() {
     runInspection();
   }
 }
+
+// -------------------------------------------------------------
+// 21. EXPORT & DOWNLOAD HUB TOOL
+// -------------------------------------------------------------
+function renderExportHubTool() {
+  toolConfigPanel.innerHTML = `
+    <div class="panel-section">
+      <div class="section-label">Active Document</div>
+      <div id="exportHubUploadArea"></div>
+      <div id="exportHubFileInfo"></div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Export & Download Formats</div>
+      <div class="export-cards-list">
+        <!-- PDF Export Card -->
+        <div class="export-hub-card">
+          <div class="export-hub-info">
+            <span class="export-hub-icon">📄</span>
+            <div>
+              <div class="export-hub-title">Download Current PDF</div>
+              <div class="export-hub-desc">Export the active document with all edits, rotations, annotations, and metadata changes preserved.</div>
+            </div>
+          </div>
+          <button type="button" class="btn-primary" id="btnHubDlPdf">⬇️ Download PDF Document</button>
+        </div>
+
+        <!-- HTML Export Card -->
+        <div class="export-hub-card">
+          <div class="export-hub-info">
+            <span class="export-hub-icon">🌐</span>
+            <div>
+              <div class="export-hub-title">Web HTML Document</div>
+              <div class="export-hub-desc">Convert to high-fidelity responsive HTML with selectable text, fonts, and inline styles.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <select class="form-select" id="hubHtmlMode" style="flex:1;">
+              <option value="fixed">Fixed Layout (Pixel-Perfect)</option>
+              <option value="semantic">Semantic Flow (Responsive / Mobile)</option>
+            </select>
+            <button type="button" class="btn-secondary" id="btnHubExportHtml" style="white-space:nowrap;">🌐 Export HTML</button>
+          </div>
+        </div>
+
+        <!-- Markdown Export Card -->
+        <div class="export-hub-card">
+          <div class="export-hub-info">
+            <span class="export-hub-icon">📝</span>
+            <div>
+              <div class="export-hub-title">Markdown / Plain Text</div>
+              <div class="export-hub-desc">Extract readable Markdown with headers, tables, bullet points, and code formatting.</div>
+            </div>
+          </div>
+          <button type="button" class="btn-secondary" id="btnHubExportMd">📝 Export Markdown (.md)</button>
+        </div>
+
+        <!-- Images ZIP Export Card -->
+        <div class="export-hub-card">
+          <div class="export-hub-info">
+            <span class="export-hub-icon">🖼️</span>
+            <div>
+              <div class="export-hub-title">Rendered PNG Pages (ZIP)</div>
+              <div class="export-hub-desc">Export each page as high-resolution PNG image bundled in a downloadable ZIP archive.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <select class="form-select" id="hubImagesDpi" style="width:110px;">
+              <option value="150" selected>150 DPI</option>
+              <option value="300">300 DPI</option>
+              <option value="72">72 DPI</option>
+            </select>
+            <button type="button" class="btn-secondary" id="btnHubExportImages" style="flex:1;">🖼️ Export Images ZIP</button>
+          </div>
+        </div>
+
+        <!-- Inspection JSON Export Card -->
+        <div class="export-hub-card">
+          <div class="export-hub-info">
+            <span class="export-hub-icon">🔍</span>
+            <div>
+              <div class="export-hub-title">Deep Inspection Report (JSON)</div>
+              <div class="export-hub-desc">Export security permissions, embedded fonts, image catalogue, and document metadata audit.</div>
+            </div>
+          </div>
+          <button type="button" class="btn-secondary" id="btnHubExportAudit">📥 Export Inspection JSON</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  renderDocStatusBadge("exportHubFileInfo");
+
+  document.getElementById("exportHubUploadArea").appendChild(
+    buildDropZone(".pdf", false, (file) => {
+      setActivePdf(file);
+      renderDocStatusBadge("exportHubFileInfo");
+    })
+  );
+
+  document.getElementById("btnHubDlPdf").addEventListener("click", downloadCurrentPdf);
+  document.getElementById("btnHubExportHtml").addEventListener("click", () => {
+    const mode = document.getElementById("hubHtmlMode").value;
+    exportToHtml(mode);
+  });
+  document.getElementById("btnHubExportMd").addEventListener("click", exportToMarkdown);
+  document.getElementById("btnHubExportImages").addEventListener("click", () => {
+    const dpi = parseInt(document.getElementById("hubImagesDpi").value, 10) || 150;
+    exportToImagesZip(dpi);
+  });
+  document.getElementById("btnHubExportAudit").addEventListener("click", async () => {
+    if (!state.currentPdfFile) return alert("Please upload or open a PDF document first.");
+    const formData = new FormData();
+    formData.append("file", state.currentPdfFile);
+    try {
+      const res = await fetch("/api/inspect", { method: "POST", body: formData });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const filename = `inspection_audit_${state.currentPdfFile.name.replace(/\.pdf$/i, "")}.json`;
+      downloadBlob(blob, filename);
+      showNotification(`Exported "${filename}" successfully!`, "success", 4000);
+    } catch (err) {
+      alert("Audit export failed: " + err.message);
+    }
+  });
+}
+
 

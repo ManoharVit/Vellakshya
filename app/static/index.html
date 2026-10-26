@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vellakshya — Professional PDF Workstation</title>
-    <link rel="stylesheet" href="/css/styles.css?v=3.2.0">
+    <link rel="stylesheet" href="/css/styles.css?v=3.3.0">
 </head>
 <body>
     <!-- Top Header -->
@@ -22,16 +22,52 @@
         </div>
         <div class="header-actions">
             <button type="button" class="btn-hdr-action" id="btnHeaderUndo" disabled title="Undo last action (Ctrl+Z / Cmd+Z)">
-                <span>↩️</span> Undo
+                <span>↩️</span> <span class="btn-hdr-text">Undo</span>
                 <span class="undo-badge" id="undoBadge" style="display: none;">0</span>
             </button>
             <button type="button" class="btn-hdr-action" id="btnHeaderRedo" disabled title="Redo action (Ctrl+Y / Cmd+Shift+Z)">
-                <span>↪️</span> Redo
+                <span>↪️</span> <span class="btn-hdr-text">Redo</span>
                 <span class="redo-badge" id="redoBadge" style="display: none;">0</span>
             </button>
             <div class="history-step-pill" id="historyStepPill" style="display: none;">
                 <span style="font-size:10px;">📜</span>
                 <span id="historyStepText">Original Document</span>
+            </div>
+            <!-- Global Export Dropdown Button -->
+            <div class="header-export-wrap" id="headerExportWrap">
+                <button type="button" class="btn-hdr-export" id="btnHeaderExport" title="Export / Download Document">
+                    <span>⬇️</span> Export <span class="export-caret">▾</span>
+                </button>
+                <div class="export-dropdown-menu" id="exportDropdownMenu" style="display: none;">
+                    <button type="button" class="export-dropdown-item" id="menuExportPdf">
+                        <span class="export-item-icon">📄</span>
+                        <div class="export-item-text">
+                            <span class="export-item-title">Download PDF</span>
+                            <span class="export-item-desc">Current document with all edits applied</span>
+                        </div>
+                    </button>
+                    <button type="button" class="export-dropdown-item" id="menuExportHtml">
+                        <span class="export-item-icon">🌐</span>
+                        <div class="export-item-text">
+                            <span class="export-item-title">Export as Web HTML</span>
+                            <span class="export-item-desc">High-fidelity responsive webpage</span>
+                        </div>
+                    </button>
+                    <button type="button" class="export-dropdown-item" id="menuExportMarkdown">
+                        <span class="export-item-icon">📝</span>
+                        <div class="export-item-text">
+                            <span class="export-item-title">Export as Markdown</span>
+                            <span class="export-item-desc">Structured text and tables</span>
+                        </div>
+                    </button>
+                    <button type="button" class="export-dropdown-item" id="menuExportImages">
+                        <span class="export-item-icon">🖼️</span>
+                        <div class="export-item-text">
+                            <span class="export-item-title">Export Images (ZIP)</span>
+                            <span class="export-item-desc">Rendered PNG pages archive</span>
+                        </div>
+                    </button>
+                </div>
             </div>
         </div>
         <div class="header-status" id="headerStatus">Ready</div>
@@ -80,6 +116,7 @@
 
             <div class="sidebar-category">Forms & Export</div>
             <ul class="sidebar-nav">
+                <li class="nav-item highlight-export" data-tool="export-hub"><span>⬇️</span> Export & Download Hub</li>
                 <li class="nav-item" data-tool="forms"><span>📋</span> AcroForms & Fields</li>
                 <li class="nav-item" data-tool="pdf-to-images"><span>🖼️</span> PDF to Images (ZIP)</li>
                 <li class="nav-item" data-tool="images-to-pdf"><span>📷</span> Images to PDF</li>
@@ -134,6 +171,9 @@
                                 📝 Word Edit Mode
                             </button>
                             <div class="preview-status" id="previewStatus">No active document</div>
+                            <button type="button" class="btn-preview-export" id="btnPreviewExport" style="display: none;" title="Export current document as PDF">
+                                <span>⬇️</span> Export PDF
+                            </button>
                         </div>
                     </div>
 
@@ -194,6 +234,6 @@
     <!-- Vendor Libraries -->
     <script src="/vendor/pdf.min.js"></script>
     <!-- Main JavaScript App -->
-    <script src="/js/app.js?v=3.2.0"></script>
+    <script src="/js/app.js?v=3.3.0"></script>
 </body>
 </html>

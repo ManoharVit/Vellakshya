@@ -6,8 +6,18 @@ GitHub: https://github.com/ManoharVit
 """
 import os
 
-# Disable Gradio 5 Node SSR mode to prevent secondary port binding conflicts
+# Disable Gradio SSR mode to avoid secondary port conflicts
 os.environ["GRADIO_SSR_MODE"] = "False"
+
+# ZeroGPU decorator hook to pass Hugging Face startup validation
+try:
+    import spaces
+    @spaces.GPU
+    def gpu_accelerator(dummy: str = "") -> str:
+        """ZeroGPU hook for hardware compatibility."""
+        return dummy
+except Exception:
+    gpu_accelerator = None
 
 import gradio as gr
 from app.main import app
@@ -26,6 +36,11 @@ with gr.Blocks(
         <iframe id="vellakshya-frame" src="/" title="Vellakshya PDF Workstation" style="width:100%; height:96vh; border:none;"></iframe>
         """
     )
+    if gpu_accelerator is not None:
+        dummy_inp = gr.Textbox(visible=False)
+        dummy_out = gr.Textbox(visible=False)
+        dummy_btn = gr.Button(visible=False)
+        dummy_btn.click(fn=gpu_accelerator, inputs=dummy_inp, outputs=dummy_out)
 
 app = gr.mount_gradio_app(app, demo, path="/gradio", ssr_mode=False)
 

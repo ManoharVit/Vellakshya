@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Workbench Pro — Adobe Acrobat Pro Suite & PDF-to-HTML</title>
+    <link rel="stylesheet" href="/css/styles.css?v=2.5">
+</head>
+<body>
+    <!-- Top Header -->
+    <header class="app-header">
+        <div class="brand">
+            <div class="brand-icon">Pro</div>
+            <div class="brand-title">PDF Workbench Pro</div>
+            <span class="brand-tag">Acrobat Pro Suite + HTML Engine</span>
+        </div>
+        <div class="header-actions">
+            <button type="button" class="btn-hdr-action" id="btnHeaderUndo" disabled title="Undo last action (Ctrl+Z / Cmd+Z)">
+                <span>↩️</span> Undo
+                <span class="undo-badge" id="undoBadge" style="display: none;">0</span>
+            </button>
+            <button type="button" class="btn-hdr-action" id="btnHeaderRedo" disabled title="Redo action (Ctrl+Y / Cmd+Shift+Z)">
+                <span>↪️</span> Redo
+                <span class="redo-badge" id="redoBadge" style="display: none;">0</span>
+            </button>
+            <div class="history-step-pill" id="historyStepPill" style="display: none;">
+                <span style="font-size:10px;">📜</span>
+                <span id="historyStepText">Original Document</span>
+            </div>
+        </div>
+        <div class="header-status" id="headerStatus">Ready</div>
+    </header>
+
+    <!-- Main Application Layout -->
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-category">Core Engine</div>
+            <ul class="sidebar-nav">
+                <li class="nav-item highlight-html active" data-tool="pdf-to-html">
+                    <span>🌐</span> PDF to HTML Engine
+                </li>
+            </ul>
+
+            <div class="sidebar-category">Organize Pages</div>
+            <ul class="sidebar-nav">
+                <li class="nav-item" data-tool="merge-pdf"><span>📑</span> Merge PDFs</li>
+                <li class="nav-item" data-tool="split-pdf"><span>✂️</span> Split PDF</li>
+                <li class="nav-item" data-tool="rotate-pages"><span>🔄</span> Rotate Pages</li>
+                <li class="nav-item" data-tool="delete-pages"><span>🗑️</span> Delete Pages</li>
+                <li class="nav-item" data-tool="reorder-pages"><span>🔢</span> Reorder Pages</li>
+                <li class="nav-item" data-tool="extract-pages"><span>📤</span> Extract Pages</li>
+                <li class="nav-item" data-tool="crop-pages"><span>📐</span> Crop & Resize Margins</li>
+            </ul>
+
+            <div class="sidebar-category">Edit & Annotate</div>
+            <ul class="sidebar-nav">
+                <li class="nav-item" data-tool="replace-text"><span>✏️</span> Find & Replace Text</li>
+                <li class="nav-item" data-tool="insert-text"><span>✍️</span> Insert Text Box</li>
+                <li class="nav-item" data-tool="whiteout"><span>⬜</span> Erase / Whiteout</li>
+                <li class="nav-item" data-tool="watermark"><span>💧</span> Watermark</li>
+                <li class="nav-item" data-tool="page-numbers"><span>📄</span> Page / Bates Numbers</li>
+                <li class="nav-item" data-tool="header-footer"><span>🔝</span> Header & Footer</li>
+                <li class="nav-item" data-tool="highlight"><span>🖍️</span> Keyword Highlight</li>
+            </ul>
+
+            <div class="sidebar-category">Protect & Redact</div>
+            <ul class="sidebar-nav">
+                <li class="nav-item" data-tool="encrypt"><span>🔒</span> Encrypt (AES-256)</li>
+                <li class="nav-item" data-tool="decrypt"><span>🔓</span> Decrypt / Unlock</li>
+                <li class="nav-item" data-tool="redact"><span>⬛</span> Permanent Redact</li>
+                <li class="nav-item" data-tool="sanitize"><span>🧹</span> Sanitize Metadata</li>
+            </ul>
+
+            <div class="sidebar-category">Forms & Export</div>
+            <ul class="sidebar-nav">
+                <li class="nav-item" data-tool="forms"><span>📋</span> AcroForms & Fields</li>
+                <li class="nav-item" data-tool="pdf-to-images"><span>🖼️</span> PDF to Images (ZIP)</li>
+                <li class="nav-item" data-tool="images-to-pdf"><span>📷</span> Images to PDF</li>
+                <li class="nav-item" data-tool="pdf-to-markdown"><span>📝</span> PDF to Markdown</li>
+                <li class="nav-item" data-tool="inspect"><span>🔍</span> Deep Document Inspector</li>
+            </ul>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="workspace">
+            <div class="workspace-header">
+                <div class="workspace-title" id="currentToolTitle">
+                    <span>🌐</span> PDF to HTML Engine
+                </div>
+                <div class="workspace-actions" id="workspaceActions">
+                    <!-- Dynamic action buttons -->
+                </div>
+            </div>
+
+            <div class="workspace-split">
+                <!-- Tool Configuration Panel -->
+                <section class="tool-panel" id="toolConfigPanel">
+                    <!-- Dynamic Tool Options Injected By JS -->
+                </section>
+
+                <!-- Live Preview / Output Canvas -->
+                <section class="preview-panel" id="previewPanel">
+                    <div class="preview-toolbar">
+                        <div class="preview-tabs" id="previewTabs">
+                            <div class="preview-tab active" data-tab="preview">Live Preview</div>
+                            <div class="preview-tab" data-tab="code" id="codeTabBtn" style="display: none;">HTML Code</div>
+                            <div class="preview-tab" data-tab="info" id="infoTabBtn" style="display: none;">Document Details</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button type="button" class="btn-preview-tool" id="btnToolbarUndo" disabled title="Undo last action (Ctrl+Z / Cmd+Z)">
+                                ↩️ Undo
+                            </button>
+                            <button type="button" class="btn-preview-tool" id="btnToolbarRedo" disabled title="Redo action (Ctrl+Y / Cmd+Shift+Z)">
+                                ↪️ Redo
+                            </button>
+                            <div class="zoom-controls-group" id="zoomControlsGroup" style="display: none; align-items: center; gap: 4px;">
+                                <button type="button" class="btn-preview-tool btn-tool-sm" id="btnZoomOut" title="Zoom Out (Cmd/Ctrl + Minus)">−</button>
+                                <span id="zoomLevelBadge" class="zoom-level-badge">115%</span>
+                                <button type="button" class="btn-preview-tool btn-tool-sm" id="btnZoomIn" title="Zoom In (Cmd/Ctrl + Plus)">+</button>
+                                <button type="button" class="btn-preview-tool" id="btnFitWidth" title="Fit to Screen Width (No Broken Formatting)">↔️ Fit Width</button>
+                                <button type="button" class="btn-preview-tool" id="btnActualSize" title="100% Actual Size">100%</button>
+                            </div>
+                            <button type="button" class="btn-preview-tool" id="btnToggleWordFind" style="display: none;" title="Word-Style Find & Replace (Cmd/Ctrl+F)">
+                                🔍 Find & Replace (Word Mode)
+                            </button>
+                            <button type="button" class="btn-preview-tool" id="btnToggleWordEdit" style="display: none;" title="Enable Direct Word-Style Inline Editing">
+                                📝 Word Edit Mode
+                            </button>
+                            <div class="preview-status" id="previewStatus">No active document</div>
+                        </div>
+                    </div>
+
+                    <div id="previewContainer" style="flex: 1; display: flex; flex-direction: column; overflow: auto; position: relative;">
+                        <!-- Floating History Notification Toast -->
+                        <div id="historyToast" class="history-toast"></div>
+
+                        <!-- Floating Word-Style Find & Replace Bar -->
+                        <div id="wordFindBar" class="word-find-bar" style="display: none;">
+                            <div class="wfb-row">
+                                <div class="wfb-input-wrap">
+                                    <span class="wfb-icon">🔍</span>
+                                    <input type="text" id="wfbSearchInput" placeholder="Find in document..." />
+                                    <span id="wfbMatchBadge" class="wfb-badge">0 / 0</span>
+                                </div>
+                                <div class="wfb-btn-group">
+                                    <button type="button" class="wfb-nav-btn" id="wfbPrevBtn" title="Previous match (Shift+Enter)">▲</button>
+                                    <button type="button" class="wfb-nav-btn" id="wfbNextBtn" title="Next match (Enter)">▼</button>
+                                </div>
+                                <button type="button" class="wfb-close-btn" id="wfbCloseBtn" title="Close Find Bar">&times;</button>
+                            </div>
+                            <div class="wfb-row" id="wfbReplaceRow">
+                                <div class="wfb-input-wrap">
+                                    <span class="wfb-icon">✏️</span>
+                                    <input type="text" id="wfbReplaceInput" placeholder="Replace with..." />
+                                    <span class="wfb-style-pill" id="wfbStylePill" title="Automatically matches original font family, bold/italic style, font size, color, and typographical baseline">🎨 Auto Font &amp; Color</span>
+                                </div>
+                                <div class="wfb-btn-group">
+                                    <button type="button" class="btn-sm btn-primary" id="wfbBtnReplace">Replace</button>
+                                    <button type="button" class="btn-sm btn-secondary" id="wfbBtnReplaceAll">Replace All</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="empty-state" id="emptyState">
+                            <div class="empty-state-icon">📄</div>
+                            <p>Upload a PDF document to begin previewing and transforming.</p>
+                        </div>
+                        <div id="interactivePdfViewer" class="interactive-pdf-viewer" style="display: none;"></div>
+                        <iframe id="previewFrame" class="preview-frame" style="display: none;"></iframe>
+                        <pre id="codeView" style="display: none; padding: 20px; color: #a5b4fc; background: #090d16; font-size: 12px; line-height: 1.5; overflow: auto; flex: 1;"></pre>
+                        <div id="inspectorView" style="display: none; flex: 1; overflow-y: auto;"></div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Vendor Libraries -->
+    <script src="/vendor/pdf.min.js"></script>
+    <!-- Main JavaScript App -->
+    <script src="/js/app.js?v=2.5"></script>
+</body>
+</html>

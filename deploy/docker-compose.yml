@@ -1,0 +1,80 @@
+services:
+  # ----------------------------------------------------------------------------
+  # 1. High-Performance In-Memory Broker & Cache
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: vellakshya-redis
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ----------------------------------------------------------------------------
+  # 2. Vellakshya Core Document Workstation API
+  # ----------------------------------------------------------------------------
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/sandbox/Dockerfile
+    container_name: vellakshya-api
+    entrypoint: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=production
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - shared_artifacts:/app/data/job_artifacts
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+
+  # ----------------------------------------------------------------------------
+  # 3. Isolated Sandboxed Worker Process
+  #    Confined execution boundary for untrusted PDF conversions
+  # ----------------------------------------------------------------------------
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/sandbox/Dockerfile
+    container_name: vellakshya-worker
+    entrypoint: ["python3", "-c", "import asyncio; from app.services.queue import queue_instance; queue_instance.start_worker(); asyncio.get_event_loop().run_forever()"]
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - shared_artifacts:/app/data/job_artifacts
+    # Security Sandboxing Controls
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 100
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 512M
+
+volumes:
+  redis_data:
+  shared_artifacts:

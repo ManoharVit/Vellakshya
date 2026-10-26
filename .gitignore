@@ -36,6 +36,9 @@ Thumbs.db
 *.swp
 *.swo
 
-# Temporary Files
+# Temporary Files & Runtime Data
 *.tmp
 *.log
+*.db
+data/
+app/data/

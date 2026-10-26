@@ -16,7 +16,7 @@ pinned: false
 
 ---
 
-## Author & Attribution
+## Author & Project Attribution
 - **Author / Developer:** Giri Manohar Vemula
 - **Lead Architect:** Giri Manohar Vemula
 - **LinkedIn Profile:** [https://www.linkedin.com/in/manoharv511](https://www.linkedin.com/in/manoharv511)
@@ -25,59 +25,61 @@ pinned: false
 
 ---
 
-## Key Architectural Modules
+## Architectural Modules & Implementation Roadmap
 
-### 1. High-Fidelity & Semantic PDF-to-HTML Engine
-- **Fixed Point-Based Layout:** Translates arbitrary PDF pages into responsive HTML with exact CSS coordinates, point-based viewport boundaries, vector layers, embedded fonts, and typographic baselines.
-- **Semantic Responsive Flow:** Automatically analyzes text blocks, headings ($$h1$$, $$h2$$), paragraphs, lists, hyperlinks, and image placeholders for accessibility and mobile screen readers.
-- **Live Side-by-Side Dual Preview:** Live preview pane with full-text inspection, raw HTML extraction, and standalone export.
+### Phase 1: Isolated Worker Architecture & Queue (Milestones 8 & 9)
+- **Standalone Runner:** Independent background worker (`app/worker/runner.py`) decoupling compute-intensive PDF operations from the HTTP event loop.
+- **Resource Sandbox:** Subprocess execution sandbox (`app/services/sandbox.py`) enforcing a hard $$512\text{ MB}$$ memory limit and $$30\text{ s}$$ CPU timeout.
+- **Job Queue:** Redis-backed worker queue (`app/services/queue.py`) with transparent local in-memory fallback for high availability.
+- **Docker Seccomp Isolation:** Rootless container definition (`deploy/sandbox/Dockerfile`) with dropped Linux capabilities and restricted system calls.
 
-### 2. Professional Document Editing & Word-Style Replacement
-- **Font & Color Preserving Find & Replace:** Detects font family, bold/italic weight, font size, sRGB color, and typographic baseline, whiting out the original glyphs and re-rendering replacement text with identical styling.
-- **Pointer Coordinate Detection & Locking:** Interactive pointer coordinate capture directly from mouse clicks on the canvas, eliminating manual coordinate guessing.
-- **Single vs. Replace All & Sequential Chaining:** Supports targeting specific occurrence indices or global replacement batches across documents.
-- **Undo / Redo History Stack:** Robust multi-state history engine supporting keyboard shortcuts (`Ctrl+Z`, `Ctrl+Y`, `Cmd+Z`, `Cmd+Shift+Z`).
-- **Page Operations:** Native rotation, multi-box cropping, deletion, reordering, extraction, and split/merge pipelines.
+### Phase 2: Relational DB Persistence, Immutable Versioning & Cryptographic Integrity (Milestones 4 & 10)
+- **Enterprise Relational Schema:** Complete Section 4 schema (`app/models/db.py`) covering `User`, `Document`, `DocumentPermission`, `DocumentVersion`, `DocumentOperation`, `IntegrityManifest`, `Comment`, and `AuditEvent`.
+- **Presigned Object Storage:** S3-compatible HMAC-SHA256 presigned token storage service (`app/services/storage.py`) preventing unauthorized binary exfiltration.
+- **Optimistic Concurrency Control:** Enforces strict `base_version` validation across transformation operations, returning HTTP 409 Conflict upon state divergence.
+- **Idempotency Replay:** Cached idempotency keys replay exact prior version outputs without re-executing document transformations.
+- **Linear Hash Chaining:** Audit trails secured by immutable SHA-256 chain links: $$event\_hash = \text{SHA-256}(canonical \mathbin{\Vert} previous\_hash)$$.
+- **Ed25519 Signed Manifests:** Cryptographically signed version manifests verifying byte size, SHA-256 digest, and timestamp authenticity.
 
-### 3. Deep Document Inspector & Preflight Audit
-- **Executive Preflight Statistics:** Page count, file size ($$KB = \frac{\text{bytes}}{1024}$$), PDF specification version, encryption status, repair flags, OCG layer presence, word count, character count, embedded font count, image count, and form field counts.
-- **Security Permissions Breakdown:** Bitmask permission decoding for printing, modification, content copying, annotations, and form filling.
-- **Page Geometry Profiling:** Page dimensions in typographical points ($$pt$$) and metric millimeters ($$mm = \frac{pt \times 25.4}{72}$$), paper format detection (Letter, A4, Legal, Tabloid, A5, A3, Custom), orientation (Portrait/Landscape), and rotation.
-- **Metadata Editor & Selective Deletion:** Live editing of Title, Author, Subject, Keywords, Creator, and Producer. Selective per-field deletion or 1-click total metadata sanitization with XMP XML stream stripping.
-- **Table of Contents & Export:** Hierarchical TOC bookmark navigation and JSON report export.
+### Phase 3: Real-Time Multi-User Collaboration & WebSockets (Milestone 11)
+- **WebSocket Broadcast Gateway:** Central room manager (`app/services/collaboration.py` & `app/api/collaboration_ws.py`) broadcasting presence, live cursor tracking, and real-time annotations.
+- **Collaborator Presence UI:** Visual presence bar displaying live collaborator avatars with page indicators and connected status pills.
+- **Threaded Geometric Comments:** Anchors comments to normalized bounding boxes `{x, y, w, h}` with parent-child discussion trees.
 
-### 4. Cryptographic Signatures & Tamper Detection
-- **Digital Signatures:** Digitally signs PDF documents with visible approval badges and cryptographic SHA-256 document content digests.
-- **Integrity & Tamper Verification:** Recalculates document digests on demand; flags `DIGEST_FAILURE_TAMPER_DETECTED` if any text, drawing, or structural object is modified after signing.
+### Phase 4: Sandboxing, Privacy Controls & Adversarial Security (Milestone 12)
+- **Owner-Only Retention Purging:** `DELETE /api/v2/documents/{doc_id}` purges relational metadata and scrubs all binary objects from storage.
+- **Strict Content Security Policy:** PDF-to-HTML converter injects `script-src 'none'` CSP headers to prevent stored XSS attacks.
+- **Payload & Path Traversal Guards:** Enforces $$50\text{ MB}$$ payload limits (HTTP 413) and strips directory traversal artifacts (`..`, `/`, `\`).
+- **Adversarial Security Test Suite:** Dedicated 8-test suite (`tests/test_adversarial_security.py`) auditing RBAC boundaries, polyglot rejection, and presigned token tampering.
 
-### 5. Multi-User Collaboration & Mobile Offline Sync
-- **Concurrent Comment Merging:** Non-destructive three-way annotation merge preventing lost updates and duplicate comments. Monotonically increments document revision history.
-- **Mobile Offline Queue:** Records local client mutations (annotations, rotation, highlights) while offline and reconciles them upon reconnection.
-
-### 6. Security Sandboxing & Threat Prevention
-- **Anti-Polyglot Defense:** Strictly validates `%PDF-` magic header at offset 0, rejecting GIF/HTML/EXE polyglots.
-- **Payload Boundaries:** Prevents decompression bombs and oversized uploads exceeding memory budgets.
-- **Executable Script Neutralization:** Scans for and neutralizes malicious `/Launch` actions and `/JavaScript` payloads.
+### Phase 5: Automated Verification & CI/CD Pipeline (Milestones 13 & 14)
+- **77 Passing Automated Tests:**
+  - 55 Pytest backend tests (Core MVP cases, REST API, worker queue, persistence, collaboration, and adversarial security).
+  - 4 Vitest frontend unit tests (typographic geometry, sRGB color normalization, PDF permission masks).
+  - 18 Playwright end-to-end browser tests (SPA shell navigation, file upload, conversion, export hub touchpoints, undo/redo).
+- **Secure Dependency Management:** Bounded versioning constraints across all production dependencies.
 
 ---
 
-## Layered Testing Suite (54 / 54 Passed)
-
-The platform is covered by an automated layered test suite:
+## Automated Verification Suite (77 / 77 Passed)
 
 ```bash
-======================= 54 passed, 6 warnings in 20.12s ========================
+Backend Pytest Suite:     55 passed in 3.67s
+Frontend Vitest Suite:     4 passed in 87ms
+Playwright Browser E2E:   18 passed in 9.60s
+Total Automated Tests:    77 passed (100% pass rate)
 ```
 
-| Layer / Test Suite | Description | Status |
-| :--- | :--- | :--- |
-| [`test_core_cases.py`](tests/test_core_cases.py) | 10 Core Test Cases (500-page responsiveness, font preservation, multi-column flow, deep redaction, password enforcement, digital signatures, concurrent collab, OCR accuracy, mobile offline sync, security rejection). | **10 / 10 PASSED** |
-| [`test_performance_benchmarks.py`](tests/test_performance_benchmarks.py) | Performance benchmarks for 1 MB, 10 MB, 50 MB PDFs and 500-page enterprise documents. | **3 / 3 PASSED** |
-| [`test_security_audit.py`](tests/test_security_audit.py) | DAST vulnerability audit, path traversal defenses, secret scanning, and dependency check. | **4 / 4 PASSED** |
-| [`test_accessibility_and_visual.py`](tests/test_accessibility_and_visual.py) | Semantic landmarks, ARIA labels, mobile viewports, and 0% pixel drift visual regression. | **3 / 3 PASSED** |
-| [`test_api_endpoints.py`](tests/test_api_endpoints.py) | REST API endpoints, streaming responses, and multipart file upload validation. | **14 / 14 PASSED** |
-| [`test_interactive_ui.py`](tests/test_interactive_ui.py) | Frontend DOM contracts, vendor libraries, undo/redo stack, and Deep Inspector UI. | **4 / 4 PASSED** |
-| [`test_pdf_services.py`](tests/test_pdf_services.py) | Backend PyMuPDF services, text replacement engine, and vector geometry. | **16 / 16 PASSED** |
+| Test Suite | File | Tests | Status |
+| :--- | :--- | :---: | :---: |
+| **Core MVP Engineering Cases** | [`tests/test_core_cases.py`](tests/test_core_cases.py) | 10 | **PASSED** |
+| **REST API Layer** | [`tests/test_api_endpoints.py`](tests/test_api_endpoints.py) | 14 | **PASSED** |
+| **Worker Queue & Sandbox** | [`tests/test_worker_queue_and_sandbox.py`](tests/test_worker_queue_and_sandbox.py) | 9 | **PASSED** |
+| **V2 Persistence & Ed25519 Manifests** | [`tests/test_v2_persistence.py`](tests/test_v2_persistence.py) | 8 | **PASSED** |
+| **Real-Time WebSockets Collaboration** | [`tests/test_collaboration_websockets.py`](tests/test_collaboration_websockets.py) | 6 | **PASSED** |
+| **Adversarial Security Audit** | [`tests/test_adversarial_security.py`](tests/test_adversarial_security.py) | 8 | **PASSED** |
+| **Frontend Geometry & Masks (Vitest)** | [`tests/unit/app.test.js`](tests/unit/app.test.js) | 4 | **PASSED** |
+| **Browser E2E Workflows (Playwright)** | [`tests/e2e/workstation.spec.js`](tests/e2e/workstation.spec.js) | 18 | **PASSED** |
 
 ---
 

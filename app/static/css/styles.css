@@ -576,6 +576,73 @@ body {
   opacity: 0.6;
 }
 
+/* Page Chips Grid in Delete Tool */
+.page-chips-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.del-page-chip {
+  background: #181b26;
+  color: #94a3b8;
+  border: 1px solid var(--border-color);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.del-page-chip:hover {
+  background: #232738;
+  color: #f8fafc;
+  border-color: #3b82f6;
+}
+
+.del-page-chip.selected {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border-color: #ef4444;
+  font-weight: 600;
+}
+
+.del-single-page-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: 11px;
+  line-height: 1.4;
+  margin-top: 8px;
+}
+
+.btn-delete-page-direct {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.12s ease;
+}
+
+.btn-delete-page-direct:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
 /* Inspection Cards */
 .inspect-grid {
   display: grid;

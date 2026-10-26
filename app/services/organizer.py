@@ -41,6 +41,34 @@ def rotate_pages(pdf_bytes: bytes, pages: list[int] | None = None, angle: int = 
     return out_bytes
 
 
+def parse_page_spec(spec: str) -> list[int]:
+    """
+    Parses comma-separated pages and ranges (e.g. '1, 3, 5-7') into a sorted unique list of 1-indexed page numbers.
+    """
+    pages: set[int] = set()
+    for part in spec.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            bounds = [b.strip() for b in part.split("-", 1)]
+            try:
+                start = int(bounds[0])
+                end = int(bounds[1])
+                if start <= end:
+                    pages.update(range(start, end + 1))
+                else:
+                    pages.update(range(end, start + 1))
+            except ValueError:
+                continue
+        else:
+            try:
+                pages.add(int(part))
+            except ValueError:
+                continue
+    return sorted(pages)
+
+
 def delete_pages(pdf_bytes: bytes, pages_to_delete: list[int]) -> bytes:
     """
     Deletes specified 1-indexed pages from the PDF.
@@ -49,6 +77,10 @@ def delete_pages(pdf_bytes: bytes, pages_to_delete: list[int]) -> bytes:
     # Convert 1-indexed to 0-indexed and sort descending to prevent index shifts
     zero_indexed = sorted({p - 1 for p in pages_to_delete if 1 <= p <= len(doc)}, reverse=True)
     
+    if len(zero_indexed) >= len(doc):
+        doc.close()
+        raise ValueError("Cannot delete all pages from a document. At least one page must remain.")
+        
     for idx in zero_indexed:
         doc.delete_page(idx)
         

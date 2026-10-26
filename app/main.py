@@ -217,13 +217,13 @@ async def split_pdf(
 async def rotate_pdf_pages(
     file: UploadFile = File(...),
     angle: int = Form(90),
-    pages: Optional[str] = Form(None),  # e.g. "1,2,5" or blank for all
+    pages: Optional[str] = Form(None),  # e.g. "1,2,5" or "1-3" or blank for all
 ):
     """
     Rotates all or selected pages by 90, 180, or 270 degrees.
     """
     pdf_bytes = await file.read()
-    page_list = [int(p.strip()) for p in pages.split(",") if p.strip()] if pages else None
+    page_list = organizer.parse_page_spec(pages) if pages else None
     rotated = organizer.rotate_pages(pdf_bytes, pages=page_list, angle=angle)
     return Response(
         content=rotated,
@@ -235,14 +235,22 @@ async def rotate_pdf_pages(
 @app.post("/api/organize/delete")
 async def delete_pdf_pages(
     file: UploadFile = File(...),
-    pages: str = Form(...),  # e.g. "2, 4"
+    pages: str = Form(...),  # e.g. "2, 4" or "2-3"
 ):
     """
     Deletes specified pages from the PDF.
     """
     pdf_bytes = await file.read()
-    page_list = [int(p.strip()) for p in pages.split(",") if p.strip()]
-    modified = organizer.delete_pages(pdf_bytes, pages_to_delete=page_list)
+    page_list = organizer.parse_page_spec(pages)
+    if not page_list:
+        raise HTTPException(status_code=400, detail="No valid page numbers or ranges provided to delete.")
+    try:
+        modified = organizer.delete_pages(pdf_bytes, pages_to_delete=page_list)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete pages: {str(e)}")
+
     return Response(
         content=modified,
         media_type="application/pdf",
@@ -271,13 +279,15 @@ async def reorder_pdf_pages(
 @app.post("/api/organize/extract")
 async def extract_pdf_pages(
     file: UploadFile = File(...),
-    pages: str = Form(...),  # e.g. "1, 3, 5"
+    pages: str = Form(...),  # e.g. "1, 3, 5" or "1-3"
 ):
     """
     Extracts specified pages into a fresh PDF.
     """
     pdf_bytes = await file.read()
-    page_list = [int(p.strip()) for p in pages.split(",") if p.strip()]
+    page_list = organizer.parse_page_spec(pages)
+    if not page_list:
+        raise HTTPException(status_code=400, detail="No valid page numbers or ranges provided to extract.")
     extracted = organizer.extract_pages(pdf_bytes, pages_to_extract=page_list)
     return Response(
         content=extracted,

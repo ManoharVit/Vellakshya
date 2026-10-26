@@ -662,8 +662,18 @@ async function renderInteractivePdfViewer(blob, filename = "document") {
       pageHeader.className = "pdf-page-card-header";
       pageHeader.innerHTML = `
         <span class="page-num-badge">Page ${pageNum} of ${numPages}</span>
-        <span class="page-dim-badge">${Math.round(unscaledViewport.width)} × ${Math.round(unscaledViewport.height)} pt</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="page-dim-badge">${Math.round(unscaledViewport.width)} × ${Math.round(unscaledViewport.height)} pt</span>
+          ${numPages > 1 ? `<button type="button" class="btn-delete-page-direct" title="Delete Page ${pageNum}" data-del-page="${pageNum}">🗑️ Delete</button>` : ''}
+        </div>
       `;
+      const delBtn = pageHeader.querySelector(".btn-delete-page-direct");
+      if (delBtn) {
+        delBtn.onclick = (e) => {
+          e.stopPropagation();
+          deleteSinglePage(pageNum);
+        };
+      }
       pageCard.appendChild(pageHeader);
 
       const canvasWrapper = document.createElement("div");
@@ -1980,48 +1990,188 @@ function renderRotateTool() {
 // -------------------------------------------------------------
 // 5. DELETE PAGES TOOL
 // -------------------------------------------------------------
+async function deleteSinglePage(pageNum) {
+  if (!state.currentPdfFile) {
+    showNotification("No active document loaded.", "warning");
+    return;
+  }
+  const totalPages = state.interactivePdfDoc ? state.interactivePdfDoc.numPages : 1;
+  if (totalPages <= 1) {
+    showNotification("Cannot delete the only page in a document. At least one page must remain.", "error");
+    return;
+  }
+
+  showNotification(`Removing page ${pageNum}...`, "info", 1800);
+  try {
+    const formData = new FormData();
+    formData.append("file", state.currentPdfFile);
+    formData.append("pages", String(pageNum));
+
+    const res = await fetch("/api/organize/delete", { method: "POST", body: formData });
+    if (!res.ok) {
+      let errMsg = "Failed to delete page.";
+      try {
+        const errData = await res.json();
+        if (errData?.detail) errMsg = errData.detail;
+      } catch (_) {}
+      throw new Error(errMsg);
+    }
+    const blob = await res.blob();
+    updateActivePdfFromBlob(blob, `Deleted Page ${pageNum}`);
+    if (state.activeTool === "delete-pages") {
+      switchTool("delete-pages");
+    }
+    showNotification(`Page ${pageNum} removed. Document now has ${totalPages - 1} page${totalPages - 1 > 1 ? 's' : ''}.`, "success", 4000);
+  } catch (err) {
+    showNotification(err.message, "error", 5000);
+  }
+}
+
 function renderDeleteTool() {
+  const numPages = state.interactivePdfDoc ? state.interactivePdfDoc.numPages : null;
+
+  let pageChipsHtml = "";
+  if (numPages && numPages > 1) {
+    pageChipsHtml = `
+      <div class="form-group" style="margin-top: 8px;">
+        <label class="form-label">Quick Click: Select Pages to Remove</label>
+        <div id="delPageChips" class="page-chips-grid">
+          ${Array.from({ length: numPages }, (_, i) => i + 1)
+            .map(p => `<button type="button" class="del-page-chip" data-page="${p}">Page ${p}</button>`)
+            .join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  let singlePageWarning = "";
+  if (numPages === 1) {
+    singlePageWarning = `
+      <div class="del-single-page-warn">
+        <span>⚠️</span>
+        <div>This document has only <strong>1 page</strong>. A PDF document must retain at least one page, so pages cannot be deleted.</div>
+      </div>
+    `;
+  }
+
   toolConfigPanel.innerHTML = `
     <div class="panel-section">
       <div class="section-label">Active Document</div>
       <div id="delUploadArea"></div>
-      <div id="delFileInfo"></div>
     </div>
     <div class="panel-section">
       <div class="form-group">
-        <label class="form-label">Pages to Delete (1-indexed)</label>
-        <input type="text" class="form-input" id="delPages" placeholder="e.g. 2, 4" />
+        <label class="form-label" for="delPages">Pages or Ranges to Delete (1-indexed)</label>
+        <input type="text" class="form-input" id="delPages" placeholder="e.g. 2, 4 or 2-3" ${numPages === 1 ? 'disabled' : ''} />
+        <span style="font-size: 11px; color: var(--text-muted);">Supports individual pages (2, 4) and ranges (2-3).</span>
       </div>
+      ${pageChipsHtml}
+      ${singlePageWarning}
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunDelete">🗑️ Remove Pages</button>
+      <button class="btn-primary" id="btnRunDelete" ${numPages === 1 ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+        🗑️ Remove Selected Pages
+      </button>
     </div>
   `;
-
-  renderDocStatusBadge("delFileInfo");
 
   document.getElementById("delUploadArea").appendChild(
     buildDropZone(".pdf", false, (file) => {
       setActivePdf(file);
-      renderDocStatusBadge("delFileInfo");
+      switchTool("delete-pages");
     })
   );
 
+  // Wire up chip toggles
+  const chips = toolConfigPanel.querySelectorAll(".del-page-chip");
+  const inputPages = document.getElementById("delPages");
+
+  function syncChipsFromInput() {
+    const rawVal = inputPages.value;
+    const selectedPages = new Set();
+    rawVal.split(",").forEach(part => {
+      part = part.trim();
+      if (part.includes("-")) {
+        const [start, end] = part.split("-").map(n => parseInt(n.trim(), 10));
+        if (!isNaN(start) && !isNaN(end)) {
+          for (let p = Math.min(start, end); p <= Math.max(start, end); p++) selectedPages.add(p);
+        }
+      } else {
+        const p = parseInt(part, 10);
+        if (!isNaN(p)) selectedPages.add(p);
+      }
+    });
+    chips.forEach(chip => {
+      const p = parseInt(chip.dataset.page, 10);
+      if (selectedPages.has(p)) {
+        chip.classList.add("selected");
+      } else {
+        chip.classList.remove("selected");
+      }
+    });
+  }
+
+  chips.forEach(chip => {
+    chip.addEventListener("click", () => {
+      chip.classList.toggle("selected");
+      const activeNums = Array.from(chips)
+        .filter(c => c.classList.contains("selected"))
+        .map(c => parseInt(c.dataset.page, 10))
+        .sort((a, b) => a - b);
+      inputPages.value = activeNums.join(", ");
+    });
+  });
+
+  inputPages.addEventListener("input", syncChipsFromInput);
+
   document.getElementById("btnRunDelete").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Upload a PDF first.");
-    const pages = document.getElementById("delPages").value;
-    if (!pages) return alert("Specify page numbers to delete.");
+    if (!state.currentPdfFile) {
+      showNotification("Please upload or open a PDF document first.", "warning");
+      return;
+    }
+    if (numPages === 1) {
+      showNotification("Cannot delete the only page in a document. At least one page must remain.", "error");
+      return;
+    }
+    const pages = inputPages.value.trim();
+    if (!pages) {
+      showNotification("Please specify page numbers or click pages above to delete.", "warning");
+      return;
+    }
 
-    const formData = new FormData();
-    formData.append("file", state.currentPdfFile);
-    formData.append("pages", pages);
+    const btn = document.getElementById("btnRunDelete");
+    const origHtml = btn.innerHTML;
+    btn.innerHTML = `<span class="spinner"></span> Removing pages...`;
+    btn.disabled = true;
 
-    const res = await fetch("/api/organize/delete", { method: "POST", body: formData });
-    if (!res.ok) throw new Error(await res.text());
-    const blob = await res.blob();
-    updateActivePdfFromBlob(blob, "Delete Pages");
-    renderDocStatusBadge("delFileInfo");
-    alert("Pages deleted and saved to active in-memory document!");
+    try {
+      const formData = new FormData();
+      formData.append("file", state.currentPdfFile);
+      formData.append("pages", pages);
+
+      const res = await fetch("/api/organize/delete", { method: "POST", body: formData });
+      if (!res.ok) {
+        let errMsg = "Failed to delete pages.";
+        try {
+          const errData = await res.json();
+          if (errData && errData.detail) errMsg = errData.detail;
+        } catch (_) {
+          const textErr = await res.text().catch(() => "");
+          if (textErr) errMsg = textErr;
+        }
+        throw new Error(errMsg);
+      }
+
+      const blob = await res.blob();
+      updateActivePdfFromBlob(blob, `Deleted Page(s) ${pages}`);
+      switchTool("delete-pages");
+      showNotification(`Successfully removed page(s) ${pages}. Active document updated.`, "success", 4000);
+    } catch (err) {
+      showNotification(err.message, "error", 5000);
+    } finally {
+      btn.innerHTML = origHtml;
+      btn.disabled = false;
+    }
   });
 }
 

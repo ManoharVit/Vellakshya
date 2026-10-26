@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.config import STATIC_DIR, config
 from app.services import auth, collaboration, converter, editor, forms, inspection, organizer, security, signatures
 from app.services.queue import queue_instance
+from app.api.v2_documents import router as v2_documents_router
 
 app = FastAPI(
     title=config.title,
@@ -29,6 +30,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(v2_documents_router)
 
 
 @app.on_event("startup")

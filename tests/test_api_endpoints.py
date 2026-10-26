@@ -20,7 +20,7 @@ def get_sample_pdf_bytes():
 def test_root_index():
     response = client.get("/")
     assert response.status_code == 200
-    assert "PDF Workbench Pro" in response.text
+    assert "Vellakshya" in response.text or "PDF Workbench" in response.text
 
 
 def test_api_convert_html_fixed():

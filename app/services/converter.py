@@ -404,6 +404,12 @@ def pdf_to_html_semantic(pdf_bytes: bytes, title: str = "Converted Document") ->
             elif block[6] == 1:
                 page_content.append("<div class='image-placeholder'>[Image Object]</div>")
                 
+        # Append standalone page links not embedded within a text block
+        for l in page_links:
+            uri = l.get("uri")
+            if uri and uri not in [p for p in page_content if uri in p]:
+                page_content.append(f"<p><a href='{html.escape(uri)}' class='semantic-link' target='_blank' rel='noopener'>{html.escape(uri)}</a></p>")
+
         sections_html.append(f"<section class='semantic-page-card'>{''.join(page_content)}</section>")
         
     doc.close()

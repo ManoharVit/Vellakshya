@@ -1,0 +1,38 @@
+{
+  "name": "vellakshya",
+  "version": "1.0.0",
+  "description": "**Vellakshya** is an enterprise-grade document workstation providing full Adobe Acrobat Pro and Adobe Acrobat Studio capabilities alongside high-fidelity PDF-to-HTML conversion, cryptographic tamper detection, multi-user collaboration, and security sandboxing.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "vitest run && playwright test",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test tests/e2e",
+    "test:api": "playwright test tests/api",
+    "test:a11y": "playwright test tests/accessibility",
+    "test:pdf": "playwright test tests/pdf-validation",
+    "test:playwright": "playwright test",
+    "test:load": "k6 run k6/load-test.js",
+    "test:all": "npm run test:unit && npm run test:playwright"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ManoharVit/Vellakshya.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ManoharVit/Vellakshya/issues"
+  },
+  "homepage": "https://github.com/ManoharVit/Vellakshya#readme",
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.64.1",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.4.299",
+    "vitest": "^5.0.5"
+  }
+}

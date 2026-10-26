@@ -1621,8 +1621,8 @@ function renderPdfToHtmlTool() {
     <div class="panel-section">
       <div class="section-label">2. Conversion Mode</div>
       <div class="form-group">
-        <label class="form-label">Layout Strategy</label>
-        <select class="form-select" id="htmlMode">
+        <label class="form-label" for="htmlMode">Layout Strategy</label>
+        <select class="form-select" id="htmlMode" aria-label="Layout Strategy">
           <option value="fixed" selected>High-Fidelity Fixed Layout (Absolute Coordinates & CSS Fonts)</option>
           <option value="semantic">Responsive Flow Layout (Mobile/Reader Semantic HTML)</option>
         </select>

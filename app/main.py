@@ -16,6 +16,7 @@ from app.core.config import STATIC_DIR, config
 from app.services import auth, collaboration, converter, editor, forms, inspection, organizer, security, signatures
 from app.services.queue import queue_instance
 from app.api.v2_documents import router as v2_documents_router
+from app.api.collaboration_ws import router as collaboration_ws_router
 
 app = FastAPI(
     title=config.title,
@@ -32,6 +33,7 @@ app.add_middleware(
 )
 
 app.include_router(v2_documents_router)
+app.include_router(collaboration_ws_router)
 
 
 @app.on_event("startup")

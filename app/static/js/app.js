@@ -4294,4 +4294,120 @@ function renderExportHubTool() {
   });
 }
 
+// ============================================================
+// Phase 3: Real-Time WebSocket Collaboration & Presence Client
+// ============================================================
+let collabSocket = null;
+let collabPingTimer = null;
+let currentDocId = "workspace_default";
+
+function initCollaborationWebSocket(docId = "workspace_default", userName = null) {
+  if (collabSocket && collabSocket.readyState === WebSocket.OPEN) {
+    if (currentDocId === docId) return;
+    collabSocket.close();
+  }
+  currentDocId = docId;
+  const user = userName || (localStorage.getItem("vellakshya_username") || "User_" + Math.random().toString(36).substring(2, 6));
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const wsUrl = `${protocol}//${window.location.host}/ws/documents/${encodeURIComponent(docId)}?user_id=${encodeURIComponent(user)}&name=${encodeURIComponent(user)}`;
+
+  try {
+    collabSocket = new WebSocket(wsUrl);
+
+    collabSocket.onopen = () => {
+      console.log(`[Collaboration] Connected to document room: ${docId}`);
+      const dot = document.getElementById("collabStatusDot");
+      if (dot) dot.style.background = "#10B981";
+      if (collabPingTimer) clearInterval(collabPingTimer);
+      collabPingTimer = setInterval(() => {
+        if (collabSocket && collabSocket.readyState === WebSocket.OPEN) {
+          collabSocket.send(JSON.stringify({ type: "ping" }));
+        }
+      }, 25000);
+    };
+
+    collabSocket.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        handleCollaborationMessage(msg);
+      } catch (err) {
+        console.error("[Collaboration] Failed to parse message:", err);
+      }
+    };
+
+    collabSocket.onclose = () => {
+      const dot = document.getElementById("collabStatusDot");
+      if (dot) dot.style.background = "#64748B";
+      if (collabPingTimer) clearInterval(collabPingTimer);
+    };
+
+    collabSocket.onerror = (err) => {
+      console.warn("[Collaboration] WebSocket error:", err);
+    };
+  } catch (err) {
+    console.warn("[Collaboration] Could not connect WebSocket:", err);
+  }
+}
+
+function handleCollaborationMessage(msg) {
+  if (msg.type === "room_state") {
+    renderCollaboratorRoster(msg.users || []);
+  } else if (msg.type === "user_joined") {
+    addCollaboratorAvatar(msg.user);
+  } else if (msg.type === "user_left") {
+    removeCollaboratorAvatar(msg.user_id);
+  } else if (msg.type === "presence_update") {
+    updateCollaboratorPage(msg.user_id, msg.page_no);
+  }
+}
+
+function renderCollaboratorRoster(users) {
+  const container = document.getElementById("collabAvatarsList");
+  if (!container) return;
+  container.innerHTML = "";
+  users.forEach(u => addCollaboratorAvatar(u));
+}
+
+function addCollaboratorAvatar(user) {
+  const container = document.getElementById("collabAvatarsList");
+  if (!container || !user) return;
+  let pill = document.getElementById(`avatar_${user.user_id}`);
+  if (!pill) {
+    pill = document.createElement("div");
+    pill.id = `avatar_${user.user_id}`;
+    pill.className = "collab-avatar-pill";
+    pill.style.backgroundColor = user.color || "#3B82F6";
+    pill.title = `${user.display_name} (Page ${user.page_no || 1})`;
+    pill.textContent = (user.display_name || "U")[0].toUpperCase();
+
+    const pageBadge = document.createElement("span");
+    pageBadge.className = "collab-page-badge";
+    pageBadge.id = `badge_${user.user_id}`;
+    pageBadge.textContent = user.page_no || 1;
+    pill.appendChild(pageBadge);
+    container.appendChild(pill);
+  }
+}
+
+function removeCollaboratorAvatar(userId) {
+  const pill = document.getElementById(`avatar_${userId}`);
+  if (pill) pill.remove();
+}
+
+function updateCollaboratorPage(userId, pageNo) {
+  const badge = document.getElementById(`badge_${userId}`);
+  if (badge) badge.textContent = pageNo;
+  const pill = document.getElementById(`avatar_${userId}`);
+  if (pill) {
+    const name = pill.title.split(" (Page")[0];
+    pill.title = `${name} (Page ${pageNo})`;
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("DOMContentLoaded", () => {
+    initCollaborationWebSocket("workspace_default");
+  });
+}
+
 

@@ -4,10 +4,15 @@ Handles concurrent edits, non-destructive comment merging, duplicate suppression
 version history tracking, and offline sync reconciliation.
 """
 from __future__ import annotations
+import asyncio
+from dataclasses import asdict, dataclass, field
+import datetime
 import json
+import time
 import uuid
-from typing import Any
+from typing import Any, Optional
 import fitz  # PyMuPDF
+from fastapi import WebSocket
 
 
 def merge_concurrent_comments(
@@ -134,3 +139,281 @@ def sync_offline_actions(
         "final_version": final_version,
     }
     return out_bytes, summary
+
+
+# -----------------------------------------------------------------------------
+# Phase 3: Real-Time WebSocket Collaboration & Presence Synchronization
+# -----------------------------------------------------------------------------
+
+PRESENCE_PALETTE = [
+    "#2563EB",  # Blue
+    "#059669",  # Emerald
+    "#D97706",  # Amber
+    "#DC2626",  # Red
+    "#7C3AED",  # Violet
+    "#DB2777",  # Pink
+    "#0891B2",  # Cyan
+    "#EA580C",  # Orange
+]
+
+
+@dataclass
+class CollaboratorPresence:
+    user_id: str
+    display_name: str
+    color: str
+    page_no: int = 1
+    cursor: dict[str, float] = field(default_factory=lambda: {"x": 0.0, "y": 0.0})
+    connected_at: str = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
+    last_active: float = field(default_factory=time.time)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "user_id": self.user_id,
+            "display_name": self.display_name,
+            "color": self.color,
+            "page_no": self.page_no,
+            "cursor": self.cursor,
+            "connected_at": self.connected_at,
+        }
+
+
+class DocumentCollaborationRoom:
+    """
+    Manages active WebSocket connections and synchronized state for a single document.
+    """
+
+    def __init__(self, doc_id: str):
+        self.doc_id: str = doc_id
+        self.connections: dict[WebSocket, CollaboratorPresence] = {}
+        self.annotations: list[dict[str, Any]] = []
+        self._color_index: int = 0
+        self._lock = asyncio.Lock()
+
+    def _next_color(self) -> str:
+        color = PRESENCE_PALETTE[self._color_index % len(PRESENCE_PALETTE)]
+        self._color_index += 1
+        return color
+
+    async def connect(
+        self,
+        websocket: WebSocket,
+        user_id: str,
+        display_name: str,
+        color: Optional[str] = None,
+    ) -> CollaboratorPresence:
+        assigned_color = color or self._next_color()
+        presence = CollaboratorPresence(
+            user_id=user_id,
+            display_name=display_name,
+            color=assigned_color,
+        )
+        async with self._lock:
+            self.connections[websocket] = presence
+
+        # 1. Send initial room snapshot to newly joined user
+        snapshot_msg = {
+            "type": "room_state",
+            "doc_id": self.doc_id,
+            "users": [p.to_dict() for p in self.connections.values()],
+            "annotations": self.annotations,
+        }
+        await websocket.send_json(snapshot_msg)
+
+        # 2. Broadcast user_joined to other active participants
+        join_msg = {
+            "type": "user_joined",
+            "doc_id": self.doc_id,
+            "user": presence.to_dict(),
+        }
+        await self.broadcast(join_msg, exclude=websocket)
+        return presence
+
+    async def disconnect(self, websocket: WebSocket) -> Optional[CollaboratorPresence]:
+        async with self._lock:
+            presence = self.connections.pop(websocket, None)
+
+        if presence:
+            leave_msg = {
+                "type": "user_left",
+                "doc_id": self.doc_id,
+                "user_id": presence.user_id,
+                "display_name": presence.display_name,
+            }
+            await self.broadcast(leave_msg)
+        return presence
+
+    async def update_presence(
+        self,
+        websocket: WebSocket,
+        page_no: int,
+        cursor: dict[str, float],
+    ) -> None:
+        async with self._lock:
+            presence = self.connections.get(websocket)
+            if not presence:
+                return
+            presence.page_no = page_no
+            presence.cursor = cursor
+            presence.last_active = time.time()
+            user_id = presence.user_id
+
+        msg = {
+            "type": "presence_update",
+            "doc_id": self.doc_id,
+            "user_id": user_id,
+            "page_no": page_no,
+            "cursor": cursor,
+        }
+        await self.broadcast(msg, exclude=websocket)
+
+    async def add_annotation(
+        self,
+        author_id: str,
+        annotation_payload: dict[str, Any],
+        sender_ws: Optional[WebSocket] = None,
+    ) -> dict[str, Any]:
+        annot_id = str(uuid.uuid4())
+        annot_record = {
+            "id": annot_id,
+            "author_id": author_id,
+            "page_no": annotation_payload.get("page_no", 1),
+            "tool": annotation_payload.get("tool", "highlight"),
+            "data": annotation_payload.get("data", {}),
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+        async with self._lock:
+            self.annotations.append(annot_record)
+
+        msg = {
+            "type": "annotation_drawn",
+            "doc_id": self.doc_id,
+            "user_id": author_id,
+            "annotation": annot_record,
+        }
+        await self.broadcast(msg, exclude=sender_ws)
+        return annot_record
+
+    async def broadcast_comment(
+        self,
+        comment_dict: dict[str, Any],
+        sender_ws: Optional[WebSocket] = None,
+    ) -> None:
+        msg = {
+            "type": "comment_added",
+            "doc_id": self.doc_id,
+            "comment": comment_dict,
+        }
+        await self.broadcast(msg, exclude=sender_ws)
+
+    async def broadcast(self, message: dict[str, Any], exclude: Optional[WebSocket] = None) -> None:
+        dead_sockets: list[WebSocket] = []
+        async with self._lock:
+            sockets = list(self.connections.keys())
+
+        for ws in sockets:
+            if ws is exclude:
+                continue
+            try:
+                await ws.send_json(message)
+            except Exception:
+                dead_sockets.append(ws)
+
+        if dead_sockets:
+            async with self._lock:
+                for dead in dead_sockets:
+                    self.connections.pop(dead, None)
+
+    def get_active_presences(self) -> list[dict[str, Any]]:
+        return [p.to_dict() for p in self.connections.values()]
+
+
+class CollaborationManager:
+    """
+    Central gateway coordinating all active document collaboration rooms.
+    """
+
+    def __init__(self):
+        self.rooms: dict[str, DocumentCollaborationRoom] = {}
+        self._lock = asyncio.Lock()
+
+    async def get_or_create_room(self, doc_id: str) -> DocumentCollaborationRoom:
+        async with self._lock:
+            if doc_id not in self.rooms:
+                self.rooms[doc_id] = DocumentCollaborationRoom(doc_id)
+            return self.rooms[doc_id]
+
+    async def join_room(
+        self,
+        doc_id: str,
+        websocket: WebSocket,
+        user_id: str,
+        display_name: str,
+        color: Optional[str] = None,
+    ) -> CollaboratorPresence:
+        room = await self.get_or_create_room(doc_id)
+        return await room.connect(websocket, user_id, display_name, color)
+
+    async def leave_room(self, doc_id: str, websocket: WebSocket) -> None:
+        async with self._lock:
+            room = self.rooms.get(doc_id)
+        if room:
+            await room.disconnect(websocket)
+            async with self._lock:
+                if len(room.connections) == 0:
+                    self.rooms.pop(doc_id, None)
+
+    async def handle_client_message(
+        self,
+        doc_id: str,
+        websocket: WebSocket,
+        data: dict[str, Any],
+    ) -> None:
+        async with self._lock:
+            room = self.rooms.get(doc_id)
+        if not room:
+            return
+
+        msg_type = data.get("type")
+
+        if msg_type == "presence":
+            page_no = int(data.get("page_no", 1))
+            cursor = data.get("cursor", {"x": 0.0, "y": 0.0})
+            await room.update_presence(websocket, page_no, cursor)
+
+        elif msg_type == "comment":
+            presence = room.connections.get(websocket)
+            author_id = presence.user_id if presence else "anonymous"
+            author_name = presence.display_name if presence else "Anonymous"
+            comment_payload = {
+                "id": str(uuid.uuid4()),
+                "document_id": doc_id,
+                "author_id": author_id,
+                "author_name": author_name,
+                "page_no": int(data.get("page_no", 1)),
+                "anchor": data.get("anchor") or data.get("bounding_box"),
+                "body": data.get("body") or data.get("content", ""),
+                "parent_comment_id": data.get("parent_comment_id"),
+                "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            }
+            await room.broadcast_comment(comment_payload, sender_ws=None)
+
+        elif msg_type == "annotation":
+            presence = room.connections.get(websocket)
+            author_id = presence.user_id if presence else "anonymous"
+            await room.add_annotation(author_id, data, sender_ws=None)
+
+        elif msg_type == "ping":
+            try:
+                await websocket.send_json({"type": "pong", "timestamp": time.time()})
+            except Exception:
+                pass
+
+    def get_active_users(self, doc_id: str) -> list[dict[str, Any]]:
+        room = self.rooms.get(doc_id)
+        return room.get_active_presences() if room else []
+
+
+# Global singleton instance for collaboration state
+collaboration_manager = CollaborationManager()
+

@@ -3,8 +3,9 @@ title: Vellakshya PDF Workstation
 emoji: 📑
 colorFrom: blue
 colorTo: indigo
-sdk: docker
-app_port: 8000
+sdk: gradio
+sdk_version: 5.20.0
+app_file: app.py
 pinned: false
 ---
 

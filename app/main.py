@@ -84,13 +84,74 @@ async def get_sample_document(sample_type: str = "invoice"):
         filename = "Sample_Enterprise_Report.pdf"
     else:
         p1 = doc.new_page(width=595, height=842)
-        p1.insert_text((50, 70), "INVOICE #INV-2026-001", fontsize=20, color=(0.1, 0.2, 0.5))
-        p1.insert_text((50, 100), "Date: October 26, 2026", fontsize=11, color=(0.4, 0.4, 0.4))
-        p1.insert_text((50, 125), "Billed To: Acros Global Enterprises Inc.", fontsize=12, color=(0, 0, 0))
-        p1.insert_text((50, 165), "Description                          Qty    Unit Price    Total", fontsize=10, color=(0.3, 0.3, 0.3))
-        p1.insert_text((50, 185), "PDF Enterprise Workstation License     1     $1,200.00   $1,200.00", fontsize=10, color=(0, 0, 0))
-        p1.insert_text((50, 205), "Maintenance & SLA Support (Year 1)     1       $350.00     $350.00", fontsize=10, color=(0, 0, 0))
-        p1.insert_text((50, 245), "Total Due: $1,550.00", fontsize=14, color=(0.1, 0.5, 0.2))
+        # Header & Brand
+        p1.insert_text((50, 60), "VELLAKSHYA ENTERPRISE SOLUTIONS", fontsize=11, color=(0.4, 0.4, 0.5))
+        p1.insert_text((50, 85), "INVOICE #INV-2026-001", fontsize=20, color=(0.1, 0.2, 0.55))
+        p1.insert_text((420, 60), "Invoice Date: Oct 26, 2026", fontsize=9, color=(0.3, 0.3, 0.3))
+        p1.insert_text((420, 75), "Payment Terms: Net 30", fontsize=9, color=(0.3, 0.3, 0.3))
+        p1.insert_text((420, 90), "Due Date: Nov 25, 2026", fontsize=9, color=(0.8, 0.2, 0.2))
+
+        # Parties
+        p1.insert_text((50, 125), "ISSUED BY:", fontsize=9, color=(0.5, 0.5, 0.5))
+        p1.insert_text((50, 140), "Vellakshya Systems Inc.\n100 Technology Plaza, Suite 400\nSan Francisco, CA 94105", fontsize=10, color=(0.1, 0.1, 0.1))
+
+        p1.insert_text((300, 125), "BILLED TO:", fontsize=9, color=(0.5, 0.5, 0.5))
+        p1.insert_text((300, 140), "Acros Global Enterprises Inc.\nAttn: Accounts Payable\n742 Enterprise Blvd, New York, NY 10001", fontsize=10, color=(0.1, 0.1, 0.1))
+
+        # Table Header
+        p1.draw_rect(fitz.Rect(50, 195, 545, 215), color=(0.85, 0.88, 0.95), fill=(0.94, 0.96, 1.0))
+        p1.insert_text((58, 209), "Item Description", fontsize=9, color=(0.2, 0.25, 0.4))
+        p1.insert_text((340, 209), "Qty", fontsize=9, color=(0.2, 0.25, 0.4))
+        p1.insert_text((400, 209), "Unit Price", fontsize=9, color=(0.2, 0.25, 0.4))
+        p1.insert_text((480, 209), "Total (USD)", fontsize=9, color=(0.2, 0.25, 0.4))
+
+        # Line Items
+        items = [
+            ("Vellakshya PDF Workstation — Enterprise Core License", "1", "$1,200.00", "$1,200.00"),
+            ("Production Subprocess Sandbox & Task Isolation Cluster", "1", "$450.00", "$450.00"),
+            ("Ed25519 Signed Manifest & Tamper-Proof Audit Module", "1", "$350.00", "$350.00"),
+            ("Real-Time Multi-Party WebSocket Collaboration Engine", "1", "$300.00", "$300.00"),
+            ("Annual Priority Enterprise SLA & Security Maintenance", "1", "$200.00", "$200.00"),
+        ]
+        curr_y = 238
+        for desc, qty, unit, total in items:
+            p1.insert_text((58, curr_y), desc, fontsize=9.5, color=(0.1, 0.1, 0.1))
+            p1.insert_text((345, curr_y), qty, fontsize=9.5, color=(0.3, 0.3, 0.3))
+            p1.insert_text((400, curr_y), unit, fontsize=9.5, color=(0.3, 0.3, 0.3))
+            p1.insert_text((485, curr_y), total, fontsize=9.5, color=(0.1, 0.1, 0.1))
+            p1.draw_line(fitz.Point(50, curr_y + 8), fitz.Point(545, curr_y + 8), color=(0.9, 0.9, 0.92))
+            curr_y += 28
+
+        # Summary Block
+        summary_top = curr_y + 15
+        p1.insert_text((360, summary_top), "Subtotal:", fontsize=10, color=(0.4, 0.4, 0.4))
+        p1.insert_text((485, summary_top), "$2,500.00", fontsize=10, color=(0.1, 0.1, 0.1))
+
+        p1.insert_text((360, summary_top + 20), "Estimated Tax (8.25%):", fontsize=10, color=(0.4, 0.4, 0.4))
+        p1.insert_text((485, summary_top + 20), "$206.25", fontsize=10, color=(0.1, 0.1, 0.1))
+
+        p1.draw_rect(fitz.Rect(350, summary_top + 32, 545, summary_top + 62), color=(0.1, 0.5, 0.25), fill=(0.92, 0.98, 0.94))
+        p1.insert_text((360, summary_top + 52), "TOTAL DUE:", fontsize=11, color=(0.05, 0.4, 0.15))
+        p1.insert_text((475, summary_top + 52), "$2,706.25", fontsize=12, color=(0.05, 0.4, 0.15))
+
+        # Remittance & Wire Instructions
+        wire_y = summary_top + 95
+        p1.insert_text((50, wire_y), "WIRE TRANSFER & REMITTANCE DETAILS", fontsize=9, color=(0.4, 0.4, 0.5))
+        p1.draw_line(fitz.Point(50, wire_y + 5), fitz.Point(320, wire_y + 5), color=(0.85, 0.88, 0.95))
+        p1.insert_text((50, wire_y + 22), "Bank Name: Silicon Valley Commercial Bank, N.A.", fontsize=9, color=(0.25, 0.25, 0.25))
+        p1.insert_text((50, wire_y + 36), "Routing Transit Number (ABA): 121000358", fontsize=9, color=(0.25, 0.25, 0.25))
+        p1.insert_text((50, wire_y + 50), "Account Number: 9840-2391-4402", fontsize=9, color=(0.25, 0.25, 0.25))
+        p1.insert_text((50, wire_y + 64), "SWIFT / BIC Code: SVCBUS33XXX", fontsize=9, color=(0.25, 0.25, 0.25))
+
+        # Sign-off & Compliance block
+        sign_y = wire_y + 110
+        p1.insert_text((50, sign_y), "Lead Architect & Sign-Off: Giri Manohar Vemula", fontsize=9.5, color=(0.2, 0.25, 0.4))
+        p1.insert_text((50, sign_y + 15), "Verification Status: Certified Cryptographic Manifest (SHA-256 / Ed25519)", fontsize=8.5, color=(0.1, 0.5, 0.25))
+
+        # Footer
+        p1.draw_line(fitz.Point(50, 785), fitz.Point(545, 785), color=(0.88, 0.9, 0.94))
+        p1.insert_text((50, 800), "Thank you for partnering with Vellakshya. For inquiries: billing@vellakshya.internal", fontsize=8, color=(0.5, 0.5, 0.5))
+        p1.insert_text((470, 800), "Page 1 of 1", fontsize=8, color=(0.5, 0.5, 0.5))
         filename = "Sample_Invoice.pdf"
 
     pdf_bytes = doc.tobytes()

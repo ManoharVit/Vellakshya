@@ -459,8 +459,8 @@ function buildDropZone(accept = ".pdf", multiple = false, onFileSelected) {
         </div>
       </div>
       <div class="active-file-card-actions">
-        <button type="button" class="btn-primary btn-card-dl" style="padding: 6px 10px; font-size: 11px; white-space: nowrap;" title="Download active document">⬇️ Download PDF</button>
-        <button type="button" class="btn-secondary btn-card-ch" style="padding: 6px 10px; font-size: 11px; white-space: nowrap;" title="Change file">Change File</button>
+        <button type="button" class="btn-card-dl btn-subtle-outline" style="padding: 4px 10px; font-size: 11px; white-space: nowrap;" title="Download active document">⬇️ Download PDF</button>
+        <button type="button" class="btn-secondary btn-card-ch" style="padding: 4px 10px; font-size: 11px; white-space: nowrap;" title="Change file">Change File</button>
       </div>
     `;
     const dlBtn = existingCard.querySelector(".btn-card-dl");
@@ -684,6 +684,7 @@ async function renderInteractivePdfViewer(blob, filename = "document") {
     const btnHeaderVersion = document.getElementById("btnHeaderVersion");
     if (btnHeaderIntegrity) btnHeaderIntegrity.style.display = "inline-flex";
     if (btnHeaderVersion) btnHeaderVersion.style.display = "inline-flex";
+    updateHeaderStatusMenu();
 
     if (!state.versionHistory || state.versionHistory.length === 0) {
       state.currentVersionNumber = 1;
@@ -1680,7 +1681,7 @@ function updateWorkspaceActions() {
 
   const editsText = state.editCount > 0 ? ` (${state.editCount} edit${state.editCount > 1 ? "s" : ""})` : "";
   workspaceActions.innerHTML = `
-    <button type="button" class="btn-primary" id="btnWorkspaceDlPdf" style="font-size:12px; padding:5px 12px; display:inline-flex; align-items:center; gap:6px;" title="Download active document with all edits">
+    <button type="button" class="btn-workspace-util" id="btnWorkspaceDlPdf" title="Download active document with all edits">
       <span>⬇️</span> Download PDF${editsText}
     </button>
   `;
@@ -2028,8 +2029,8 @@ function renderPdfToHtmlTool() {
       <div class="form-group">
         <label class="form-label" for="htmlMode">Layout Strategy</label>
         <select class="form-select" id="htmlMode" aria-label="Layout Strategy">
-          <option value="fixed" selected>High-Fidelity Fixed Layout (Absolute Coordinates & CSS Fonts)</option>
-          <option value="semantic">Responsive Flow Layout (Mobile/Reader Semantic HTML)</option>
+          <option value="fixed" selected>Absolute Coordinates (Pixel-Perfect)</option>
+          <option value="semantic">Flow Layout (Semantic HTML)</option>
         </select>
       </div>
     </div>
@@ -2037,6 +2038,25 @@ function renderPdfToHtmlTool() {
       <button class="btn-primary btn-blue" id="btnRunConvertHtml">
         ⚡ Convert PDF to HTML
       </button>
+    </div>
+    <div class="panel-section engine-spec-card">
+      <div class="spec-card-title"><span>⚙️</span> Engine Specifications</div>
+      <div class="spec-card-row">
+        <span class="spec-key">Output Format</span>
+        <span class="spec-val">Single-Page HTML5</span>
+      </div>
+      <div class="spec-card-row">
+        <span class="spec-key">Font Mapping</span>
+        <span class="spec-val">Embedded TrueType / CSS</span>
+      </div>
+      <div class="spec-card-row">
+        <span class="spec-key">Vector Paths</span>
+        <span class="spec-val">Inline SVG Clipping</span>
+      </div>
+      <div class="spec-card-row">
+        <span class="spec-key">Execution</span>
+        <span class="spec-val">Subprocess Sandbox</span>
+      </div>
     </div>
   `;
 
@@ -4592,7 +4612,44 @@ function setupDrawerControls() {
     });
   }
 
+  // Consolidated Header Status & Governance Menu
+  const btnStatusMenu = document.getElementById("btnHeaderStatusMenu");
+  const statusDropdown = document.getElementById("headerStatusDropdown");
+  if (btnStatusMenu && statusDropdown) {
+    btnStatusMenu.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isVisible = statusDropdown.style.display === "block";
+      statusDropdown.style.display = isVisible ? "none" : "block";
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!btnStatusMenu.contains(e.target) && !statusDropdown.contains(e.target)) {
+        statusDropdown.style.display = "none";
+      }
+    });
+
+    statusDropdown.querySelectorAll(".status-shortcut-btn, button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        statusDropdown.style.display = "none";
+      });
+    });
+  }
+
+  updateHeaderStatusMenu();
   setupCollaborationComments();
+}
+
+function updateHeaderStatusMenu() {
+  const dot = document.getElementById("statusMenuDot");
+  const label = document.getElementById("statusMenuLabel");
+  if (!dot || !label) return;
+  if (state.currentPdfFile || state.currentPdfBlob) {
+    dot.classList.add("active");
+    label.textContent = "v1.0 • Verified ✓";
+  } else {
+    dot.classList.remove("active");
+    label.textContent = "Ready";
+  }
 }
 
 function updateVersionDrawerUI() {

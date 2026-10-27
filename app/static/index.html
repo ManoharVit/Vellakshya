@@ -19,33 +19,49 @@
             </div>
             <div class="brand-title">Vellakshya</div>
             <span class="brand-tag" id="headerDocPill" title="Active workspace document">No Document Active</span>
-            <button type="button" class="btn-integrity-pill" id="btnHeaderIntegrity" style="display: none;" title="Cryptographic Integrity: Ed25519 Signed Manifest">
-                <span class="integrity-dot"></span>
-                <span id="integrityLabel">Verified ✓</span>
-            </button>
-            <button type="button" class="btn-version-pill" id="btnHeaderVersion" style="display: none;" title="Document Version History">
-                <span id="versionLabel">v1.0 (Signed)</span>
-            </button>
-            <div class="collab-presence-bar" id="collabPresenceBar" title="Active document collaborators (Click to view comments)">
-                <span class="collab-status-dot" id="collabStatusDot" title="Live Collaboration Active"></span>
-                <span class="collab-status-label" id="collabStatusLabel">Live Sync</span>
-                <div class="collab-avatars" id="collabAvatarsList"></div>
+
+            <!-- Consolidated Document Status & Governance Menu (Fix #3) -->
+            <div class="header-status-wrap" id="headerStatusWrap">
+                <button type="button" class="btn-hdr-status-menu" id="btnHeaderStatusMenu" title="Document Governance, Manifests & Collaboration">
+                    <span class="status-menu-dot" id="statusMenuDot"></span>
+                    <span class="status-menu-label" id="statusMenuLabel">Ready</span>
+                    <span class="status-menu-caret">▾</span>
+                </button>
+                <div class="header-status-dropdown" id="headerStatusDropdown" style="display: none;">
+                    <div class="status-dropdown-header">Document Governance &amp; Security</div>
+                    <div class="status-dropdown-body">
+                        <button type="button" class="btn-integrity-pill" id="btnHeaderIntegrity" style="display: none;" title="Cryptographic Integrity: Ed25519 Signed Manifest">
+                            <span class="integrity-dot"></span>
+                            <span id="integrityLabel">Verified ✓</span>
+                        </button>
+                        <button type="button" class="btn-version-pill" id="btnHeaderVersion" style="display: none;" title="Document Version History">
+                            <span id="versionLabel">v1.0 (Signed)</span>
+                        </button>
+                        <div class="collab-presence-bar" id="collabPresenceBar" title="Active document collaborators (Click to view comments)">
+                            <span class="collab-status-dot" id="collabStatusDot" title="Live Collaboration Active"></span>
+                            <span class="collab-status-label" id="collabStatusLabel">Live Sync</span>
+                            <div class="collab-avatars" id="collabAvatarsList"></div>
+                        </div>
+                    </div>
+                    <div class="status-dropdown-divider"></div>
+                    <div class="status-dropdown-shortcuts">
+                        <button type="button" class="status-shortcut-btn" id="btnToggleHistoryDrawer" title="Version History & Cryptographic Manifests">
+                            <span>📜</span> Revisions
+                        </button>
+                        <button type="button" class="status-shortcut-btn" id="btnToggleCollabDrawer" title="Collaborators & Discussion Comments">
+                            <span>💬</span> Comments <span class="comment-count-badge" id="commentCountBadge">2</span>
+                        </button>
+                        <button type="button" class="status-shortcut-btn" id="btnToggleSecurityDrawer" title="Sandbox & Security Model">
+                            <span>🛡️</span> Security
+                        </button>
+                        <button type="button" class="status-shortcut-btn" id="btnToggleThumbnails" title="Toggle Page Thumbnails Filmstrip">
+                            <span>📑</span> Pages
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="header-actions">
-            <button type="button" class="btn-hdr-action" id="btnToggleThumbnails" style="display: none;" title="Toggle Page Thumbnails Filmstrip">
-                <span>📑</span> <span class="btn-hdr-text">Pages</span>
-            </button>
-            <button type="button" class="btn-hdr-action" id="btnToggleHistoryDrawer" title="Version History & Cryptographic Manifests">
-                <span>📜</span> <span class="btn-hdr-text">Revisions</span>
-            </button>
-            <button type="button" class="btn-hdr-action" id="btnToggleCollabDrawer" title="Collaborators & Discussion Comments">
-                <span>💬</span> <span class="btn-hdr-text">Comments</span>
-                <span class="comment-count-badge" id="commentCountBadge">2</span>
-            </button>
-            <button type="button" class="btn-hdr-action" id="btnToggleSecurityDrawer" title="Sandbox & Security Model">
-                <span>🛡️</span> <span class="btn-hdr-text">Security</span>
-            </button>
             <button type="button" class="btn-hdr-action" id="btnHeaderUndo" disabled title="Undo last action (Ctrl+Z / Cmd+Z)">
                 <span>↩️</span> <span class="btn-hdr-text">Undo</span>
                 <span class="undo-badge" id="undoBadge" style="display: none;">0</span>
@@ -189,29 +205,29 @@
                 <section class="preview-panel" id="previewPanel">
                     <div class="preview-toolbar">
                         <div class="preview-tabs" id="previewTabs">
-                            <div class="preview-tab active" data-tab="preview">Live Preview</div>
+                            <div class="preview-tab active" data-tab="preview">Preview</div>
                             <div class="preview-tab" data-tab="code" id="codeTabBtn" style="display: none;">HTML Code</div>
                             <div class="preview-tab" data-tab="info" id="infoTabBtn" style="display: none;">Document Details</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <button type="button" class="btn-preview-tool" id="btnToolbarUndo" disabled title="Undo last action (Ctrl+Z / Cmd+Z)">
+                        <div class="preview-toolbar-actions">
+                            <button type="button" class="btn-preview-tool" id="btnToolbarUndo" style="display: none;" disabled title="Undo last action (Ctrl+Z / Cmd+Z)">
                                 ↩️ Undo
                             </button>
-                            <button type="button" class="btn-preview-tool" id="btnToolbarRedo" disabled title="Redo action (Ctrl+Y / Cmd+Shift+Z)">
+                            <button type="button" class="btn-preview-tool" id="btnToolbarRedo" style="display: none;" disabled title="Redo action (Ctrl+Y / Cmd+Shift+Z)">
                                 ↪️ Redo
                             </button>
                             <div class="zoom-controls-group" id="zoomControlsGroup" style="display: none; align-items: center; gap: 4px;">
                                 <button type="button" class="btn-preview-tool btn-tool-sm" id="btnZoomOut" title="Zoom Out (Cmd/Ctrl + Minus)">−</button>
                                 <span id="zoomLevelBadge" class="zoom-level-badge">115%</span>
                                 <button type="button" class="btn-preview-tool btn-tool-sm" id="btnZoomIn" title="Zoom In (Cmd/Ctrl + Plus)">+</button>
-                                <button type="button" class="btn-preview-tool" id="btnFitWidth" title="Fit to Screen Width (No Broken Formatting)">↔️ Fit Width</button>
+                                <button type="button" class="btn-preview-tool" id="btnFitWidth" title="Fit to Screen Width (Cmd/Ctrl + 0)">↔️ Fit</button>
                                 <button type="button" class="btn-preview-tool" id="btnActualSize" title="100% Actual Size">100%</button>
                             </div>
                             <button type="button" class="btn-preview-tool" id="btnToggleWordFind" style="display: none;" title="Word-Style Find & Replace (Cmd/Ctrl+F)">
-                                🔍 Find & Replace (Word Mode)
+                                🔍 Find
                             </button>
                             <button type="button" class="btn-preview-tool" id="btnToggleWordEdit" style="display: none;" title="Enable Direct Word-Style Inline Editing">
-                                📝 Word Edit Mode
+                                📝 Edit
                             </button>
                             <div class="preview-status" id="previewStatus">No active document</div>
                             <button type="button" class="btn-preview-export" id="btnPreviewExport" style="display: none;" title="Export current document as PDF">

@@ -416,7 +416,15 @@ function switchTool(toolKey) {
     }
   }
 
+  if (toolKey !== "crop-pages") {
+    document.querySelectorAll(".locked-crop-marker").forEach((el) => el.remove());
+  }
+
   tool.render();
+
+  if (toolKey === "crop-pages") {
+    updateVisualCropPreview();
+  }
 }
 
 // -------------------------------------------------------------
@@ -450,11 +458,12 @@ function buildDropZone(accept = ".pdf", multiple = false, onFileSelected) {
       existingCard.className = "active-file-card";
       container.insertBefore(existingCard, container.firstChild);
     }
+    const realFilename = file.name || "document.pdf";
     existingCard.innerHTML = `
       <div class="active-file-card-top">
         <span style="font-size: 16px;">📄</span>
-        <div style="min-width: 0; flex: 1;">
-          <div style="font-size: 12px; font-weight: 600; color: #f1f5f9;">Active Document</div>
+        <div style="min-width: 0; flex: 1; overflow: hidden;">
+          <div class="active-card-filename" style="font-size: 12px; font-weight: 600; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(realFilename)}">${escapeHtml(realFilename)}</div>
           <div style="font-size: 11px; color: var(--text-muted);">${(file.size / 1024).toFixed(1)} KB</div>
         </div>
       </div>
@@ -892,6 +901,11 @@ async function renderInteractivePdfViewer(blob, filename = "document") {
     if (state.wordFindQuery) {
       executeWordFind(state.wordFindQuery);
     }
+
+    // If Crop tool active, draw default crop box on preview
+    if (state.activeTool === "crop-pages") {
+      updateVisualCropPreview();
+    }
   } catch (err) {
     console.error("PDF.js render error:", err);
     interactivePdfViewer.style.display = "none";
@@ -1118,6 +1132,19 @@ function attachPageInteractionHandlers(pageNum, interactionLayer, textLayer, sca
         const x1 = Math.round(maxX / scale);
         const y1 = Math.round(maxY / scale);
 
+        const cp = document.getElementById("cropPage");
+        const cx0 = document.getElementById("cropX0");
+        const cy0 = document.getElementById("cropY0");
+        const cx1 = document.getElementById("cropX1");
+        const cy1 = document.getElementById("cropY1");
+        if (cp) cp.value = pageNum;
+        if (cx0) cx0.value = x0;
+        if (cy0) cy0.value = y0;
+        if (cx1) cx1.value = x1;
+        if (cy1) cy1.value = y1;
+        const pr = document.getElementById("cropPreset");
+        if (pr) pr.value = "custom";
+
         ["cropPage", "cropX0", "cropY0", "cropX1", "cropY1"].forEach((id) => {
           const el = document.getElementById(id);
           if (el) {
@@ -1127,18 +1154,7 @@ function attachPageInteractionHandlers(pageNum, interactionLayer, textLayer, sca
           }
         });
 
-        interactionLayer.querySelectorAll(".locked-crop-marker").forEach((el) => el.remove());
-        const lockedMarker = document.createElement("div");
-        lockedMarker.className = "locked-crop-marker";
-        lockedMarker.style.left = `${minX}px`;
-        lockedMarker.style.top = `${minY}px`;
-        lockedMarker.style.width = `${maxX - minX}px`;
-        lockedMarker.style.height = `${maxY - minY}px`;
-        lockedMarker.innerHTML = `
-          <span class="marker-label">Crop Area Locked</span>
-          <span>[${x0}, ${y0}] to [${x1}, ${y1}] pt (${x1 - x0} × ${y1 - y0} pt)</span>
-        `;
-        interactionLayer.appendChild(lockedMarker);
+        updateVisualCropPreview();
       }
       return;
     }
@@ -1995,8 +2011,8 @@ function renderPdfToHtmlTool() {
       <div class="form-group">
         <label class="form-label" for="htmlMode">Layout Strategy</label>
         <select class="form-select" id="htmlMode" aria-label="Layout Strategy">
-          <option value="fixed" selected>Absolute Coordinates (Pixel-Perfect)</option>
-          <option value="semantic">Flow Layout (Semantic HTML)</option>
+          <option value="fixed" selected>Absolute Coordinates</option>
+          <option value="semantic">Flow Layout (Semantic)</option>
         </select>
       </div>
     </div>
@@ -2520,6 +2536,68 @@ function renderExtractTool() {
 // -------------------------------------------------------------
 // 7A. CROP PAGES & MARGINS TOOL
 // -------------------------------------------------------------
+function updateVisualCropPreview() {
+  if (state.activeTool !== "crop-pages") return;
+  const pageInput = document.getElementById("cropPage");
+  const targetPage = pageInput ? parseInt(pageInput.value, 10) || 1 : 1;
+  const pageCard = document.getElementById(`pdfPageCard_${targetPage}`);
+  if (!pageCard) return;
+
+  const interactionLayer = pageCard.querySelector(".pdf-interaction-layer");
+  if (!interactionLayer) return;
+
+  // Clear existing crop markers across all pages
+  document.querySelectorAll(".locked-crop-marker").forEach((el) => el.remove());
+
+  const scale = state.currentScale || 1.15;
+  const cropMode = document.getElementById("cropMode")?.value || "box";
+
+  // Get active page dimensions
+  const renderedPage = state.renderedPages?.find((p) => p.pageNum === targetPage);
+  const unscaledW = renderedPage ? renderedPage.unscaledViewport.width : 612;
+  const unscaledH = renderedPage ? renderedPage.unscaledViewport.height : 792;
+
+  let x0 = 36, y0 = 36, x1 = 576, y1 = 756;
+  if (cropMode === "box") {
+    const rawX0 = parseFloat(document.getElementById("cropX0")?.value);
+    const rawY0 = parseFloat(document.getElementById("cropY0")?.value);
+    const rawX1 = parseFloat(document.getElementById("cropX1")?.value);
+    const rawY1 = parseFloat(document.getElementById("cropY1")?.value);
+    x0 = Number.isFinite(rawX0) ? rawX0 : 36;
+    y0 = Number.isFinite(rawY0) ? rawY0 : 36;
+    x1 = Number.isFinite(rawX1) ? rawX1 : (unscaledW - 36);
+    y1 = Number.isFinite(rawY1) ? rawY1 : (unscaledH - 36);
+  } else {
+    const mTop = parseFloat(document.getElementById("cropMarginTop")?.value) || 0;
+    const mBottom = parseFloat(document.getElementById("cropMarginBottom")?.value) || 0;
+    const mLeft = parseFloat(document.getElementById("cropMarginLeft")?.value) || 0;
+    const mRight = parseFloat(document.getElementById("cropMarginRight")?.value) || 0;
+    x0 = mLeft;
+    y0 = mTop;
+    x1 = Math.max(x0, unscaledW - mRight);
+    y1 = Math.max(y0, unscaledH - mBottom);
+  }
+
+  if (x1 <= x0 || y1 <= y0) return;
+
+  const leftPx = Math.round(x0 * scale);
+  const topPx = Math.round(y0 * scale);
+  const widthPx = Math.round((x1 - x0) * scale);
+  const heightPx = Math.round((y1 - y0) * scale);
+
+  const marker = document.createElement("div");
+  marker.className = "locked-crop-marker";
+  marker.style.left = `${leftPx}px`;
+  marker.style.top = `${topPx}px`;
+  marker.style.width = `${widthPx}px`;
+  marker.style.height = `${heightPx}px`;
+  marker.innerHTML = `
+    <span class="marker-label">Crop Box</span>
+    <span>[${Math.round(x0)}, ${Math.round(y0)}] to [${Math.round(x1)}, ${Math.round(y1)}] pt (${Math.round(x1 - x0)} × ${Math.round(y1 - y0)} pt)</span>
+  `;
+  interactionLayer.appendChild(marker);
+}
+
 function renderCropTool() {
   toolConfigPanel.innerHTML = `
     <div class="panel-section">
@@ -2530,26 +2608,48 @@ function renderCropTool() {
     </div>
     <div class="panel-section">
       <div class="form-group">
-        <label class="form-label">Crop Mode</label>
+        <label class="form-label" for="cropMode">Crop Mode</label>
         <select class="form-select" id="cropMode">
-          <option value="box">Bounding Box (Interactive Drag or Exact Points)</option>
-          <option value="margins">Margin Trimming (Top, Bottom, Left, Right in points)</option>
+          <option value="box">Bounding Box</option>
+          <option value="margins">Margin Trimming</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="cropPreset">Quick Presets</label>
+        <select class="form-select" id="cropPreset">
+          <option value="custom">Custom Values</option>
+          <option value="half-inch">0.5" Margins (36 pt)</option>
+          <option value="one-inch">1.0" Margins (72 pt)</option>
+          <option value="trim-header-footer">Header &amp; Footer (50 pt)</option>
         </select>
       </div>
 
       <!-- Bounding Box Controls -->
       <div id="cropBoxControls">
         <div class="form-group">
-          <label class="form-label">Page to Sample (for visual drag locking)</label>
+          <label class="form-label" for="cropPage">Page to Sample (for visual preview)</label>
           <input type="number" class="form-input" id="cropPage" value="1" min="1" />
         </div>
         <div class="form-group">
-          <label class="form-label">Box Coordinates (x0, y0 to x1, y1 in points)</label>
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-            <input type="number" class="form-input" id="cropX0" placeholder="x0 (left)" value="36" />
-            <input type="number" class="form-input" id="cropY0" placeholder="y0 (top)" value="36" />
-            <input type="number" class="form-input" id="cropX1" placeholder="x1 (right)" value="576" />
-            <input type="number" class="form-input" id="cropY1" placeholder="y1 (bottom)" value="756" />
+          <label class="form-label">Box Coordinates (points)</label>
+          <div class="coord-grid-2x2">
+            <div class="coord-field">
+              <label class="coord-label" for="cropX0">X0 (Left)</label>
+              <input type="number" class="form-input coord-input" id="cropX0" value="36" />
+            </div>
+            <div class="coord-field">
+              <label class="coord-label" for="cropY0">Y0 (Top)</label>
+              <input type="number" class="form-input coord-input" id="cropY0" value="36" />
+            </div>
+            <div class="coord-field">
+              <label class="coord-label" for="cropX1">X1 (Right)</label>
+              <input type="number" class="form-input coord-input" id="cropX1" value="576" />
+            </div>
+            <div class="coord-field">
+              <label class="coord-label" for="cropY1">Y1 (Bottom)</label>
+              <input type="number" class="form-input coord-input" id="cropY1" value="756" />
+            </div>
           </div>
         </div>
       </div>
@@ -2558,39 +2658,29 @@ function renderCropTool() {
       <div id="cropMarginControls" style="display:none;">
         <div class="form-group">
           <label class="form-label">Margin Trims (points to cut off each edge)</label>
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-            <div>
-              <label class="form-label" style="font-size:11px;">Top (pt)</label>
-              <input type="number" class="form-input" id="cropMarginTop" value="36" />
+          <div class="coord-grid-2x2">
+            <div class="coord-field">
+              <label class="coord-label" for="cropMarginTop">Top (pt)</label>
+              <input type="number" class="form-input coord-input" id="cropMarginTop" value="36" />
             </div>
-            <div>
-              <label class="form-label" style="font-size:11px;">Bottom (pt)</label>
-              <input type="number" class="form-input" id="cropMarginBottom" value="36" />
+            <div class="coord-field">
+              <label class="coord-label" for="cropMarginBottom">Bottom (pt)</label>
+              <input type="number" class="form-input coord-input" id="cropMarginBottom" value="36" />
             </div>
-            <div>
-              <label class="form-label" style="font-size:11px;">Left (pt)</label>
-              <input type="number" class="form-input" id="cropMarginLeft" value="36" />
+            <div class="coord-field">
+              <label class="coord-label" for="cropMarginLeft">Left (pt)</label>
+              <input type="number" class="form-input coord-input" id="cropMarginLeft" value="36" />
             </div>
-            <div>
-              <label class="form-label" style="font-size:11px;">Right (pt)</label>
-              <input type="number" class="form-input" id="cropMarginRight" value="36" />
+            <div class="coord-field">
+              <label class="coord-label" for="cropMarginRight">Right (pt)</label>
+              <input type="number" class="form-input coord-input" id="cropMarginRight" value="36" />
             </div>
           </div>
         </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Quick Presets</label>
-        <select class="form-select" id="cropPreset">
-          <option value="custom">Custom Values</option>
-          <option value="half-inch">Trim 0.5 in Margins (36 pt from all sides)</option>
-          <option value="one-inch">Trim 1.0 in Margins (72 pt from all sides)</option>
-          <option value="trim-header-footer">Trim Header & Footer Only (50 pt top & bottom)</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Pages to Apply (leave blank for all pages)</label>
+        <label class="form-label" for="cropPages">Pages to Apply (leave blank for all pages)</label>
         <input type="text" class="form-input" id="cropPages" placeholder="e.g. 1, 3, 5 (blank = all pages)" />
       </div>
     </div>
@@ -2607,6 +2697,7 @@ function renderCropTool() {
     buildDropZone(".pdf", false, (file) => {
       setActivePdf(file);
       renderDocStatusBadge("cropFileInfo");
+      setTimeout(() => updateVisualCropPreview(), 300);
     })
   );
 
@@ -2622,27 +2713,66 @@ function renderCropTool() {
       cropBoxControls.style.display = "none";
       cropMarginControls.style.display = "block";
     }
+    updateVisualCropPreview();
   });
 
   document.getElementById("cropPreset").addEventListener("change", (e) => {
     const val = e.target.value;
+    const pageInput = document.getElementById("cropPage");
+    const targetPage = pageInput ? parseInt(pageInput.value, 10) || 1 : 1;
+    const renderedPage = state.renderedPages?.find((p) => p.pageNum === targetPage);
+    const unscaledW = renderedPage ? renderedPage.unscaledViewport.width : 612;
+    const unscaledH = renderedPage ? renderedPage.unscaledViewport.height : 792;
+
     if (val === "half-inch") {
+      document.getElementById("cropX0").value = 36;
+      document.getElementById("cropY0").value = 36;
+      document.getElementById("cropX1").value = Math.round(unscaledW - 36);
+      document.getElementById("cropY1").value = Math.round(unscaledH - 36);
       document.getElementById("cropMarginTop").value = 36;
       document.getElementById("cropMarginBottom").value = 36;
       document.getElementById("cropMarginLeft").value = 36;
       document.getElementById("cropMarginRight").value = 36;
     } else if (val === "one-inch") {
+      document.getElementById("cropX0").value = 72;
+      document.getElementById("cropY0").value = 72;
+      document.getElementById("cropX1").value = Math.round(unscaledW - 72);
+      document.getElementById("cropY1").value = Math.round(unscaledH - 72);
       document.getElementById("cropMarginTop").value = 72;
       document.getElementById("cropMarginBottom").value = 72;
       document.getElementById("cropMarginLeft").value = 72;
       document.getElementById("cropMarginRight").value = 72;
     } else if (val === "trim-header-footer") {
+      document.getElementById("cropX0").value = 0;
+      document.getElementById("cropY0").value = 50;
+      document.getElementById("cropX1").value = Math.round(unscaledW);
+      document.getElementById("cropY1").value = Math.round(unscaledH - 50);
       document.getElementById("cropMarginTop").value = 50;
       document.getElementById("cropMarginBottom").value = 50;
       document.getElementById("cropMarginLeft").value = 0;
       document.getElementById("cropMarginRight").value = 0;
     }
+    updateVisualCropPreview();
   });
+
+  ["cropX0", "cropY0", "cropX1", "cropY1", "cropMarginTop", "cropMarginBottom", "cropMarginLeft", "cropMarginRight", "cropPage"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener("input", () => {
+        const pr = document.getElementById("cropPreset");
+        if (pr && id !== "cropPage") pr.value = "custom";
+        updateVisualCropPreview();
+      });
+      el.addEventListener("change", () => {
+        const pr = document.getElementById("cropPreset");
+        if (pr && id !== "cropPage") pr.value = "custom";
+        updateVisualCropPreview();
+      });
+    }
+  });
+
+  // Draw default crop box on preview immediately
+  updateVisualCropPreview();
 
   document.getElementById("btnRunCrop").addEventListener("click", async () => {
     if (!state.currentPdfFile) return alert("Please upload a PDF file first.");
@@ -2895,14 +3025,14 @@ function renderInsertTextTool() {
       <div class="form-group">
         <label class="form-label">Position Presets</label>
         <select class="form-select" id="insPreset">
-          <option value="custom">Custom (X, Y in points)</option>
-          <option value="top-left">Top-Left (x: 50, y: 50)</option>
-          <option value="top-center">Top-Center Header (x: 240, y: 50)</option>
-          <option value="top-right">Top-Right (x: 450, y: 50)</option>
-          <option value="center">Center of Page (x: 200, y: 396)</option>
-          <option value="bottom-left">Bottom-Left (x: 50, y: 740)</option>
-          <option value="bottom-center">Bottom-Center Footer (x: 240, y: 740)</option>
-          <option value="bottom-right">Bottom-Right (x: 450, y: 740)</option>
+          <option value="custom">Custom</option>
+          <option value="top-left">Top-Left</option>
+          <option value="top-center">Top-Center</option>
+          <option value="top-right">Top-Right</option>
+          <option value="center">Center</option>
+          <option value="bottom-left">Bottom-Left</option>
+          <option value="bottom-center">Bottom-Center</option>
+          <option value="bottom-right">Bottom-Right</option>
         </select>
       </div>
       <div style="display:flex; gap:10px;">
@@ -3019,12 +3149,24 @@ function renderWhiteoutTool() {
         <input type="number" class="form-input" id="woPage" value="1" min="1" />
       </div>
       <div class="form-group">
-        <label class="form-label">Rectangle Coordinates (x0, y0 to x1, y1 in points)</label>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-          <input type="number" class="form-input" id="woX0" placeholder="x0 (left)" value="50" />
-          <input type="number" class="form-input" id="woY0" placeholder="y0 (top)" value="50" />
-          <input type="number" class="form-input" id="woX1" placeholder="x1 (right)" value="250" />
-          <input type="number" class="form-input" id="woY1" placeholder="y1 (bottom)" value="150" />
+        <label class="form-label">Rectangle Coordinates (points)</label>
+        <div class="coord-grid-2x2">
+          <div class="coord-field">
+            <label class="coord-label" for="woX0">X0 (Left)</label>
+            <input type="number" class="form-input coord-input" id="woX0" value="50" />
+          </div>
+          <div class="coord-field">
+            <label class="coord-label" for="woY0">Y0 (Top)</label>
+            <input type="number" class="form-input coord-input" id="woY0" value="50" />
+          </div>
+          <div class="coord-field">
+            <label class="coord-label" for="woX1">X1 (Right)</label>
+            <input type="number" class="form-input coord-input" id="woX1" value="250" />
+          </div>
+          <div class="coord-field">
+            <label class="coord-label" for="woY1">Y1 (Bottom)</label>
+            <input type="number" class="form-input coord-input" id="woY1" value="150" />
+          </div>
         </div>
       </div>
     </div>
@@ -4251,8 +4393,8 @@ function renderExportHubTool() {
           </div>
           <div style="display:flex; gap:8px;">
             <select class="form-select" id="hubHtmlMode" style="flex:1;">
-              <option value="fixed">Fixed Layout (Pixel-Perfect)</option>
-              <option value="semantic">Semantic Flow (Responsive / Mobile)</option>
+              <option value="fixed">Fixed Layout</option>
+              <option value="semantic">Semantic Flow</option>
             </select>
             <button type="button" class="btn-secondary" id="btnHubExportHtml" style="white-space:nowrap;">🌐 Export HTML</button>
           </div>

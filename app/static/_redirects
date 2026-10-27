@@ -1,3 +1,2 @@
-# Dynamic Netlify Edge Reverse Proxy Rules
-/api/*  https://api.vellakshya.app/api/:splat  200!
+# Netlify Edge Routing Rules
 /*      /index.html                   200

@@ -38,9 +38,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'sh -c "([ -f .venv/bin/uvicorn ] && PYTHONPATH=. .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000) || (python3 -m pip install -q -r requirements.txt 2>/dev/null; PYTHONPATH=. python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000)"',
+    command: 'PYTHONPATH=. uvicorn app.main:app --host 127.0.0.1 --port 8000',
     url: 'http://127.0.0.1:8000',
     reuseExistingServer: true,
-    timeout: 30 * 1000,
+    timeout: 120 * 1000,
   },
 });

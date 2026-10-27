@@ -1642,6 +1642,305 @@ function prevMatch() {
   setActiveMatch(prevIdx);
 }
 
+// =============================================================
+// IN-BROWSER CLIENT-SIDE PDF ENGINE (PDF-Lib Standalone / Netlify)
+// =============================================================
+
+async function clientReplaceText(file, rules) {
+  if (!window.PDFLib) {
+    throw new Error("Client PDF engine (pdf-lib) is loading. Please retry in a moment.");
+  }
+  const bytes = await file.arrayBuffer();
+  const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+  const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+
+  for (const rule of rules) {
+    const pageNum = rule.page_num || 1;
+    if (pageNum < 1 || pageNum > pdfDoc.getPageCount()) continue;
+    const page = pdfDoc.getPage(pageNum - 1);
+    const { width: pageW, height: pageH } = page.getSize();
+
+    let rect = rule.rect;
+    if (!rect && state.wordFindMatches && state.wordFindMatches.length > 0) {
+      const match = state.wordFindMatches.find(
+        (m) => m.pageNum === pageNum && (!rule.search_text || m.text?.toLowerCase().includes(rule.search_text.toLowerCase()))
+      );
+      if (match && match.el) {
+        const markRect = match.el.getBoundingClientRect();
+        const pageCard = document.getElementById(`pdfPageCard_${pageNum}`);
+        const layer = pageCard ? pageCard.querySelector(".pdf-interaction-layer") || pageCard : null;
+        if (layer) {
+          const layerRect = layer.getBoundingClientRect();
+          const scale = state.currentScale || 1.15;
+          rect = [
+            (markRect.left - layerRect.left) / scale,
+            (markRect.top - layerRect.top) / scale,
+            (markRect.right - layerRect.left) / scale,
+            (markRect.bottom - layerRect.top) / scale,
+          ];
+        }
+      }
+    }
+
+    if (rect) {
+      const [x0, y0, x1, y1] = rect;
+      const w = Math.max(8, x1 - x0);
+      const h = Math.max(8, y1 - y0);
+      const pdfY = pageH - y1;
+
+      // 1. Draw opaque white rectangle over old text
+      page.drawRectangle({
+        x: Math.max(0, x0 - 1),
+        y: Math.max(0, pdfY - 1),
+        width: w + 2,
+        height: h + 2,
+        color: PDFLib.rgb(1, 1, 1),
+        borderColor: PDFLib.rgb(1, 1, 1),
+        borderWidth: 0,
+      });
+
+      // 2. Draw replacement text with proportional font size
+      const fontSize = Math.max(8, Math.min(32, h * 0.85));
+      page.drawText(rule.replacement_text !== undefined ? String(rule.replacement_text) : "", {
+        x: x0,
+        y: pdfY + h * 0.18,
+        size: fontSize,
+        font: font,
+        color: PDFLib.rgb(0.08, 0.08, 0.08),
+      });
+    }
+  }
+
+  const outBytes = await pdfDoc.save();
+  return new Blob([outBytes], { type: "application/pdf" });
+}
+
+async function clientRotatePages(file, pagesSpec, angle) {
+  if (!window.PDFLib) throw new Error("Client PDF engine (pdf-lib) is loading.");
+  const bytes = await file.arrayBuffer();
+  const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+  const totalPages = pdfDoc.getPageCount();
+  const parsed = parsePageSpecClient(pagesSpec, totalPages);
+  const targetPages = new Set(parsed.pages);
+
+  for (let i = 1; i <= totalPages; i++) {
+    if (targetPages.has(i)) {
+      const page = pdfDoc.getPage(i - 1);
+      const currentRot = page.getRotation().angle;
+      page.setRotation(PDFLib.degrees((currentRot + angle) % 360));
+    }
+  }
+  const outBytes = await pdfDoc.save();
+  return new Blob([outBytes], { type: "application/pdf" });
+}
+
+async function clientDeletePages(file, pagesToDelete) {
+  if (!window.PDFLib) throw new Error("Client PDF engine (pdf-lib) is loading.");
+  const bytes = await file.arrayBuffer();
+  const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+  const toDel = [...pagesToDelete].sort((a, b) => b - a);
+  for (const p of toDel) {
+    if (p >= 1 && p <= pdfDoc.getPageCount()) {
+      pdfDoc.removePage(p - 1);
+    }
+  }
+  const outBytes = await pdfDoc.save();
+  return new Blob([outBytes], { type: "application/pdf" });
+}
+
+async function clientCropPages(file, x0, y0, x1, y1) {
+  if (!window.PDFLib) throw new Error("Client PDF engine (pdf-lib) is loading.");
+  const bytes = await file.arrayBuffer();
+  const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+  const pages = pdfDoc.getPages();
+  for (const page of pages) {
+    const { height } = page.getSize();
+    const pdfY = height - y1;
+    const pdfW = x1 - x0;
+    const pdfH = y1 - y0;
+    page.setCropBox(x0, pdfY, pdfW, pdfH);
+  }
+  const outBytes = await pdfDoc.save();
+  return new Blob([outBytes], { type: "application/pdf" });
+}
+
+async function clientMergePdfs(files) {
+  if (!window.PDFLib) throw new Error("Client PDF engine (pdf-lib) is loading.");
+  const mergedDoc = await PDFLib.PDFDocument.create();
+  for (const f of files) {
+    const bytes = await f.arrayBuffer();
+    const doc = await PDFLib.PDFDocument.load(bytes);
+    const copied = await mergedDoc.copyPages(doc, doc.getPageIndices());
+    copied.forEach((p) => mergedDoc.addPage(p));
+  }
+  const outBytes = await mergedDoc.save();
+  return new Blob([outBytes], { type: "application/pdf" });
+}
+
+async function clientSplitPages(file, pageIndices) {
+  if (!window.PDFLib) throw new Error("Client PDF engine (pdf-lib) is loading.");
+  const bytes = await file.arrayBuffer();
+  const srcDoc = await PDFLib.PDFDocument.load(bytes);
+  const newDoc = await PDFLib.PDFDocument.create();
+  const validIndices = pageIndices.map((p) => p - 1).filter((idx) => idx >= 0 && idx < srcDoc.getPageCount());
+  const copied = await newDoc.copyPages(srcDoc, validIndices);
+  copied.forEach((p) => newDoc.addPage(p));
+  const outBytes = await newDoc.save();
+  return new Blob([outBytes], { type: "application/pdf" });
+}
+
+async function clientInsertText(file, pageNum, text, x, y, fontSize = 12, colorHex = "#000000", bgFill = false) {
+  if (!window.PDFLib) throw new Error("Client PDF engine (pdf-lib) is loading.");
+  const bytes = await file.arrayBuffer();
+  const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+  const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+  if (pageNum >= 1 && pageNum <= pdfDoc.getPageCount()) {
+    const page = pdfDoc.getPage(pageNum - 1);
+    const { height } = page.getSize();
+    const pdfY = height - y;
+    const r = (parseInt(colorHex.slice(1, 3), 16) || 0) / 255;
+    const g = (parseInt(colorHex.slice(3, 5), 16) || 0) / 255;
+    const b = (parseInt(colorHex.slice(5, 7), 16) || 0) / 255;
+    if (bgFill) {
+      const textW = font.widthOfTextAtSize(text, fontSize);
+      const textH = font.heightAtSize(fontSize);
+      page.drawRectangle({
+        x: x - 4,
+        y: pdfY - 2,
+        width: textW + 8,
+        height: textH + 4,
+        color: PDFLib.rgb(1, 1, 1),
+      });
+    }
+    page.drawText(text, {
+      x,
+      y: pdfY,
+      size: fontSize,
+      font,
+      color: PDFLib.rgb(r, g, b),
+    });
+  }
+  const outBytes = await pdfDoc.save();
+  return new Blob([outBytes], { type: "application/pdf" });
+}
+
+async function clientWhiteout(file, pageNum, x0, y0, x1, y1) {
+  if (!window.PDFLib) throw new Error("Client PDF engine (pdf-lib) is loading.");
+  const bytes = await file.arrayBuffer();
+  const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+  if (pageNum >= 1 && pageNum <= pdfDoc.getPageCount()) {
+    const page = pdfDoc.getPage(pageNum - 1);
+    const { height } = page.getSize();
+    const pdfY = height - y1;
+    const w = Math.max(4, x1 - x0);
+    const h = Math.max(4, y1 - y0);
+    page.drawRectangle({
+      x: x0,
+      y: pdfY,
+      width: w,
+      height: h,
+      color: PDFLib.rgb(1, 1, 1),
+      borderColor: PDFLib.rgb(1, 1, 1),
+      borderWidth: 0,
+    });
+  }
+  const outBytes = await pdfDoc.save();
+  return new Blob([outBytes], { type: "application/pdf" });
+}
+
+async function clientWatermark(file, text, opacity = 0.25, fontSize = 48, angle = 45) {
+  if (!window.PDFLib) throw new Error("Client PDF engine (pdf-lib) is loading.");
+  const bytes = await file.arrayBuffer();
+  const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+  const font = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+  const pages = pdfDoc.getPages();
+  for (const page of pages) {
+    const { width, height } = page.getSize();
+    page.drawText(text, {
+      x: width * 0.2,
+      y: height * 0.4,
+      size: fontSize,
+      font,
+      color: PDFLib.rgb(0.5, 0.5, 0.5),
+      opacity: Math.max(0.05, Math.min(1.0, opacity)),
+      rotate: PDFLib.degrees(angle),
+    });
+  }
+  const outBytes = await pdfDoc.save();
+  return new Blob([outBytes], { type: "application/pdf" });
+}
+
+async function clientPageNumbers(file, position = "bottom-center", format = "Page {n} of {total}", startPage = 1, fontSize = 10) {
+  if (!window.PDFLib) throw new Error("Client PDF engine (pdf-lib) is loading.");
+  const bytes = await file.arrayBuffer();
+  const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+  const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+  const total = pdfDoc.getPageCount();
+  for (let i = startPage; i <= total; i++) {
+    const page = pdfDoc.getPage(i - 1);
+    const { width } = page.getSize();
+    const numText = (format || "Page {n} of {total}").replace("{n}", String(i)).replace("{total}", String(total));
+    const textW = font.widthOfTextAtSize(numText, fontSize);
+    let x = (width - textW) / 2;
+    if (position === "bottom-right") x = width - textW - 36;
+    if (position === "bottom-left") x = 36;
+    page.drawText(numText, {
+      x,
+      y: 24,
+      size: fontSize,
+      font,
+      color: PDFLib.rgb(0.3, 0.3, 0.3),
+    });
+  }
+  const outBytes = await pdfDoc.save();
+  return new Blob([outBytes], { type: "application/pdf" });
+}
+
+async function clientHeaderFooter(file, headerText = "", footerText = "", fontSize = 10) {
+  if (!window.PDFLib) throw new Error("Client PDF engine (pdf-lib) is loading.");
+  const bytes = await file.arrayBuffer();
+  const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+  const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+  const pages = pdfDoc.getPages();
+  for (const page of pages) {
+    const { width, height } = page.getSize();
+    if (headerText) {
+      const hw = font.widthOfTextAtSize(headerText, fontSize);
+      page.drawText(headerText, {
+        x: (width - hw) / 2,
+        y: height - 28,
+        size: fontSize,
+        font,
+        color: PDFLib.rgb(0.3, 0.3, 0.3),
+      });
+    }
+    if (footerText) {
+      const fw = font.widthOfTextAtSize(footerText, fontSize);
+      page.drawText(footerText, {
+        x: (width - fw) / 2,
+        y: 20,
+        size: fontSize,
+        font,
+        color: PDFLib.rgb(0.3, 0.3, 0.3),
+      });
+    }
+  }
+  const outBytes = await pdfDoc.save();
+  return new Blob([outBytes], { type: "application/pdf" });
+}
+
+async function clientReorderPages(file, pageOrder) {
+  if (!window.PDFLib) throw new Error("Client PDF engine (pdf-lib) is loading.");
+  const bytes = await file.arrayBuffer();
+  const srcDoc = await PDFLib.PDFDocument.load(bytes);
+  const newDoc = await PDFLib.PDFDocument.create();
+  const indices = pageOrder.map((p) => p - 1).filter((idx) => idx >= 0 && idx < srcDoc.getPageCount());
+  const copied = await newDoc.copyPages(srcDoc, indices);
+  copied.forEach((p) => newDoc.addPage(p));
+  const outBytes = await newDoc.save();
+  return new Blob([outBytes], { type: "application/pdf" });
+}
+
 async function executeWordReplace() {
   if (!state.currentPdfFile) return alert("No active document loaded.");
   if (state.wordFindMatches.length === 0 || state.activeMatchIndex < 0) {
@@ -1657,21 +1956,25 @@ async function executeWordReplace() {
   // Calculate PDF-point bounding box of this specific highlighted occurrence
   let pdfRect = null;
   const pageObj = state.renderedPages.find((p) => p.pageNum === match.pageNum);
-  if (pageObj && match.el && pageObj.interactionLayer) {
-    const markRect = match.el.getBoundingClientRect();
-    const layerRect = pageObj.interactionLayer.getBoundingClientRect();
-    const scale = pageObj.scale || 1.0;
-    if (layerRect.width > 0 && scale > 0) {
-      const x0 = (markRect.left - layerRect.left) / scale;
-      const y0 = (markRect.top - layerRect.top) / scale;
-      const x1 = (markRect.right - layerRect.left) / scale;
-      const y1 = (markRect.bottom - layerRect.top) / scale;
-      pdfRect = [
-        Math.round(x0 * 10) / 10,
-        Math.round(y0 * 10) / 10,
-        Math.round(x1 * 10) / 10,
-        Math.round(y1 * 10) / 10,
-      ];
+  if (pageObj && match.el) {
+    const pageCard = document.getElementById(`pdfPageCard_${match.pageNum}`);
+    const layer = pageObj.interactionLayer || (pageCard ? pageCard.querySelector(".pdf-interaction-layer") : null);
+    if (layer) {
+      const markRect = match.el.getBoundingClientRect();
+      const layerRect = layer.getBoundingClientRect();
+      const scale = state.currentScale || 1.15;
+      if (layerRect.width > 0 && scale > 0) {
+        const x0 = (markRect.left - layerRect.left) / scale;
+        const y0 = (markRect.top - layerRect.top) / scale;
+        const x1 = (markRect.right - layerRect.left) / scale;
+        const y1 = (markRect.bottom - layerRect.top) / scale;
+        pdfRect = [
+          Math.round(x0 * 10) / 10,
+          Math.round(y0 * 10) / 10,
+          Math.round(x1 * 10) / 10,
+          Math.round(y1 * 10) / 10,
+        ];
+      }
     }
   }
 
@@ -1691,24 +1994,37 @@ async function executeWordReplace() {
       rule.rect = pdfRect;
     }
 
-    const formData = new FormData();
-    formData.append("file", state.currentPdfFile);
-    formData.append("rules", JSON.stringify([rule]));
-    formData.append("pages", String(match.pageNum));
-    formData.append("single", "true");
-    formData.append("preserve_style", "true");
-    if (match.occurrenceOnPage !== undefined) {
-      formData.append("occurrence", String(match.occurrenceOnPage));
-    }
-    if (pdfRect) {
-      formData.append("rect", pdfRect.join(","));
-    }
-    formData.append("page_num", String(match.pageNum));
+    let blob = null;
+    const isNetlify = window.location.hostname.includes("netlify.app");
 
-    const res = await fetch("/api/edit/replace-text", { method: "POST", body: formData });
-    if (!res.ok) throw new Error(await res.text());
+    if (!isNetlify) {
+      try {
+        const formData = new FormData();
+        formData.append("file", state.currentPdfFile);
+        formData.append("rules", JSON.stringify([rule]));
+        formData.append("pages", String(match.pageNum));
+        formData.append("single", "true");
+        formData.append("preserve_style", "true");
+        if (match.occurrenceOnPage !== undefined) {
+          formData.append("occurrence", String(match.occurrenceOnPage));
+        }
+        if (pdfRect) {
+          formData.append("rect", pdfRect.join(","));
+        }
+        formData.append("page_num", String(match.pageNum));
 
-    const blob = await res.blob();
+        const res = await fetch("/api/edit/replace-text", { method: "POST", body: formData });
+        if (res.ok) {
+          blob = await res.blob();
+        }
+      } catch (_) {}
+    }
+
+    if (!blob) {
+      // In-browser client engine fallback for Netlify & offline
+      blob = await clientReplaceText(state.currentPdfFile, [rule]);
+    }
+
     updateActivePdfFromBlob(blob, `Word Replace (Match #${currentIndex + 1} of ${totalMatchesBefore})`);
 
     setTimeout(() => {
@@ -1737,27 +2053,66 @@ async function executeWordReplaceAll() {
   wfbBtnReplaceAll.textContent = "Replacing All...";
 
   try {
-    const formData = new FormData();
-    formData.append("file", state.currentPdfFile);
-    formData.append(
-      "rules",
-      JSON.stringify([
-        {
+    let blob = null;
+    let count = "all";
+    const isNetlify = window.location.hostname.includes("netlify.app");
+
+    if (!isNetlify) {
+      try {
+        const formData = new FormData();
+        formData.append("file", state.currentPdfFile);
+        formData.append(
+          "rules",
+          JSON.stringify([
+            {
+              search_text: query,
+              replacement_text: replaceText,
+              single: false,
+              preserve_style: true,
+            },
+          ])
+        );
+        formData.append("single", "false");
+        formData.append("preserve_style", "true");
+
+        const res = await fetch("/api/edit/replace-text", { method: "POST", body: formData });
+        if (res.ok) {
+          count = res.headers.get("X-Replacement-Count") || "all";
+          blob = await res.blob();
+        }
+      } catch (_) {}
+    }
+
+    if (!blob) {
+      const rules = [];
+      const scale = state.currentScale || 1.15;
+      for (const m of state.wordFindMatches) {
+        let pdfRect = null;
+        if (m.el) {
+          const pageCard = document.getElementById(`pdfPageCard_${m.pageNum}`);
+          const layer = pageCard ? pageCard.querySelector(".pdf-interaction-layer") : null;
+          if (layer) {
+            const markRect = m.el.getBoundingClientRect();
+            const layerRect = layer.getBoundingClientRect();
+            pdfRect = [
+              (markRect.left - layerRect.left) / scale,
+              (markRect.top - layerRect.top) / scale,
+              (markRect.right - layerRect.left) / scale,
+              (markRect.bottom - layerRect.top) / scale,
+            ];
+          }
+        }
+        rules.push({
+          page_num: m.pageNum,
           search_text: query,
           replacement_text: replaceText,
-          single: false,
-          preserve_style: true,
-        },
-      ])
-    );
-    formData.append("single", "false");
-    formData.append("preserve_style", "true");
+          rect: pdfRect,
+        });
+      }
+      count = rules.length;
+      blob = await clientReplaceText(state.currentPdfFile, rules);
+    }
 
-    const res = await fetch("/api/edit/replace-text", { method: "POST", body: formData });
-    if (!res.ok) throw new Error(await res.text());
-
-    const count = res.headers.get("X-Replacement-Count") || "all";
-    const blob = await res.blob();
     updateActivePdfFromBlob(blob, `Word Replace All ("${query}" -> "${replaceText}")`);
 
     setTimeout(() => {
@@ -2383,8 +2738,17 @@ function renderMergeTool() {
     const formData = new FormData();
     state.multiFiles.forEach((f) => formData.append("files", f));
 
-    const res = await fetch("/api/organize/merge", { method: "POST", body: formData });
-    const blob = await res.blob();
+    let blob = null;
+    const isNetlify = window.location.hostname.includes("netlify.app");
+    if (!isNetlify) {
+      try {
+        const res = await fetch("/api/organize/merge", { method: "POST", body: formData });
+        if (res.ok) blob = await res.blob();
+      } catch (_) {}
+    }
+    if (!blob) {
+      blob = await clientMergePdfs(state.multiFiles);
+    }
     const firstBase = (state.multiFiles && state.multiFiles.length > 0)
       ? state.multiFiles[0].name.replace(/\.[^/.]+$/, "")
       : "document";
@@ -2430,10 +2794,22 @@ function renderSplitTool() {
     formData.append("file", state.currentPdfFile);
     formData.append("ranges", ranges);
 
-    const res = await fetch("/api/organize/split", { method: "POST", body: formData });
-    const blob = await res.blob();
-    const contentType = res.headers.get("Content-Type") || "";
-    const isZip = contentType.includes("zip");
+    let blob = null;
+    let isZip = false;
+    const isNetlify = window.location.hostname.includes("netlify.app");
+    if (!isNetlify) {
+      try {
+        const res = await fetch("/api/organize/split", { method: "POST", body: formData });
+        if (res.ok) {
+          blob = await res.blob();
+          isZip = (res.headers.get("Content-Type") || "").includes("zip");
+        }
+      } catch (_) {}
+    }
+    if (!blob) {
+      const parsed = parsePageSpecClient(ranges, state.pageCount || 1);
+      blob = await clientSplitPages(state.currentPdfFile, parsed.pages);
+    }
     const baseName = state.currentPdfFile ? state.currentPdfFile.name.replace(/\.[^/.]+$/, "") : "document";
     const cleanRanges = ranges.replace(/\s+/g, "").replace(/,/g, "_");
     const splitName = isZip ? `${baseName}_split_pages.zip` : `${baseName}_split_p${cleanRanges || "1"}.pdf`;
@@ -2451,21 +2827,24 @@ async function rotateSinglePageDirect(pageNum, angle = 90) {
   }
   showNotification(`Rotating page ${pageNum} by ${angle}°...`, "info", 1800);
   try {
-    const formData = new FormData();
-    formData.append("file", state.currentPdfFile);
-    formData.append("angle", String(angle));
-    formData.append("pages", String(pageNum));
-
-    const res = await fetch("/api/organize/rotate", { method: "POST", body: formData });
-    if (!res.ok) {
-      let errMsg = "Failed to rotate page.";
+    let blob = null;
+    const isNetlify = window.location.hostname.includes("netlify.app");
+    if (!isNetlify) {
       try {
-        const errData = await res.json();
-        if (errData?.detail) errMsg = errData.detail;
+        const formData = new FormData();
+        formData.append("file", state.currentPdfFile);
+        formData.append("angle", String(angle));
+        formData.append("pages", String(pageNum));
+
+        const res = await fetch("/api/organize/rotate", { method: "POST", body: formData });
+        if (res.ok) blob = await res.blob();
       } catch (_) {}
-      throw new Error(errMsg);
     }
-    const blob = await res.blob();
+
+    if (!blob) {
+      blob = await clientRotatePages(state.currentPdfFile, String(pageNum), angle);
+    }
+
     clearLiveRotatePreview();
     updateActivePdfFromBlob(blob, `Rotate Page ${pageNum} (+${angle}°)`);
     showNotification(`Page ${pageNum} rotated ${angle}° successfully!`, "success", 3000);
@@ -2725,17 +3104,19 @@ function renderRotateTool() {
         formData.append("pages", rawPages);
       }
 
-      const res = await fetch("/api/organize/rotate", { method: "POST", body: formData });
-      if (!res.ok) {
-        let errMsg = "Failed to rotate pages.";
+      let blob = null;
+      const isNetlify = window.location.hostname.includes("netlify.app");
+      if (!isNetlify) {
         try {
-          const errData = await res.json();
-          if (errData?.detail) errMsg = errData.detail;
+          const res = await fetch("/api/organize/rotate", { method: "POST", body: formData });
+          if (res.ok) blob = await res.blob();
         } catch (_) {}
-        throw new Error(errMsg);
       }
 
-      const blob = await res.blob();
+      if (!blob) {
+        blob = await clientRotatePages(state.currentPdfFile, rawPages, parseInt(angle, 10));
+      }
+
       clearLiveRotatePreview();
       const actionDesc = rawPages ? `Rotate (${rawPages}) ${angle}°` : `Rotate Document ${angle}°`;
       updateActivePdfFromBlob(blob, actionDesc);
@@ -2770,20 +3151,22 @@ async function deleteSinglePage(pageNum) {
 
   showNotification(`Removing page ${pageNum}...`, "info", 1800);
   try {
-    const formData = new FormData();
-    formData.append("file", state.currentPdfFile);
-    formData.append("pages", String(pageNum));
-
-    const res = await fetch("/api/organize/delete", { method: "POST", body: formData });
-    if (!res.ok) {
-      let errMsg = "Failed to delete page.";
+    let blob = null;
+    const isNetlify = window.location.hostname.includes("netlify.app");
+    if (!isNetlify) {
       try {
-        const errData = await res.json();
-        if (errData?.detail) errMsg = errData.detail;
+        const formData = new FormData();
+        formData.append("file", state.currentPdfFile);
+        formData.append("pages", String(pageNum));
+        const res = await fetch("/api/organize/delete", { method: "POST", body: formData });
+        if (res.ok) blob = await res.blob();
       } catch (_) {}
-      throw new Error(errMsg);
     }
-    const blob = await res.blob();
+
+    if (!blob) {
+      blob = await clientDeletePages(state.currentPdfFile, [pageNum]);
+    }
+
     updateActivePdfFromBlob(blob, `Deleted Page ${pageNum}`);
     if (state.activeTool === "delete-pages") {
       switchTool("delete-pages");
@@ -2916,20 +3299,20 @@ function renderDeleteTool() {
       formData.append("file", state.currentPdfFile);
       formData.append("pages", pages);
 
-      const res = await fetch("/api/organize/delete", { method: "POST", body: formData });
-      if (!res.ok) {
-        let errMsg = "Failed to delete pages.";
+      let blob = null;
+      const isNetlify = window.location.hostname.includes("netlify.app");
+      if (!isNetlify) {
         try {
-          const errData = await res.json();
-          if (errData && errData.detail) errMsg = errData.detail;
-        } catch (_) {
-          const textErr = await res.text().catch(() => "");
-          if (textErr) errMsg = textErr;
-        }
-        throw new Error(errMsg);
+          const res = await fetch("/api/organize/delete", { method: "POST", body: formData });
+          if (res.ok) blob = await res.blob();
+        } catch (_) {}
       }
 
-      const blob = await res.blob();
+      if (!blob) {
+        const parsed = parsePageSpecClient(pages, state.pageCount || 1);
+        blob = await clientDeletePages(state.currentPdfFile, parsed.pages);
+      }
+
       updateActivePdfFromBlob(blob, `Deleted Page(s) ${pages}`);
       switchTool("delete-pages");
       showNotification(`Successfully removed page(s) ${pages}. Active document updated.`, "success", 4000);
@@ -2978,13 +3361,23 @@ function renderReorderTool() {
     const order = document.getElementById("reorderSequence").value;
     if (!order) return alert("Enter page sequence.");
 
-    const formData = new FormData();
-    formData.append("file", state.currentPdfFile);
-    formData.append("order", order);
+    let blob = null;
+    const isNetlify = window.location.hostname.includes("netlify.app");
+    if (!isNetlify) {
+      try {
+        const formData = new FormData();
+        formData.append("file", state.currentPdfFile);
+        formData.append("order", order);
+        const res = await fetch("/api/organize/reorder", { method: "POST", body: formData });
+        if (res.ok) blob = await res.blob();
+      } catch (_) {}
+    }
 
-    const res = await fetch("/api/organize/reorder", { method: "POST", body: formData });
-    if (!res.ok) throw new Error(await res.text());
-    const blob = await res.blob();
+    if (!blob) {
+      const orderArr = order.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+      blob = await clientReorderPages(state.currentPdfFile, orderArr);
+    }
+
     updateActivePdfFromBlob(blob, "Reorder Pages");
     renderDocStatusBadge("reorderFileInfo");
     alert("Pages reordered and saved to active in-memory document!");
@@ -3023,12 +3416,23 @@ function renderExtractTool() {
     const pages = document.getElementById("extractPages").value;
     if (!pages) return alert("Enter pages to extract.");
 
-    const formData = new FormData();
-    formData.append("file", state.currentPdfFile);
-    formData.append("pages", pages);
+    let blob = null;
+    const isNetlify = window.location.hostname.includes("netlify.app");
+    if (!isNetlify) {
+      try {
+        const formData = new FormData();
+        formData.append("file", state.currentPdfFile);
+        formData.append("pages", pages);
+        const res = await fetch("/api/organize/extract", { method: "POST", body: formData });
+        if (res.ok) blob = await res.blob();
+      } catch (_) {}
+    }
 
-    const res = await fetch("/api/organize/extract", { method: "POST", body: formData });
-    const blob = await res.blob();
+    if (!blob) {
+      const parsed = parsePageSpecClient(pages, state.pageCount || 1);
+      blob = await clientSplitPages(state.currentPdfFile, parsed.pages);
+    }
+
     const baseName = state.currentPdfFile ? state.currentPdfFile.name.replace(/\.[^/.]+$/, "") : "document";
     const cleanPages = pages.replace(/\s+/g, "").replace(/,/g, "_");
     const extractName = `${baseName}_extracted_p${cleanPages || "pages"}.pdf`;
@@ -3304,10 +3708,23 @@ function renderCropTool() {
         formData.append("margin_right", document.getElementById("cropMarginRight").value);
       }
 
-      const res = await fetch("/api/organize/crop", { method: "POST", body: formData });
-      if (!res.ok) throw new Error(await res.text());
+      let blob = null;
+      const isNetlify = window.location.hostname.includes("netlify.app");
+      if (!isNetlify) {
+        try {
+          const res = await fetch("/api/organize/crop", { method: "POST", body: formData });
+          if (res.ok) blob = await res.blob();
+        } catch (_) {}
+      }
 
-      const blob = await res.blob();
+      if (!blob) {
+        const x0 = parseFloat(document.getElementById("cropX0")?.value) || 0;
+        const y0 = parseFloat(document.getElementById("cropY0")?.value) || 0;
+        const x1 = parseFloat(document.getElementById("cropX1")?.value) || 612;
+        const y1 = parseFloat(document.getElementById("cropY1")?.value) || 792;
+        blob = await clientCropPages(state.currentPdfFile, x0, y0, x1, y1);
+      }
+
       updateActivePdfFromBlob(blob, "Crop Pages");
       renderDocStatusBadge("cropFileInfo");
       alert("Pages cropped and resized successfully! Saved into active document memory.");
@@ -3482,11 +3899,22 @@ function renderReplaceTextTool() {
       const p = document.getElementById("repPages")?.value;
       if (p) formData.append("pages", p);
 
-      const res = await fetch("/api/edit/replace-text", { method: "POST", body: formData });
-      if (!res.ok) throw new Error(await res.text());
+      let blob = null;
+      let count = rules.length;
+      const isNetlify = window.location.hostname.includes("netlify.app");
+      if (!isNetlify) {
+        try {
+          const res = await fetch("/api/edit/replace-text", { method: "POST", body: formData });
+          if (res.ok) {
+            count = res.headers.get("X-Replacement-Count") || String(rules.length);
+            blob = await res.blob();
+          }
+        } catch (_) {}
+      }
 
-      const count = res.headers.get("X-Replacement-Count") || "0";
-      const blob = await res.blob();
+      if (!blob) {
+        blob = await clientReplaceText(state.currentPdfFile, rules);
+      }
 
       // Cumulative chaining: save output as active document for all subsequent operations!
       updateActivePdfFromBlob(blob, "Find & Replace");
@@ -3611,20 +4039,38 @@ function renderInsertTextTool() {
     btn.disabled = true;
 
     try {
-      const formData = new FormData();
-      formData.append("file", state.currentPdfFile);
-      formData.append("page", document.getElementById("insPage").value);
-      formData.append("text", text);
-      formData.append("x", document.getElementById("insX").value);
-      formData.append("y", document.getElementById("insY").value);
-      formData.append("font_size", document.getElementById("insFontSize").value);
-      formData.append("color", document.getElementById("insColor").value);
-      formData.append("bg_fill", document.getElementById("insBgFill").checked);
+      let blob = null;
+      const isNetlify = window.location.hostname.includes("netlify.app");
+      if (!isNetlify) {
+        try {
+          const formData = new FormData();
+          formData.append("file", state.currentPdfFile);
+          formData.append("page", document.getElementById("insPage").value);
+          formData.append("text", text);
+          formData.append("x", document.getElementById("insX").value);
+          formData.append("y", document.getElementById("insY").value);
+          formData.append("font_size", document.getElementById("insFontSize").value);
+          formData.append("color", document.getElementById("insColor").value);
+          formData.append("bg_fill", document.getElementById("insBgFill").checked);
 
-      const res = await fetch("/api/edit/insert-text", { method: "POST", body: formData });
-      if (!res.ok) throw new Error(await res.text());
+          const res = await fetch("/api/edit/insert-text", { method: "POST", body: formData });
+          if (res.ok) blob = await res.blob();
+        } catch (_) {}
+      }
 
-      const blob = await res.blob();
+      if (!blob) {
+        blob = await clientInsertText(
+          state.currentPdfFile,
+          parseInt(document.getElementById("insPage").value, 10) || 1,
+          text,
+          parseFloat(document.getElementById("insX").value) || 50,
+          parseFloat(document.getElementById("insY").value) || 50,
+          parseFloat(document.getElementById("insFontSize").value) || 12,
+          document.getElementById("insColor").value || "#000000",
+          document.getElementById("insBgFill").checked
+        );
+      }
+
       updateActivePdfFromBlob(blob, "Insert Text");
       renderDocStatusBadge("insFileInfo");
       alert("Text inserted and saved to active in-memory document!");
@@ -3693,18 +4139,35 @@ function renderWhiteoutTool() {
 
   document.getElementById("btnRunWhiteout").addEventListener("click", async () => {
     if (!state.currentPdfFile) return alert("Upload a PDF file first.");
-    const formData = new FormData();
-    formData.append("file", state.currentPdfFile);
-    formData.append("page", document.getElementById("woPage").value);
-    formData.append("x0", document.getElementById("woX0").value);
-    formData.append("y0", document.getElementById("woY0").value);
-    formData.append("x1", document.getElementById("woX1").value);
-    formData.append("y1", document.getElementById("woY1").value);
 
     try {
-      const res = await fetch("/api/edit/whiteout", { method: "POST", body: formData });
-      if (!res.ok) throw new Error(await res.text());
-      const blob = await res.blob();
+      let blob = null;
+      const isNetlify = window.location.hostname.includes("netlify.app");
+      if (!isNetlify) {
+        try {
+          const formData = new FormData();
+          formData.append("file", state.currentPdfFile);
+          formData.append("page", document.getElementById("woPage").value);
+          formData.append("x0", document.getElementById("woX0").value);
+          formData.append("y0", document.getElementById("woY0").value);
+          formData.append("x1", document.getElementById("woX1").value);
+          formData.append("y1", document.getElementById("woY1").value);
+          const res = await fetch("/api/edit/whiteout", { method: "POST", body: formData });
+          if (res.ok) blob = await res.blob();
+        } catch (_) {}
+      }
+
+      if (!blob) {
+        blob = await clientWhiteout(
+          state.currentPdfFile,
+          parseInt(document.getElementById("woPage").value, 10) || 1,
+          parseFloat(document.getElementById("woX0").value) || 50,
+          parseFloat(document.getElementById("woY0").value) || 50,
+          parseFloat(document.getElementById("woX1").value) || 250,
+          parseFloat(document.getElementById("woY1").value) || 150
+        );
+      }
+
       updateActivePdfFromBlob(blob, "Whiteout");
       renderDocStatusBadge("woFileInfo");
       alert("Area erased and saved to active in-memory document!");
@@ -3758,17 +4221,33 @@ function renderWatermarkTool() {
 
   document.getElementById("btnRunWm").addEventListener("click", async () => {
     if (!state.currentPdfFile) return alert("Upload a PDF first.");
-    const formData = new FormData();
-    formData.append("file", state.currentPdfFile);
-    formData.append("text", document.getElementById("wmText").value);
-    formData.append("opacity", document.getElementById("wmOpacity").value);
-    formData.append("font_size", document.getElementById("wmFontSize").value);
-    formData.append("angle", document.getElementById("wmAngle").value);
 
     try {
-      const res = await fetch("/api/edit/watermark", { method: "POST", body: formData });
-      if (!res.ok) throw new Error(await res.text());
-      const blob = await res.blob();
+      let blob = null;
+      const isNetlify = window.location.hostname.includes("netlify.app");
+      if (!isNetlify) {
+        try {
+          const formData = new FormData();
+          formData.append("file", state.currentPdfFile);
+          formData.append("text", document.getElementById("wmText").value);
+          formData.append("opacity", document.getElementById("wmOpacity").value);
+          formData.append("font_size", document.getElementById("wmFontSize").value);
+          formData.append("angle", document.getElementById("wmAngle").value);
+          const res = await fetch("/api/edit/watermark", { method: "POST", body: formData });
+          if (res.ok) blob = await res.blob();
+        } catch (_) {}
+      }
+
+      if (!blob) {
+        blob = await clientWatermark(
+          state.currentPdfFile,
+          document.getElementById("wmText").value || "CONFIDENTIAL",
+          parseFloat(document.getElementById("wmOpacity").value) || 0.25,
+          parseFloat(document.getElementById("wmFontSize").value) || 48,
+          parseFloat(document.getElementById("wmAngle").value) || 45
+        );
+      }
+
       updateActivePdfFromBlob(blob, "Watermark");
       renderDocStatusBadge("wmFileInfo");
       alert("Watermark applied and saved to active in-memory document!");
@@ -3819,15 +4298,31 @@ function renderPageNumbersTool() {
 
   document.getElementById("btnRunPn").addEventListener("click", async () => {
     if (!state.currentPdfFile) return alert("Upload a PDF first.");
-    const formData = new FormData();
-    formData.append("file", state.currentPdfFile);
-    formData.append("position", document.getElementById("pnPosition").value);
-    formData.append("pattern", document.getElementById("pnPattern").value);
 
     try {
-      const res = await fetch("/api/edit/page-numbers", { method: "POST", body: formData });
-      if (!res.ok) throw new Error(await res.text());
-      const blob = await res.blob();
+      let blob = null;
+      const isNetlify = window.location.hostname.includes("netlify.app");
+      if (!isNetlify) {
+        try {
+          const formData = new FormData();
+          formData.append("file", state.currentPdfFile);
+          formData.append("position", document.getElementById("pnPosition").value);
+          formData.append("pattern", document.getElementById("pnPattern").value);
+          const res = await fetch("/api/edit/page-numbers", { method: "POST", body: formData });
+          if (res.ok) blob = await res.blob();
+        } catch (_) {}
+      }
+
+      if (!blob) {
+        blob = await clientPageNumbers(
+          state.currentPdfFile,
+          document.getElementById("pnPosition").value || "bottom-center",
+          document.getElementById("pnPattern")?.value || "Page {n} of {total}",
+          1,
+          10
+        );
+      }
+
       updateActivePdfFromBlob(blob, "Page Numbers");
       renderDocStatusBadge("pnFileInfo");
       alert("Page numbers added and saved to active in-memory document!");
@@ -3873,15 +4368,30 @@ function renderHeaderFooterTool() {
 
   document.getElementById("btnRunHf").addEventListener("click", async () => {
     if (!state.currentPdfFile) return alert("Upload a PDF first.");
-    const formData = new FormData();
-    formData.append("file", state.currentPdfFile);
-    formData.append("header", document.getElementById("hfHeader").value);
-    formData.append("footer", document.getElementById("hfFooter").value);
 
     try {
-      const res = await fetch("/api/edit/header-footer", { method: "POST", body: formData });
-      if (!res.ok) throw new Error(await res.text());
-      const blob = await res.blob();
+      let blob = null;
+      const isNetlify = window.location.hostname.includes("netlify.app");
+      if (!isNetlify) {
+        try {
+          const formData = new FormData();
+          formData.append("file", state.currentPdfFile);
+          formData.append("header", document.getElementById("hfHeader").value);
+          formData.append("footer", document.getElementById("hfFooter").value);
+          const res = await fetch("/api/edit/header-footer", { method: "POST", body: formData });
+          if (res.ok) blob = await res.blob();
+        } catch (_) {}
+      }
+
+      if (!blob) {
+        blob = await clientHeaderFooter(
+          state.currentPdfFile,
+          document.getElementById("hfHeader").value || "",
+          document.getElementById("hfFooter").value || "",
+          10
+        );
+      }
+
       updateActivePdfFromBlob(blob, "Header & Footer");
       renderDocStatusBadge("hfFileInfo");
       alert("Header & footer applied and saved to active in-memory document!");

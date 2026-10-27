@@ -8,17 +8,21 @@
 const fs = require('fs');
 const path = require('path');
 
-// Target backend service for Netlify Edge API proxy
-const targetBackend = process.env.BACKEND_URL || 'https://api.vellakshya.app';
+// Target backend service for Netlify Edge API proxy (if configured)
+const targetBackend = process.env.BACKEND_URL;
 const staticDir = path.join(__dirname, 'app', 'static');
 const redirectsFile = path.join(staticDir, '_redirects');
 
-console.log(`[Netlify Build] Configuring Edge Reverse Proxy target: ${targetBackend}`);
+let redirectsContent = '# Netlify Edge Routing Rules\n';
 
-const redirectsContent = `# Dynamic Netlify Edge Reverse Proxy Rules
-/api/*  ${targetBackend}/api/:splat  200!
-/*      /index.html                   200
-`;
+if (targetBackend) {
+  console.log(`[Netlify Build] Configuring Edge Reverse Proxy target: ${targetBackend}`);
+  redirectsContent += `/api/*  ${targetBackend}/api/:splat  200!\n`;
+} else {
+  console.log('[Netlify Build] Zero-backend edge mode active: in-browser pdf-lib engine enabled');
+}
+
+redirectsContent += '/*      /index.html                   200\n';
 
 fs.writeFileSync(redirectsFile, redirectsContent, 'utf-8');
 console.log(`[Netlify Build] Successfully wrote _redirects to ${redirectsFile}`);

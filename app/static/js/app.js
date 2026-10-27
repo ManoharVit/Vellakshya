@@ -1646,68 +1646,259 @@ function prevMatch() {
 // IN-BROWSER CLIENT-SIDE PDF ENGINE (PDF-Lib Standalone / Netlify)
 // =============================================================
 
+async function decompressDeflateStream(uint8Arr) {
+  if (typeof DecompressionStream === "undefined") return null;
+  try {
+    const ds = new DecompressionStream("deflate");
+    const writer = ds.writable.getWriter();
+    writer.write(uint8Arr);
+    writer.close();
+    const reader = ds.readable.getReader();
+    const chunks = [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+    const totalLen = chunks.reduce((acc, c) => acc + c.length, 0);
+    const result = new Uint8Array(totalLen);
+    let offset = 0;
+    for (const c of chunks) {
+      result.set(c, offset);
+      offset += c.length;
+    }
+    return result;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function compressDeflateStream(uint8Arr) {
+  if (typeof CompressionStream === "undefined") return null;
+  try {
+    const cs = new CompressionStream("deflate");
+    const writer = cs.writable.getWriter();
+    writer.write(uint8Arr);
+    writer.close();
+    const reader = cs.readable.getReader();
+    const chunks = [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+    const totalLen = chunks.reduce((acc, c) => acc + c.length, 0);
+    const result = new Uint8Array(totalLen);
+    let offset = 0;
+    for (const c of chunks) {
+      result.set(c, offset);
+      offset += c.length;
+    }
+    return result;
+  } catch (_) {
+    return null;
+  }
+}
+
+function stringToHexPdf(str) {
+  let hex = "";
+  for (let i = 0; i < str.length; i++) {
+    hex += str.charCodeAt(i).toString(16).padStart(2, "0");
+  }
+  return hex;
+}
+
+async function sanitizePageContentStreams(pdfDoc, page, searchText) {
+  try {
+    const contents = page.node.Contents ? page.node.Contents() : page.node.get(PDFLib.PDFName.of("Contents"));
+    const refs = contents ? (contents.asArray ? contents.asArray() : [contents]) : [];
+    const hexSearch = stringToHexPdf(searchText);
+    const hexSpaces = "20".repeat(searchText.length);
+    const literalSpaces = " ".repeat(searchText.length);
+
+    for (const ref of refs) {
+      const stream = pdfDoc.context.lookup(ref);
+      if (!stream || !stream.contents) continue;
+      let raw = stream.contents;
+      let isDeflated = false;
+
+      const decomp = await decompressDeflateStream(stream.contents);
+      if (decomp) {
+        raw = decomp;
+        isDeflated = true;
+      }
+
+      let text = new TextDecoder("latin1").decode(raw);
+      let changed = false;
+
+      if (text.includes(searchText)) {
+        text = text.replaceAll(searchText, literalSpaces);
+        changed = true;
+      }
+      if (text.includes(hexSearch)) {
+        text = text.replaceAll(hexSearch, hexSpaces);
+        changed = true;
+      }
+
+      if (changed) {
+        const updatedBytes = new Uint8Array(new TextEncoder().encode(text));
+        if (isDeflated) {
+          const recompressed = await compressDeflateStream(updatedBytes);
+          if (recompressed) stream.contents = recompressed;
+          else stream.contents = updatedBytes;
+        } else {
+          stream.contents = updatedBytes;
+        }
+      }
+    }
+  } catch (_) {}
+}
+
+async function getPageTextContent(pageNum) {
+  const cached = state.renderedPages && state.renderedPages.find((p) => p.pageNum === pageNum);
+  if (cached && cached.textContent) return cached.textContent;
+  if (state.interactivePdfDoc) {
+    try {
+      const page = await state.interactivePdfDoc.getPage(pageNum);
+      return await page.getTextContent();
+    } catch (_) {}
+  }
+  return null;
+}
+
+function findOccurrencesInTextContent(textContent, searchText) {
+  const matches = [];
+  if (!textContent || !textContent.items || !searchText) return matches;
+  const regex = new RegExp(escapeRegex(searchText), "gi");
+  for (let i = 0; i < textContent.items.length; i++) {
+    const item = textContent.items[i];
+    if (!item || !item.str) continue;
+    let m;
+    regex.lastIndex = 0;
+    while ((m = regex.exec(item.str)) !== null) {
+      const fontSize = Math.hypot(item.transform[0], item.transform[1]) || item.height || 12;
+      const strLen = item.str.length || 1;
+      const avgCharW = item.width / strLen;
+      const x = item.transform[4] + m.index * avgCharW;
+      const width = Math.max(8, m[0].length * avgCharW);
+      const y = item.transform[5]; // Exact PDF typographical baseline
+      matches.push({
+        x,
+        y,
+        width,
+        height: fontSize,
+        fontSize,
+        fontName: item.fontName,
+      });
+    }
+  }
+  return matches;
+}
+
 async function clientReplaceText(file, rules) {
   if (!window.PDFLib) {
     throw new Error("Client PDF engine (pdf-lib) is loading. Please retry in a moment.");
   }
   const bytes = await file.arrayBuffer();
   const pdfDoc = await PDFLib.PDFDocument.load(bytes);
-  const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+  const totalPages = pdfDoc.getPageCount();
+
+  const fontRegular = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+  const fontItalic = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaOblique);
+  const fontBoldItalic = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBoldOblique);
 
   for (const rule of rules) {
-    const pageNum = rule.page_num || 1;
-    if (pageNum < 1 || pageNum > pdfDoc.getPageCount()) continue;
-    const page = pdfDoc.getPage(pageNum - 1);
-    const { width: pageW, height: pageH } = page.getSize();
+    const searchText = (rule.search_text || rule.search || "").trim();
+    if (!searchText) continue;
+    const replacementText = rule.replacement_text !== undefined ? String(rule.replacement_text) : "";
+    const isSingle = Boolean(rule.single);
+    const targetPages = rule.page_num ? [rule.page_num] : Array.from({ length: totalPages }, (_, i) => i + 1);
 
-    let rect = rule.rect;
-    if (!rect && state.wordFindMatches && state.wordFindMatches.length > 0) {
-      const match = state.wordFindMatches.find(
-        (m) => m.pageNum === pageNum && (!rule.search_text || m.text?.toLowerCase().includes(rule.search_text.toLowerCase()))
-      );
-      if (match && match.el) {
-        const markRect = match.el.getBoundingClientRect();
-        const pageCard = document.getElementById(`pdfPageCard_${pageNum}`);
-        const layer = pageCard ? pageCard.querySelector(".pdf-interaction-layer") || pageCard : null;
-        if (layer) {
-          const layerRect = layer.getBoundingClientRect();
-          const scale = state.currentScale || 1.15;
-          rect = [
-            (markRect.left - layerRect.left) / scale,
-            (markRect.top - layerRect.top) / scale,
-            (markRect.right - layerRect.left) / scale,
-            (markRect.bottom - layerRect.top) / scale,
-          ];
+    for (const pageNum of targetPages) {
+      if (pageNum < 1 || pageNum > totalPages) continue;
+      const page = pdfDoc.getPage(pageNum - 1);
+      const { height: pageH } = page.getSize();
+
+      // 1. Sanitize the underlying content stream to remove original characters
+      await sanitizePageContentStreams(pdfDoc, page, searchText);
+
+      // 2. Discover exact typographical baseline and coordinates
+      const textContent = await getPageTextContent(pageNum);
+      let occurrences = findOccurrencesInTextContent(textContent, searchText);
+
+      if (occurrences.length > 0) {
+        let targets = occurrences;
+        if (isSingle) {
+          const occIdx = rule.occurrence !== undefined && rule.occurrence !== null ? rule.occurrence : 0;
+          targets = occurrences[occIdx] ? [occurrences[occIdx]] : [occurrences[0]];
+        }
+
+        for (const occ of targets) {
+          let font = fontRegular;
+          const fn = (occ.fontName || "").toLowerCase();
+          if (fn.includes("bold") && (fn.includes("italic") || fn.includes("oblique"))) {
+            font = fontBoldItalic;
+          } else if (fn.includes("bold")) {
+            font = fontBold;
+          } else if (fn.includes("italic") || fn.includes("oblique")) {
+            font = fontItalic;
+          }
+
+          const fSize = rule.font_size && Number(rule.font_size) > 0 ? Number(rule.font_size) : occ.fontSize;
+
+          // 3. Draw opaque white rectangle cleanly over original text glyphs
+          const boxBottom = occ.y - fSize * 0.28;
+          const boxHeight = fSize * 1.25;
+          page.drawRectangle({
+            x: Math.max(0, occ.x - 1.5),
+            y: Math.max(0, boxBottom),
+            width: occ.width + 3.0,
+            height: boxHeight,
+            color: PDFLib.rgb(1, 1, 1),
+            borderColor: PDFLib.rgb(1, 1, 1),
+            borderWidth: 0,
+          });
+
+          // 4. Draw replacement text at exact typographic baseline
+          if (replacementText) {
+            page.drawText(replacementText, {
+              x: occ.x,
+              y: occ.y,
+              size: fSize,
+              font: font,
+              color: PDFLib.rgb(0.08, 0.08, 0.08),
+            });
+          }
+        }
+      } else if (rule.rect) {
+        // Fallback for explicitly supplied coordinates
+        const [x0, y0, x1, y1] = rule.rect;
+        const w = Math.max(8, x1 - x0);
+        const h = Math.max(8, y1 - y0);
+        const pdfY = pageH - y1;
+
+        page.drawRectangle({
+          x: Math.max(0, x0 - 1),
+          y: Math.max(0, pdfY - 1),
+          width: w + 2,
+          height: h + 2,
+          color: PDFLib.rgb(1, 1, 1),
+          borderColor: PDFLib.rgb(1, 1, 1),
+          borderWidth: 0,
+        });
+
+        if (replacementText) {
+          const fontSize = Math.max(8, Math.min(32, h * 0.85));
+          page.drawText(replacementText, {
+            x: x0,
+            y: pdfY + h * 0.18,
+            size: fontSize,
+            font: fontRegular,
+            color: PDFLib.rgb(0.08, 0.08, 0.08),
+          });
         }
       }
-    }
-
-    if (rect) {
-      const [x0, y0, x1, y1] = rect;
-      const w = Math.max(8, x1 - x0);
-      const h = Math.max(8, y1 - y0);
-      const pdfY = pageH - y1;
-
-      // 1. Draw opaque white rectangle over old text
-      page.drawRectangle({
-        x: Math.max(0, x0 - 1),
-        y: Math.max(0, pdfY - 1),
-        width: w + 2,
-        height: h + 2,
-        color: PDFLib.rgb(1, 1, 1),
-        borderColor: PDFLib.rgb(1, 1, 1),
-        borderWidth: 0,
-      });
-
-      // 2. Draw replacement text with proportional font size
-      const fontSize = Math.max(8, Math.min(32, h * 0.85));
-      page.drawText(rule.replacement_text !== undefined ? String(rule.replacement_text) : "", {
-        x: x0,
-        y: pdfY + h * 0.18,
-        size: fontSize,
-        font: font,
-        color: PDFLib.rgb(0.08, 0.08, 0.08),
-      });
     }
   }
 
@@ -2183,16 +2374,49 @@ async function exportToHtml(mode = "fixed") {
   const baseName = getCleanBaseName(state.currentPdfFile.name);
   showNotification(`Converting ${baseName} to ${mode === "semantic" ? "Semantic" : "Fixed"} HTML...`, "info", 3000);
 
+  const isNetlify = window.location.hostname.includes("netlify.app");
+  if (!isNetlify) {
+    try {
+      const formData = new FormData();
+      formData.append("file", state.currentPdfFile);
+      formData.append("mode", mode);
+
+      const res = await fetch("/api/convert/html", { method: "POST", body: formData });
+      if (res.ok) {
+        const html = await res.text();
+        const blob = new Blob([html], { type: "text/html" });
+        const dlName = getVersionedFilename("html", 2);
+        downloadBlob(blob, dlName);
+        showNotification(`Exported "${dlName}" successfully!`, "success", 4000);
+        return;
+      }
+    } catch (_) {}
+  }
+
+  // Client-side HTML conversion fallback for Netlify & Edge
   try {
-    const formData = new FormData();
-    formData.append("file", state.currentPdfFile);
-    formData.append("mode", mode);
-
-    const res = await fetch("/api/convert/html", { method: "POST", body: formData });
-    if (!res.ok) throw new Error(await res.text());
-
-    const html = await res.text();
-    const blob = new Blob([html], { type: "text/html" });
+    let fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(baseName)}</title><style>body{font-family:sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.6;color:#1e293b;}.page{margin-bottom:60px;padding-bottom:30px;border-bottom:1px solid #e2e8f0;}</style></head><body>`;
+    for (let p = 1; p <= (state.pageCount || 1); p++) {
+      const tc = await getPageTextContent(p);
+      if (tc && tc.items) {
+        fullHtml += `<div class="page" id="page_${p}">`;
+        let curLine = "";
+        let lastY = null;
+        for (const item of tc.items) {
+          if (!item.str) continue;
+          if (lastY !== null && Math.abs(item.transform[5] - lastY) > 8) {
+            if (curLine.trim()) fullHtml += `<p>${escapeHtml(curLine.trim())}</p>\n`;
+            curLine = "";
+          }
+          curLine += item.str + " ";
+          lastY = item.transform[5];
+        }
+        if (curLine.trim()) fullHtml += `<p>${escapeHtml(curLine.trim())}</p>\n`;
+        fullHtml += `</div>`;
+      }
+    }
+    fullHtml += `</body></html>`;
+    const blob = new Blob([fullHtml], { type: "text/html" });
     const dlName = getVersionedFilename("html", 2);
     downloadBlob(blob, dlName);
     showNotification(`Exported "${dlName}" successfully!`, "success", 4000);
@@ -2208,15 +2432,46 @@ async function exportToMarkdown() {
   const baseName = getCleanBaseName(state.currentPdfFile.name);
   showNotification(`Extracting Markdown from ${baseName}...`, "info", 3000);
 
+  const isNetlify = window.location.hostname.includes("netlify.app");
+  if (!isNetlify) {
+    try {
+      const formData = new FormData();
+      formData.append("file", state.currentPdfFile);
+
+      const res = await fetch("/api/convert/markdown", { method: "POST", body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        const blob = new Blob([data.markdown || ""], { type: "text/markdown" });
+        const dlName = getVersionedFilename("md", 2);
+        downloadBlob(blob, dlName);
+        showNotification(`Exported "${dlName}" successfully!`, "success", 4000);
+        return;
+      }
+    } catch (_) {}
+  }
+
+  // Client-side Markdown conversion fallback for Netlify & Edge
   try {
-    const formData = new FormData();
-    formData.append("file", state.currentPdfFile);
-
-    const res = await fetch("/api/convert/markdown", { method: "POST", body: formData });
-    if (!res.ok) throw new Error(await res.text());
-
-    const data = await res.json();
-    const blob = new Blob([data.markdown || ""], { type: "text/markdown" });
+    let md = `# ${baseName}\n\n`;
+    for (let p = 1; p <= (state.pageCount || 1); p++) {
+      const tc = await getPageTextContent(p);
+      if (tc && tc.items) {
+        md += `## Page ${p}\n\n`;
+        let curLine = "";
+        let lastY = null;
+        for (const item of tc.items) {
+          if (!item.str) continue;
+          if (lastY !== null && Math.abs(item.transform[5] - lastY) > 8) {
+            if (curLine.trim()) md += `${curLine.trim()}\n\n`;
+            curLine = "";
+          }
+          curLine += item.str + " ";
+          lastY = item.transform[5];
+        }
+        if (curLine.trim()) md += `${curLine.trim()}\n\n`;
+      }
+    }
+    const blob = new Blob([md], { type: "text/markdown" });
     const dlName = getVersionedFilename("md", 2);
     downloadBlob(blob, dlName);
     showNotification(`Exported "${dlName}" successfully!`, "success", 4000);

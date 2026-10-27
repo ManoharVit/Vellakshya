@@ -48,8 +48,7 @@ test.describe('Rotate Tool and Unified Components', () => {
 
     // 5. Test live preview badges
     const previewBadges = page.locator('.live-rotate-preview-badge');
-    const badgeCount = await previewBadges.count();
-    expect(badgeCount).toBeGreaterThanOrEqual(1);
+    await expect(previewBadges.first()).toBeAttached({ timeout: 5000 });
 
     // 6. Test keywords validation
     const pagesInput = page.locator('#rotatePages');

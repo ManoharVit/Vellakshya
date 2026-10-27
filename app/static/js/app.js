@@ -1816,9 +1816,6 @@ function updateUndoRedoUI() {
       historyStepPill.style.display = "flex";
       const currentAction = state.history[state.historyIndex]?.label || "Document";
       historyStepText.textContent = `Rev ${state.historyIndex}/${state.history.length - 1}: ${currentAction}`;
-    } else if (state.history.length === 1) {
-      historyStepPill.style.display = "flex";
-      historyStepText.textContent = "Original Upload";
     } else {
       historyStepPill.style.display = "none";
     }

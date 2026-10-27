@@ -3,14 +3,19 @@ requires = ["setuptools>=70.0.0,<76.0.0", "wheel>=0.43.0,<0.46.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pdf-workbench"
+name = "vellakshya"
 version = "1.0.0"
-description = "Comprehensive PDF workstation with Adobe Acrobat Pro capabilities and PDF-to-HTML conversion"
+description = "Enterprise Document Workstation & PDF Intelligence System"
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
 authors = [
     { name = "Giri Manohar Vemula" }
 ]
+
+[project.urls]
+Homepage = "https://vellakshya.netlify.app/"
+Repository = "https://github.com/ManoharVit/Vellakshya"
+Documentation = "https://github.com/ManoharVit/Vellakshya#readme"
 dependencies = [
     "fastapi>=0.119.0,<0.120.0",
     "starlette>=0.40.0,<0.49.0",

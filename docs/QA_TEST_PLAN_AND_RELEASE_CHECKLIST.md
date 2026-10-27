@@ -3,6 +3,7 @@
 **Author & Lead Architect:** Giri Manohar Vemula  
 **LinkedIn:** [https://www.linkedin.com/in/manoharv511](https://www.linkedin.com/in/manoharv511)  
 **GitHub Repository:** [https://github.com/ManoharVit/Vellakshya.git](https://github.com/ManoharVit/Vellakshya.git)  
+**Production Deployment (Netlify):** [https://vellakshya.netlify.app/](https://vellakshya.netlify.app/)  
 
 ---
 
@@ -143,9 +144,10 @@ python scripts/validate_pdf_fidelity.py baseline.pdf output.pdf --retention 0.98
 
 Before promoting any release build to production:
 - [x] All 25 MVP Tests pass cleanly (`pytest tests/test_mvp_plan.py`).
-- [x] All 79 Python pytest tests pass with zero regressions.
-- [x] All 21 Playwright E2E, a11y, and API tests pass in Chromium and Mobile emulation.
-- [x] All 4 Vitest unit tests pass in under $$200\text{ ms}$$.
+- [x] All 111 Python pytest backend and security tests pass with zero regressions (`PYTHONPATH=. pytest tests/ -v`).
+- [x] All 51 Playwright E2E, a11y, Netlify edge fallback, and API tests pass in Chromium and Mobile emulation (`npx playwright test`).
+- [x] All 4 Vitest unit tests pass in under $$100\text{ ms}$$ (`npm run test:unit`).
 - [x] axe-core reports 0 critical WCAG 2.1 AA violations.
 - [x] k6 performance benchmark confirms $$p(95) < 500\text{ ms}$$ latency and $$0.00\%$$ error rate under 20 concurrent VUs.
+- [x] Zero-backend Netlify production bundle built and validated (`node netlify-build.js`).
 - [x] Git remote repository synchronized and up to date on `main` branch.

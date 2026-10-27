@@ -8,8 +8,8 @@
 const fs = require('fs');
 const path = require('path');
 
-// Priority: BACKEND_URL env var -> Render deployment backend target
-const targetBackend = process.env.BACKEND_URL || 'https://vellakshya.onrender.com';
+// Target backend service for Netlify Edge API proxy
+const targetBackend = process.env.BACKEND_URL || 'https://api.vellakshya.app';
 const staticDir = path.join(__dirname, 'app', 'static');
 const redirectsFile = path.join(staticDir, '_redirects');
 

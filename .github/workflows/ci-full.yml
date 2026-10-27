@@ -1,4 +1,4 @@
-name: Vellakshya Comprehensive Layered CI Pipeline
+name: Vellakshya GitHub Actions CI/CD Pipeline
 
 on:
   push:
@@ -26,7 +26,7 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
 
-      - name: Run Pytest Layered Suite (79 Tests)
+      - name: Run Pytest Layered Suite (111 Tests)
         run: |
           PYTHONPATH=. pytest tests/ -v
 
@@ -110,3 +110,38 @@ jobs:
 
       - name: Execute k6 Load Test
         run: k6 run k6/load-test.js
+
+  build-and-deploy-netlify:
+    name: Build & Validate Netlify Production Bundle (CD)
+    runs-on: ubuntu-latest
+    needs: [test-python, test-node-and-playwright]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Node Dependencies
+        run: npm ci
+
+      - name: Build Netlify Production Bundle & Edge Proxy Rules
+        run: node netlify-build.js
+
+      - name: Validate Netlify Manifest & Assets
+        run: |
+          test -f app/static/index.html
+          test -f app/static/_redirects
+          test -f app/static/js/app.js
+          test -f app/static/css/styles.css
+          echo "Netlify Edge CDN deployment bundle verified."
+
+      - name: Upload Netlify Production Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: netlify-production-bundle
+          path: app/static/
+          retention-days: 14

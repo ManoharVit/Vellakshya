@@ -452,20 +452,17 @@ function buildDropZone(accept = ".pdf", multiple = false, onFileSelected) {
     }
     existingCard.innerHTML = `
       <div class="active-file-card-top">
-        <span style="font-size: 18px;">📄</span>
+        <span style="font-size: 16px;">📄</span>
         <div style="min-width: 0; flex: 1;">
-          <div class="file-pill-name" title="${file.name}">${file.name}</div>
-          <div style="font-size: 11px; color: var(--text-muted);">${(file.size / 1024).toFixed(1)} KB • Active Document</div>
+          <div style="font-size: 12px; font-weight: 600; color: #f1f5f9;">Active Document</div>
+          <div style="font-size: 11px; color: var(--text-muted);">${(file.size / 1024).toFixed(1)} KB</div>
         </div>
       </div>
       <div class="active-file-card-actions">
-        <button type="button" class="btn-card-dl btn-subtle-outline" style="padding: 4px 10px; font-size: 11px; white-space: nowrap;" title="Download active document">⬇️ Download PDF</button>
-        <button type="button" class="btn-secondary btn-card-ch" style="padding: 4px 10px; font-size: 11px; white-space: nowrap;" title="Change file">Change File</button>
+        <button type="button" class="btn-secondary btn-card-ch" style="padding: 4px 10px; font-size: 11px; width: 100%;" title="Change file">Change File</button>
       </div>
     `;
-    const dlBtn = existingCard.querySelector(".btn-card-dl");
     const changeBtn = existingCard.querySelector(".btn-card-ch");
-    if (dlBtn) dlBtn.addEventListener("click", downloadCurrentPdf);
     if (changeBtn) changeBtn.addEventListener("click", () => input.click());
     dropZone.style.display = "none";
   };
@@ -579,7 +576,7 @@ function setPreviewContent(blob, mimeType, filename = "document") {
   const url = URL.createObjectURL(blob);
   state.currentPdfBlobUrl = url;
   state.currentPdfBlob = blob;
-  previewStatus.textContent = `${filename} (${(blob.size / 1024).toFixed(1)} KB)`;
+  previewStatus.innerHTML = `<span style="display:none;">${filename}</span><span>${(blob.size / 1024).toFixed(1)} KB</span>`;
   const docPill = document.getElementById("headerDocPill");
   if (docPill) {
     docPill.textContent = `📄 ${filename}`;
@@ -621,7 +618,7 @@ function setHtmlPreview(htmlString, title = "Converted HTML") {
   if (wordFindBar) wordFindBar.style.display = "none";
   previewFrame.style.display = "block";
   previewFrame.src = url;
-  previewStatus.textContent = `${title} (${(blob.size / 1024).toFixed(1)} KB)`;
+  previewStatus.innerHTML = `<span style="display:none;">${title}</span><span>${(blob.size / 1024).toFixed(1)} KB</span>`;
 
   // Add Action button to download HTML
   workspaceActions.innerHTML = `
@@ -1666,30 +1663,12 @@ async function exportToImagesZip(dpi = 150) {
 
 function updateWorkspaceActions() {
   const btnPreviewExport = document.getElementById("btnPreviewExport");
-  const hasDoc = Boolean(state.currentPdfFile || state.currentPdfBlob);
-
   if (btnPreviewExport) {
-    btnPreviewExport.style.display = hasDoc ? "inline-flex" : "none";
+    btnPreviewExport.style.display = "none";
   }
 
   if (!workspaceActions) return;
-
-  if (!hasDoc) {
-    workspaceActions.innerHTML = "";
-    return;
-  }
-
-  const editsText = state.editCount > 0 ? ` (${state.editCount} edit${state.editCount > 1 ? "s" : ""})` : "";
-  workspaceActions.innerHTML = `
-    <button type="button" class="btn-workspace-util" id="btnWorkspaceDlPdf" title="Download active document with all edits">
-      <span>⬇️</span> Download PDF${editsText}
-    </button>
-  `;
-
-  const btnDl = document.getElementById("btnWorkspaceDlPdf");
-  if (btnDl) {
-    btnDl.onclick = downloadCurrentPdf;
-  }
+  workspaceActions.innerHTML = "";
 }
 
 function setupGlobalExportHandlers() {
@@ -1969,26 +1948,16 @@ function updateActivePdfFromBlob(blob, actionDesc = "edit") {
 function renderDocStatusBadge(containerId, onRevertCallback = null) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  if (!state.currentPdfFile) {
+  if (!state.currentPdfFile || state.editCount === 0) {
     container.innerHTML = "";
     return;
   }
-  const isModified = state.editCount > 0;
   container.innerHTML = `
     <div class="doc-state-banner">
       <div style="display:flex; align-items:center; gap:8px;">
-        <span style="color:#e2e8f0; font-weight:500;">📄 ${escapeHtml(state.currentPdfFile.name)}</span>
-        ${
-          isModified
-            ? `<span class="badge-saved">✓ ${state.editCount} edit${state.editCount > 1 ? 's' : ''} saved in memory</span>`
-            : `<span style="color:#94a3b8; font-size:11px;">(Original)</span>`
-        }
+        <span class="badge-saved">✓ ${state.editCount} edit${state.editCount > 1 ? 's' : ''} saved in memory</span>
       </div>
-      ${
-        isModified
-          ? `<button type="button" class="btn-revert" id="btnRevertDoc">↺ Revert to Original</button>`
-          : ""
-      }
+      <button type="button" class="btn-revert" id="btnRevertDoc">↺ Revert</button>
     </div>
   `;
   const btnRev = container.querySelector("#btnRevertDoc");
@@ -2557,13 +2526,7 @@ function renderExtractTool() {
 function renderCropTool() {
   toolConfigPanel.innerHTML = `
     <div class="panel-section">
-      <div class="pointer-helper-badge">
-        <span style="font-size:18px;">📐</span>
-        <div>
-          <strong>Visual Crop & Margin Trim Active:</strong>
-          <strong>Click and drag a box</strong> across the preview page to select the exact crop window, or specify margin trim distances below.
-        </div>
-      </div>
+      <div class="tool-hint-line">💡 <span>Click &amp; drag box across preview to select crop window</span></div>
       <div class="section-label">Active Document</div>
       <div id="cropUploadArea"></div>
       <div id="cropFileInfo"></div>
@@ -2731,13 +2694,7 @@ function renderCropTool() {
 function renderReplaceTextTool() {
   toolConfigPanel.innerHTML = `
     <div class="panel-section">
-      <div class="pointer-helper-badge">
-        <span style="font-size:18px;">🔍</span>
-        <div>
-          <strong>Word-Style In-Document Find & Replace:</strong>
-          Press <strong>Cmd+F</strong> (or <strong>Ctrl+F</strong>) or click the <strong>"🔍 Find & Replace (Word Mode)"</strong> button in the preview toolbar to search, jump between matches, and replace directly on the page!
-        </div>
-      </div>
+      <div class="tool-hint-line">💡 <span>Press <kbd class="inline-kbd">⌘F</kbd> / <kbd class="inline-kbd">Ctrl+F</kbd> to find &amp; replace directly on page</span></div>
       <div class="section-label">Active Document</div>
       <div id="repUploadArea"></div>
       <div id="repFileInfo"></div>
@@ -2924,14 +2881,8 @@ function renderReplaceTextTool() {
 function renderInsertTextTool() {
   toolConfigPanel.innerHTML = `
     <div class="panel-section">
-      <div class="pointer-helper-badge">
-        <span style="font-size:18px;">📍</span>
-        <div>
-          <strong>Pointer Location & Click-to-Lock Active:</strong>
-          Hover over the document preview to see live point coordinates. <strong>Click anywhere on the document</strong> to instantly lock the Page and (X, Y) coordinates!
-        </div>
-      </div>
-      <div class="section-label">Upload PDF</div>
+      <div class="tool-hint-line">💡 <span>Click anywhere on preview to lock (X, Y) coordinates</span></div>
+      <div class="section-label">Active Document</div>
       <div id="insUploadArea"></div>
       <div id="insFileInfo"></div>
     </div>
@@ -3060,13 +3011,7 @@ function renderInsertTextTool() {
 function renderWhiteoutTool() {
   toolConfigPanel.innerHTML = `
     <div class="panel-section">
-      <div class="pointer-helper-badge">
-        <span style="font-size:18px;">⬜</span>
-        <div>
-          <strong>Visual Area Drag & Lock Active:</strong>
-          <strong>Click and drag a box</strong> across any area on the document preview to automatically measure and lock the erase coordinates without manual number entry!
-        </div>
-      </div>
+      <div class="tool-hint-line">💡 <span>Click &amp; drag box on preview to measure whiteout area</span></div>
       <div class="section-label">Active Document</div>
       <div id="woUploadArea"></div>
       <div id="woFileInfo"></div>

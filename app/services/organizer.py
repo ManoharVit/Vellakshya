@@ -41,17 +41,27 @@ def rotate_pages(pdf_bytes: bytes, pages: list[int] | None = None, angle: int = 
     return out_bytes
 
 
-def parse_page_spec(spec: str) -> list[int]:
+def parse_page_spec(spec: str, total_pages: int | None = None) -> list[int]:
     """
-    Parses comma-separated pages and ranges (e.g. '1, 3, 5-7') into a sorted unique list of 1-indexed page numbers.
+    Parses comma-separated pages, ranges, and keywords (e.g. '1-5', 'odd', 'even', 'all', '1, 3, 5-7')
+    into a sorted unique list of 1-indexed page numbers.
     """
+    if not spec:
+        return []
     pages: set[int] = set()
+    tot = total_pages if (total_pages is not None and total_pages > 0) else 10000
     for part in spec.split(","):
-        part = part.strip()
-        if not part:
+        token = part.strip().lower()
+        if not token:
             continue
-        if "-" in part:
-            bounds = [b.strip() for b in part.split("-", 1)]
+        if token == "odd":
+            pages.update(p for p in range(1, tot + 1) if p % 2 != 0)
+        elif token == "even":
+            pages.update(p for p in range(1, tot + 1) if p % 2 == 0)
+        elif token == "all":
+            pages.update(range(1, tot + 1))
+        elif "-" in token:
+            bounds = [b.strip() for b in token.split("-", 1)]
             try:
                 start = int(bounds[0])
                 end = int(bounds[1])
@@ -63,9 +73,11 @@ def parse_page_spec(spec: str) -> list[int]:
                 continue
         else:
             try:
-                pages.add(int(part))
+                pages.add(int(token))
             except ValueError:
                 continue
+    if total_pages is not None:
+        pages = {p for p in pages if 1 <= p <= total_pages}
     return sorted(pages)
 
 

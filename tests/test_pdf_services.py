@@ -355,4 +355,14 @@ def test_replace_text_preserves_same_font_and_color():
     res_doc.close()
 
 
+def test_parse_page_spec_ranges_and_keywords():
+    from app.services.organizer import parse_page_spec
+    assert parse_page_spec("1-5", total_pages=10) == [1, 2, 3, 4, 5]
+    assert parse_page_spec("odd", total_pages=6) == [1, 3, 5]
+    assert parse_page_spec("even", total_pages=6) == [2, 4, 6]
+    assert parse_page_spec("all", total_pages=4) == [1, 2, 3, 4]
+    assert parse_page_spec("1, 3, 5-7, odd", total_pages=8) == [1, 3, 5, 6, 7]
+
+
+
 

@@ -817,6 +817,58 @@ body {
   padding: 2px;
   border-radius: 6px;
   border: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+/* Central Active Document Title in Preview Toolbar (Red Circle Area) */
+.preview-doc-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px;
+  max-width: 380px;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 500;
+  color: #f1f5f9;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: border-color 0.15s ease;
+}
+
+.preview-doc-title-wrap:hover {
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.preview-doc-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.preview-doc-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  color: #f8fafc;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.preview-doc-edits {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 1px 6px;
+  border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .preview-tab {
@@ -1758,6 +1810,16 @@ body {
   .collab-presence-bar {
     display: none !important;
   }
+  .workspace-split {
+    overflow-x: auto;
+  }
+  .preview-panel {
+    min-width: 320px;
+    flex-shrink: 0;
+  }
+  .thumbnail-strip {
+    z-index: 2;
+  }
 }
 
 /* ============================================================
@@ -1916,7 +1978,7 @@ body {
   flex-direction: column;
   flex-shrink: 0;
   user-select: none;
-  z-index: 5;
+  z-index: 2;
 }
 
 .thumbnail-strip-header {
@@ -2490,6 +2552,415 @@ body {
   color: #cbd5e1;
   margin-bottom: 8px;
 }
+
+/* Preview Hidden Placeholder & State Toggles */
+.preview-hidden-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background-color: var(--bg-canvas);
+}
+
+.php-card {
+  max-width: 420px;
+  text-align: center;
+  background: #141824;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.php-icon {
+  font-size: 36px;
+  margin-bottom: 4px;
+  opacity: 0.8;
+}
+
+.php-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0;
+}
+
+.php-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Thumbnail Strip Header Button & Collapse chevron */
+.thumbnail-strip-header {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.thumbnail-strip-header:hover {
+  background-color: #1e2434;
+}
+
+.thumb-collapse-icon {
+  font-size: 10px;
+  color: #64748b;
+  transition: transform 0.2s ease;
+}
+
+.thumbnail-strip-header:hover .thumb-collapse-icon {
+  color: #38bdf8;
+}
+
+/* Muted / Inactive Tab States */
+.preview-tab-muted {
+  background: transparent !important;
+  color: #94a3b8 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.preview-tab-muted:hover {
+  color: #f1f5f9 !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.preview-tab-hidden {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+.preview-tab-hidden:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* ============================================================
+   Sleek Collapsed Step 1 File Chip (Shared Component)
+   ============================================================ */
+.loaded-file-chip,
+.active-file-card.loaded-file-chip {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  background: rgba(30, 41, 59, 0.75) !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+  border-radius: 6px !important;
+  padding: 6px 10px !important;
+  min-height: 38px !important;
+  overflow: hidden !important;
+  transition: all 0.15s ease;
+}
+
+.loaded-file-chip:hover,
+.active-file-card.loaded-file-chip:hover {
+  border-color: rgba(99, 102, 241, 0.45) !important;
+  background: rgba(30, 41, 59, 0.95) !important;
+}
+
+.loaded-file-chip .chip-main {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  overflow: hidden !important;
+}
+
+.loaded-file-chip .chip-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.loaded-file-chip .chip-filename {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f1f5f9;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  cursor: pointer;
+}
+
+.loaded-file-chip .chip-filesize {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-left: 2px;
+}
+
+.loaded-file-chip .btn-chip-action {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: #e2e8f0;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: all 0.12s ease;
+}
+
+.loaded-file-chip .btn-chip-action:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Thumbnail Strip Footer and Per-Page Rotate Button */
+.thumb-footer {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 2px 0 2px;
+  gap: 4px;
+}
+
+.btn-thumb-rotate {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  color: #94a3b8;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 1px 4px;
+  line-height: 1.2;
+  transition: all 0.15s ease;
+}
+
+.btn-thumb-rotate:hover {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #60a5fa;
+  transform: rotate(45deg);
+}
+
+/* Live Rotated Preview Badges */
+.live-rotate-preview-badge {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: rgba(37, 99, 235, 0.9);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  z-index: 10;
+  pointer-events: none;
+  animation: pulse-badge 1.8s infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 0.95; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.97); }
+}
+
+.thumb-rotate-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(37, 99, 235, 0.85);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 6px;
+  z-index: 2;
+}
+
+/* Page-Range Syntax Documentation & Validation */
+.range-syntax-docs {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+.range-syntax-docs code {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.range-validation-feedback {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.3;
+  padding: 2px 4px;
+  transition: all 0.15s ease;
+}
+
+.range-validation-feedback.is-valid {
+  color: #34d399;
+}
+
+.range-validation-feedback.is-invalid {
+  color: #f87171;
+}
+
+.range-input-invalid {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 1px #ef4444 !important;
+}
+
+/* ============================================================
+   Layout Strategy Plain-Language Hint
+   ============================================================ */
+.layout-mode-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #94a3b8;
+  padding: 6px 9px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 4px;
+}
+
+/* ============================================================
+   Step 3 Converted Output & Preview
+   ============================================================ */
+.html-output-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(18, 21, 32, 0.85);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.html-output-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.html-output-badge {
+  color: #34d399;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.html-output-size {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.html-output-preview-box {
+  width: 100%;
+  height: 125px;
+  background: #ffffff;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.html-mini-preview {
+  width: 100%;
+  height: 100%;
+  border: none;
+  pointer-events: none;
+  transform-origin: 0 0;
+}
+
+/* ============================================================
+   Unified Pages Toggle Control & Clear Active State
+   ============================================================ */
+.preview-toggle-pages {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.preview-toggle-pages.active {
+  background: rgba(37, 99, 235, 0.25) !important;
+  color: #60a5fa !important;
+  border: 1px solid rgba(96, 165, 250, 0.55) !important;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.35) !important;
+}
+
+.preview-toggle-pages.active .pages-toggle-dot {
+  color: #38bdf8;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.preview-toggle-pages:not(.active),
+.preview-toggle-pages.preview-tab-muted {
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #94a3b8 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none !important;
+}
+
+.preview-toggle-pages:not(.active) .pages-toggle-dot,
+.preview-toggle-pages.preview-tab-muted .pages-toggle-dot {
+  color: #64748b;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.thumb-collapse-btn {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 11px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  border-radius: 3px;
+  transition: all 0.12s ease;
+}
+
+.thumb-collapse-btn:hover {
+  color: #38bdf8;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.thumb-rail-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+
 
 
 

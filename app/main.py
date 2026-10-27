@@ -48,6 +48,11 @@ app.include_router(v2_documents_router)
 app.include_router(collaboration_ws_router)
 
 
+def make_attachment_filename(source_filename: Optional[str], suffix: str, ext: str = "pdf") -> str:
+    stem = Path(source_filename or "document").stem
+    return f"{stem}_{suffix}.{ext}"
+
+
 @app.on_event("startup")
 async def startup_event():
     """Starts the background worker queue processor upon application launch."""
@@ -359,10 +364,11 @@ async def convert_images_to_pdf(
         images_data.append((f.filename or "image.png", data))
         
     pdf_bytes = converter.images_to_pdf(images_data)
+    first_img_stem = Path(files[0].filename or 'image').stem if files else 'images'
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": "attachment; filename=combined_from_images.pdf"},
+        headers={"Content-Disposition": f"attachment; filename={first_img_stem}_from_{len(files)}images.pdf"},
     )
 
 
@@ -391,10 +397,11 @@ async def merge_pdf_files(
     """
     pdf_bytes_list = [await f.read() for f in files]
     merged = organizer.merge_pdfs(pdf_bytes_list)
+    first_stem = Path(files[0].filename or 'document').stem if files else 'document'
     return Response(
         content=merged,
         media_type="application/pdf",
-        headers={"Content-Disposition": "attachment; filename=merged.pdf"},
+        headers={"Content-Disposition": f"attachment; filename={first_stem}_merged_{len(files)}files.pdf"},
     )
 
 
@@ -411,12 +418,14 @@ async def split_pdf(
     if not parts:
         raise HTTPException(status_code=400, detail="Invalid page ranges specified.")
         
+    stem = Path(file.filename or 'document').stem
     # Return as single or zip
     if len(parts) == 1:
+        part_clean = parts[0][0].replace('.pdf', '')
         return Response(
             content=parts[0][1],
             media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename={parts[0][0]}"},
+            headers={"Content-Disposition": f"attachment; filename={stem}_{part_clean}.pdf"},
         )
     else:
         import io, zipfile
@@ -427,7 +436,7 @@ async def split_pdf(
         return Response(
             content=buf.getvalue(),
             media_type="application/zip",
-            headers={"Content-Disposition": "attachment; filename=split_pages.zip"},
+            headers={"Content-Disposition": f"attachment; filename={stem}_split_pages.zip"},
         )
 
 
@@ -441,12 +450,15 @@ async def rotate_pdf_pages(
     Rotates all or selected pages by 90, 180, or 270 degrees.
     """
     pdf_bytes = await file.read()
-    page_list = organizer.parse_page_spec(pages) if pages else None
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    total_pages = len(doc)
+    doc.close()
+    page_list = organizer.parse_page_spec(pages, total_pages=total_pages) if pages else None
     rotated = organizer.rotate_pages(pdf_bytes, pages=page_list, angle=angle)
     return Response(
         content=rotated,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=rotated_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'rotated')}"},
     )
 
 
@@ -472,7 +484,7 @@ async def delete_pdf_pages(
     return Response(
         content=modified,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=pruned_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'deleted')}"},
     )
 
 
@@ -490,7 +502,7 @@ async def reorder_pdf_pages(
     return Response(
         content=reordered,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=reordered_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'reordered')}"},
     )
 
 
@@ -510,7 +522,7 @@ async def extract_pdf_pages(
     return Response(
         content=extracted,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=extracted_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'extracted')}"},
     )
 
 
@@ -548,7 +560,7 @@ async def crop_pdf_pages(
     return Response(
         content=cropped,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=cropped_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'cropped')}"},
     )
 
 
@@ -574,7 +586,7 @@ async def add_watermark(
     return Response(
         content=watermarked,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=watermarked_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'watermarked')}"},
     )
 
 
@@ -595,7 +607,7 @@ async def add_page_numbers(
     return Response(
         content=paginated,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=paginated_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'numbered')}"},
     )
 
 
@@ -613,7 +625,7 @@ async def add_header_footer(
     return Response(
         content=modified,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=header_footer_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'header_footer')}"},
     )
 
 
@@ -631,7 +643,7 @@ async def highlight_terms(
     return Response(
         content=highlighted,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=highlighted_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'highlighted')}"},
     )
 
 
@@ -765,7 +777,7 @@ async def replace_pdf_text(
         content=modified,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f"attachment; filename=edited_{file.filename}",
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'edited')}",
             "X-Replacement-Count": str(count),
         },
     )
@@ -801,7 +813,7 @@ async def insert_pdf_text(
     return Response(
         content=modified,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=text_inserted_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'text_inserted')}"},
     )
 
 
@@ -822,7 +834,7 @@ async def whiteout_pdf_area(
     return Response(
         content=modified,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=whiteout_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'whiteout')}"},
     )
 
 
@@ -852,7 +864,7 @@ async def encrypt_document(
     return Response(
         content=encrypted,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=secured_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'encrypted')}"},
     )
 
 
@@ -873,7 +885,7 @@ async def decrypt_document(
     return Response(
         content=decrypted,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=unlocked_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'decrypted')}"},
     )
 
 
@@ -892,7 +904,7 @@ async def redact_document(
         content=redacted,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f"attachment; filename=redacted_{file.filename}",
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'redacted')}",
             "X-Redaction-Count": str(count),
         },
     )
@@ -910,7 +922,7 @@ async def sanitize_document(
     return Response(
         content=sanitized,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=sanitized_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'sanitized')}"},
     )
 
 
@@ -944,7 +956,7 @@ async def fill_form_fields(
     return Response(
         content=filled,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=filled_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'filled')}"},
     )
 
 
@@ -991,7 +1003,7 @@ async def update_metadata(
     return Response(
         content=updated,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=updated_meta_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'metadata')}"},
     )
 
 
@@ -1011,7 +1023,7 @@ async def delete_metadata(
     return Response(
         content=cleared,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=cleared_meta_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'cleared_meta')}"},
     )
 
 
@@ -1034,7 +1046,7 @@ async def sign_document(
     return Response(
         content=signed_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=signed_{file.filename}"},
+        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'signed')}"},
     )
 
 
@@ -1070,7 +1082,7 @@ async def merge_concurrent_edits(
         content=merged_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f"attachment; filename=collab_merged_{file.filename}",
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'collab_merged')}",
             "x-collab-summary": json.dumps(summary),
         },
     )
@@ -1094,7 +1106,7 @@ async def sync_offline_actions(
         content=synced_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f"attachment; filename=offline_synced_{file.filename}",
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'offline_synced')}",
             "x-sync-summary": json.dumps(summary),
         },
     )

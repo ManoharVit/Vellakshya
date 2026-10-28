@@ -562,12 +562,22 @@ function buildDropZone(accept = ".pdf", multiple = false, onFileSelected) {
 
   const dropZone = document.createElement("div");
   dropZone.className = "drop-zone";
+  dropZone.tabIndex = 0;
+  dropZone.setAttribute("role", "button");
+  dropZone.setAttribute("aria-label", "Upload PDF file drop zone");
   dropZone.innerHTML = `
-    <div class="drop-zone-icon">📥</div>
+    <div class="drop-zone-icon" aria-hidden="true">📥</div>
     <div class="drop-zone-text">Click or drag file here</div>
     <button type="button" class="btn-tool-primary" style="margin: 8px 0; padding: 6px 14px; font-size: 13px;" aria-label="Upload PDF">Upload PDF</button>
     <div class="drop-zone-hint">Accepts ${accept}</div>
   `;
+
+  dropZone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      input.click();
+    }
+  });
 
   const renderActiveCard = (file) => {
     if (multiple) return;
@@ -594,6 +604,7 @@ function buildDropZone(accept = ".pdf", multiple = false, onFileSelected) {
 
   dropZone.addEventListener("click", () => input.click());
   input.addEventListener("change", (e) => {
+    clearErrorSummary(toolConfigPanel);
     if (multiple) {
       onFileSelected(Array.from(e.target.files));
     } else if (e.target.files[0]) {
@@ -607,9 +618,6 @@ function buildDropZone(accept = ".pdf", multiple = false, onFileSelected) {
     renderActiveCard(state.currentPdfFile);
   }
 
-  container.appendChild(dropZone);
-  container.appendChild(input);
-
   dropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
     dropZone.classList.add("dragover");
@@ -618,10 +626,13 @@ function buildDropZone(accept = ".pdf", multiple = false, onFileSelected) {
   dropZone.addEventListener("drop", (e) => {
     e.preventDefault();
     dropZone.classList.remove("dragover");
+    clearErrorSummary(toolConfigPanel);
     if (multiple) {
       onFileSelected(Array.from(e.dataTransfer.files));
     } else if (e.dataTransfer.files[0]) {
-      onFileSelected(e.dataTransfer.files[0]);
+      const file = e.dataTransfer.files[0];
+      renderActiveCard(file);
+      onFileSelected(file);
     }
   });
 
@@ -2138,9 +2149,13 @@ async function clientReorderPages(file, pageOrder) {
 }
 
 async function executeWordReplace() {
-  if (!state.currentPdfFile) return alert("No active document loaded.");
+  if (!state.currentPdfFile) {
+    showNotification("No active document loaded.", "warning");
+    return;
+  }
   if (state.wordFindMatches.length === 0 || state.activeMatchIndex < 0) {
-    return alert("No active match selected to replace.");
+    showNotification("No active match selected to replace.", "warning");
+    return;
   }
 
   const currentIndex = state.activeMatchIndex;
@@ -2232,7 +2247,7 @@ async function executeWordReplace() {
       }
     }, 250);
   } catch (err) {
-    alert("Word replace failed: " + err.message);
+    showNotification("Word replace failed: " + err.message, "error");
   } finally {
     wfbBtnReplace.disabled = false;
     wfbBtnReplace.textContent = "Replace";
@@ -2240,9 +2255,15 @@ async function executeWordReplace() {
 }
 
 async function executeWordReplaceAll() {
-  if (!state.currentPdfFile) return alert("No active document loaded.");
+  if (!state.currentPdfFile) {
+    showNotification("No active document loaded.", "warning");
+    return;
+  }
   const query = wfbSearchInput.value.trim();
-  if (!query) return alert("Please enter text in the Find field.");
+  if (!query) {
+    showNotification("Please enter text in the Find field.", "warning");
+    return;
+  }
   const replaceText = wfbReplaceInput.value;
 
   wfbBtnReplaceAll.disabled = true;
@@ -2313,10 +2334,10 @@ async function executeWordReplaceAll() {
 
     setTimeout(() => {
       executeWordFind(query);
-      alert(`Word Replace Complete: ${count} occurrence(s) of "${query}" replaced with "${replaceText}"!\nSaved into active document memory.`);
+      showAppToast(`Word Replace Complete: ${count} occurrence(s) replaced! Saved into active document.`, "success");
     }, 250);
   } catch (err) {
-    alert("Replace All failed: " + err.message);
+    showNotification("Replace All failed: " + err.message, "error");
   } finally {
     wfbBtnReplaceAll.disabled = false;
     wfbBtnReplaceAll.textContent = "Replace All";
@@ -2365,7 +2386,8 @@ function downloadBlob(blob, filename) {
 function downloadCurrentPdf() {
   const docBlob = state.currentPdfBlob || state.currentPdfFile;
   if (!docBlob) {
-    return alert("No active document loaded. Please upload or select a document first.");
+    showNotification("No active document loaded. Please upload or select a document first.", "warning");
+    return;
   }
   const downloadName = getVersionedFilename("pdf");
   downloadBlob(docBlob, downloadName);
@@ -2374,7 +2396,8 @@ function downloadCurrentPdf() {
 
 async function exportToHtml(mode = "fixed") {
   if (!state.currentPdfFile) {
-    return alert("Please upload or open a PDF document first to export as HTML.");
+    showNotification("Please upload or open a PDF document first to export as HTML.", "warning");
+    return;
   }
   const baseName = getCleanBaseName(state.currentPdfFile.name);
   showNotification(`Converting ${baseName} to ${mode === "semantic" ? "Semantic" : "Fixed"} HTML...`, "info", 3000);
@@ -2426,13 +2449,14 @@ async function exportToHtml(mode = "fixed") {
     downloadBlob(blob, dlName);
     showNotification(`Exported "${dlName}" successfully!`, "success", 4000);
   } catch (err) {
-    alert("HTML Export failed: " + err.message);
+    showNotification("HTML Export failed: " + err.message, "error");
   }
 }
 
 async function exportToMarkdown() {
   if (!state.currentPdfFile) {
-    return alert("Please upload or open a PDF document first to export as Markdown.");
+    showNotification("Please upload or open a PDF document first to export as Markdown.", "warning");
+    return;
   }
   const baseName = getCleanBaseName(state.currentPdfFile.name);
   showNotification(`Extracting Markdown from ${baseName}...`, "info", 3000);
@@ -2481,13 +2505,14 @@ async function exportToMarkdown() {
     downloadBlob(blob, dlName);
     showNotification(`Exported "${dlName}" successfully!`, "success", 4000);
   } catch (err) {
-    alert("Markdown Export failed: " + err.message);
+    showNotification("Markdown Export failed: " + err.message, "error");
   }
 }
 
 async function exportToImagesZip(dpi = 150) {
   if (!state.currentPdfFile) {
-    return alert("Please upload or open a PDF document first to export images.");
+    showNotification("Please upload or open a PDF document first to export images.", "warning");
+    return;
   }
   const baseName = getCleanBaseName(state.currentPdfFile.name);
   showNotification(`Rendering page images at ${dpi} DPI...`, "info", 4000);
@@ -2506,7 +2531,7 @@ async function exportToImagesZip(dpi = 150) {
     downloadBlob(blob, dlName);
     showNotification(`Exported "${dlName}" successfully!`, "success", 4000);
   } catch (err) {
-    alert("Images ZIP Export failed: " + err.message);
+    showNotification("Images ZIP Export failed: " + err.message, "error");
   }
 }
 
@@ -2593,6 +2618,135 @@ function showHistoryToast(msg) {
   toastTimer = setTimeout(() => {
     historyToast.classList.remove("show");
   }, 2400);
+}
+
+/**
+ * Shows an accessible, non-blocking toast notification.
+ * Pattern inspired by Material Design, Carbon Design System, and Nielsen Heuristic #1.
+ *
+ * @param {string} msg
+ * @param {'success'|'error'|'warning'|'info'} type
+ * @param {number} durationMs
+ */
+function showAppToast(msg, type = "info", durationMs = 3500) {
+  let container = document.getElementById("appToastContainer");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "appToastContainer";
+    container.className = "app-toast-container";
+    container.setAttribute("role", "status");
+    container.setAttribute("aria-live", "polite");
+    document.body.appendChild(container);
+  }
+
+  const icons = {
+    success: "✓",
+    error: "⚠️",
+    warning: "⚡",
+    info: "ℹ️",
+  };
+
+  const toast = document.createElement("div");
+  toast.className = `app-toast toast-${type}`;
+  toast.innerHTML = `
+    <span class="app-toast-icon">${icons[type] || "ℹ️"}</span>
+    <span class="app-toast-msg" style="flex:1;">${escapeHtml(msg)}</span>
+    <button type="button" class="app-toast-close" aria-label="Dismiss">&times;</button>
+  `;
+
+  const closeBtn = toast.querySelector(".app-toast-close");
+  closeBtn?.addEventListener("click", () => toast.remove());
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateX(20px)";
+    toast.style.transition = "all 0.25s ease-out";
+    setTimeout(() => toast.remove(), 250);
+  }, durationMs);
+}
+
+/**
+ * Displays an accessible GOV.UK-style Error Summary at the top of a panel.
+ * Focuses the summary card for keyboard and screen-reader accessibility.
+ *
+ * @param {HTMLElement} parentContainer
+ * @param {string|string[]} errors
+ */
+function renderErrorSummary(parentContainer, errors) {
+  if (!parentContainer) return;
+  const existing = parentContainer.querySelector(".app-error-summary");
+  if (existing) existing.remove();
+
+  const errorList = Array.isArray(errors) ? errors : [errors];
+  if (errorList.length === 0) return;
+
+  const summary = document.createElement("div");
+  summary.className = "app-error-summary";
+  summary.setAttribute("role", "alert");
+  summary.setAttribute("tabindex", "-1");
+  summary.innerHTML = `
+    <div class="app-error-summary__header">
+      <span class="app-error-summary__icon">⚠️</span>
+      <h3 class="app-error-summary__title">There is a problem</h3>
+    </div>
+    <ul class="app-error-summary__list">
+      ${errorList.map((err) => `<li>${escapeHtml(err)}</li>`).join("")}
+    </ul>
+  `;
+
+  parentContainer.insertBefore(summary, parentContainer.firstChild);
+  summary.focus();
+  showAppToast(errorList[0], "error");
+}
+
+function clearErrorSummary(parentContainer) {
+  if (!parentContainer) return;
+  const existing = parentContainer.querySelector(".app-error-summary");
+  if (existing) existing.remove();
+}
+
+/**
+ * Renders an accessible step-by-step progress indicator.
+ * Follows GOV.UK Step-by-Step Navigation & Material Design Steppers pattern.
+ *
+ * @param {HTMLElement} parentContainer
+ * @param {string[]} steps - Array of step titles, e.g. ["1. Upload", "2. Configure", "3. Converted HTML"]
+ * @param {number} activeIndex - 0-indexed active step
+ */
+function renderWorkflowStepper(parentContainer, steps, activeIndex = 0) {
+  if (!parentContainer) return;
+  let stepper = parentContainer.querySelector(".workflow-stepper");
+  if (!stepper) {
+    stepper = document.createElement("nav");
+    stepper.className = "workflow-stepper";
+    stepper.setAttribute("aria-label", "Workflow progress");
+    parentContainer.insertBefore(stepper, parentContainer.firstChild);
+  }
+
+  stepper.innerHTML = steps
+    .map((step, idx) => {
+      let stateClass = "step-upcoming";
+      let icon = idx + 1;
+      let ariaCurrent = "";
+      if (idx === activeIndex) {
+        stateClass = "step-active";
+        ariaCurrent = ' aria-current="step"';
+      } else if (idx < activeIndex) {
+        stateClass = "step-complete";
+        icon = "✓";
+      }
+      const divider = idx < steps.length - 1 ? '<div class="workflow-step-divider" aria-hidden="true"></div>' : "";
+      return `
+        <div class="workflow-step ${stateClass}"${ariaCurrent}>
+          <span class="workflow-step-num" aria-hidden="true">${icon}</span>
+          <span class="workflow-step-label">${escapeHtml(step)}</span>
+        </div>
+        ${divider}
+      `;
+    })
+    .join("");
 }
 
 function pushHistory(blob, file, label = "Edit") {
@@ -2877,9 +3031,12 @@ function renderPdfToHtmlTool() {
   `;
 
   const uploadArea = document.getElementById("htmlUploadArea");
+  renderWorkflowStepper(toolConfigPanel, ["Upload PDF", "Choose Layout", "Converted HTML"], state.currentPdfFile ? 1 : 0);
+
   uploadArea.appendChild(
     buildDropZone(".pdf", false, (file) => {
       setActivePdf(file);
+      renderWorkflowStepper(toolConfigPanel, ["Upload PDF", "Choose Layout", "Converted HTML"], 1);
     })
   );
 
@@ -2895,9 +3052,10 @@ function renderPdfToHtmlTool() {
 
   document.getElementById("btnRunConvertHtml").addEventListener("click", async () => {
     if (!state.currentPdfFile) {
-      alert("Please upload a PDF file first.");
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first before starting conversion.");
       return;
     }
+    clearErrorSummary(toolConfigPanel);
     const mode = document.getElementById("htmlMode").value;
     const btn = document.getElementById("btnRunConvertHtml");
     btn.innerHTML = `<span class="spinner"></span> Converting...`;
@@ -2918,6 +3076,8 @@ function renderPdfToHtmlTool() {
       const baseName = getCleanBaseName(state.currentPdfFile.name);
       setHtmlPreview(htmlText, baseName);
       headerStatus.textContent = "Conversion Complete";
+      showAppToast("PDF to HTML conversion completed successfully!", "success");
+      renderWorkflowStepper(toolConfigPanel, ["Upload PDF", "Choose Layout", "Converted HTML"], 2);
 
       // Reveal Step 3 Output Preview
       const step3 = document.getElementById("htmlStep3Section");
@@ -2933,12 +3093,12 @@ function renderPdfToHtmlTool() {
             const htmlBlob = new Blob([htmlText], { type: "text/html" });
             const dlName = getVersionedFilename("html", 2);
             downloadBlob(htmlBlob, dlName);
-            showNotification(`Downloaded "${dlName}"`, "success", 3000);
+            showAppToast(`Downloaded "${dlName}"`, "success", 3000);
           };
         }
       }
     } catch (err) {
-      alert("Conversion failed: " + err.message);
+      renderErrorSummary(toolConfigPanel, "Conversion failed: " + err.message);
     } finally {
       btn.innerHTML = `⚡ Convert PDF to HTML`;
       btn.disabled = false;
@@ -2961,6 +3121,8 @@ function renderMergeTool() {
     </div>
   `;
 
+  renderWorkflowStepper(toolConfigPanel, ["Select Files", "Verify Order", "Merged PDF"], 0);
+
   state.multiFiles = [];
   const uploadArea = document.getElementById("mergeUploadArea");
   const listArea = document.getElementById("mergeFileList");
@@ -2973,6 +3135,7 @@ function renderMergeTool() {
   );
 
   function renderMergeList() {
+    renderWorkflowStepper(toolConfigPanel, ["Select Files", "Verify Order", "Merged PDF"], state.multiFiles.length >= 2 ? 1 : 0);
     listArea.innerHTML = state.multiFiles
       .map(
         (f, i) => `
@@ -2992,9 +3155,10 @@ function renderMergeTool() {
 
   document.getElementById("btnRunMerge").addEventListener("click", async () => {
     if (state.multiFiles.length < 2) {
-      alert("Please select at least 2 PDF files to merge.");
+      renderErrorSummary(toolConfigPanel, "Please select at least 2 PDF files to merge into a single document.");
       return;
     }
+    clearErrorSummary(toolConfigPanel);
     const formData = new FormData();
     state.multiFiles.forEach((f) => formData.append("files", f));
 
@@ -3014,6 +3178,8 @@ function renderMergeTool() {
       : "document";
     const mergeName = `${firstBase}_merged_${state.multiFiles.length}files.pdf`;
     setPreviewContent(blob, "application/pdf", mergeName);
+    showAppToast(`Merged ${state.multiFiles.length} PDF files successfully!`, "success");
+    renderWorkflowStepper(toolConfigPanel, ["Select Files", "Verify Order", "Merged PDF"], 2);
     workspaceActions.innerHTML = `<button class="btn-primary" id="btnDlMerged">⬇️ Download Merged PDF</button>`;
     document.getElementById("btnDlMerged").onclick = () => downloadBlob(blob, mergeName);
   });
@@ -3040,15 +3206,22 @@ function renderSplitTool() {
     </div>
   `;
 
+  renderWorkflowStepper(toolConfigPanel, ["Upload PDF", "Set Ranges", "Download Split"], state.currentPdfFile ? 1 : 0);
+
   document.getElementById("splitUploadArea").appendChild(
     buildDropZone(".pdf", false, (file) => {
       state.currentPdfFile = file;
       setPreviewContent(file, "application/pdf", file.name);
+      renderWorkflowStepper(toolConfigPanel, ["Upload PDF", "Set Ranges", "Download Split"], 1);
     })
   );
 
   document.getElementById("btnRunSplit").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Upload a PDF file first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first before running split.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
     const ranges = document.getElementById("splitRanges").value;
     const formData = new FormData();
     formData.append("file", state.currentPdfFile);
@@ -3074,6 +3247,8 @@ function renderSplitTool() {
     const cleanRanges = ranges.replace(/\s+/g, "").replace(/,/g, "_");
     const splitName = isZip ? `${baseName}_split_pages.zip` : `${baseName}_split_p${cleanRanges || "1"}.pdf`;
     downloadBlob(blob, splitName);
+    showAppToast(`Split complete! Downloaded ${splitName}`, "success");
+    renderWorkflowStepper(toolConfigPanel, ["Upload PDF", "Set Ranges", "Download Split"], 2);
   });
 }
 
@@ -3617,9 +3792,16 @@ function renderReorderTool() {
   );
 
   document.getElementById("btnRunReorder").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Upload a PDF first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first.");
+      return;
+    }
     const order = document.getElementById("reorderSequence").value;
-    if (!order) return alert("Enter page sequence.");
+    if (!order) {
+      renderErrorSummary(toolConfigPanel, "Please enter a new page sequence (e.g. 3, 1, 2).");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
 
     let blob = null;
     const isNetlify = window.location.hostname.includes("netlify.app");
@@ -3640,7 +3822,7 @@ function renderReorderTool() {
 
     updateActivePdfFromBlob(blob, "Reorder Pages");
     renderDocStatusBadge("reorderFileInfo");
-    alert("Pages reordered and saved to active in-memory document!");
+    showAppToast("Pages reordered and saved to active in-memory document!", "success");
   });
 }
 
@@ -3672,9 +3854,16 @@ function renderExtractTool() {
   );
 
   document.getElementById("btnRunExtract").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Upload a PDF first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first.");
+      return;
+    }
     const pages = document.getElementById("extractPages").value;
-    if (!pages) return alert("Enter pages to extract.");
+    if (!pages) {
+      renderErrorSummary(toolConfigPanel, "Please enter pages to extract (e.g. 1, 3, 5).");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
 
     let blob = null;
     const isNetlify = window.location.hostname.includes("netlify.app");
@@ -3697,6 +3886,7 @@ function renderExtractTool() {
     const cleanPages = pages.replace(/\s+/g, "").replace(/,/g, "_");
     const extractName = `${baseName}_extracted_p${cleanPages || "pages"}.pdf`;
     setPreviewContent(blob, "application/pdf", extractName);
+    showAppToast(`Extracted pages successfully! Downloaded ${extractName}`, "success");
     workspaceActions.innerHTML = `<button class="btn-primary" id="btnDlExtract">⬇️ Download Extracted PDF</button>`;
     document.getElementById("btnDlExtract").onclick = () => downloadBlob(blob, extractName);
   });
@@ -3944,7 +4134,11 @@ function renderCropTool() {
   updateVisualCropPreview();
 
   document.getElementById("btnRunCrop").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Please upload a PDF file first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first before cropping.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
     const btn = document.getElementById("btnRunCrop");
     btn.innerHTML = `<span class="spinner"></span> Cropping...`;
     btn.disabled = true;
@@ -3987,9 +4181,9 @@ function renderCropTool() {
 
       updateActivePdfFromBlob(blob, "Crop Pages");
       renderDocStatusBadge("cropFileInfo");
-      alert("Pages cropped and resized successfully! Saved into active document memory.");
+      showAppToast("Pages cropped and resized successfully! Saved into active document memory.", "success");
     } catch (err) {
-      alert("Cropping failed: " + err.message);
+      renderErrorSummary(toolConfigPanel, "Cropping failed: " + err.message);
     } finally {
       btn.innerHTML = `📐 Crop Document Pages`;
       btn.disabled = false;
@@ -4111,7 +4305,10 @@ function renderReplaceTextTool() {
   });
 
   document.getElementById("btnRunReplace").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Please upload a PDF file first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first before finding and replacing text.");
+      return;
+    }
 
     const findInputs = rulesList.querySelectorAll(".rule-find");
     const replaceInputs = rulesList.querySelectorAll(".rule-replace");
@@ -4131,8 +4328,10 @@ function renderReplaceTextTool() {
     }
 
     if (rules.length === 0) {
-      return alert("Please enter the text you wish to find and replace.");
+      renderErrorSummary(toolConfigPanel, "Please enter the text you wish to find and replace.");
+      return;
     }
+    clearErrorSummary(toolConfigPanel);
 
     const btn = document.getElementById("btnRunReplace");
     btn.innerHTML = `<span class="spinner"></span> Replacing...`;
@@ -4185,9 +4384,9 @@ function renderReplaceTextTool() {
       ruleCounter = 0;
       addRuleRow();
 
-      alert(`Success: ${count} occurrence(s) replaced!\n\nYour changes are saved to the active in-memory document. You can now enter another replacement or download.`);
+      showAppToast(`Success: ${count} occurrence(s) replaced! Saved into active document.`, "success");
     } catch (err) {
-      alert("Text replacement failed: " + err.message);
+      renderErrorSummary(toolConfigPanel, "Text replacement failed: " + err.message);
     } finally {
       btn.innerHTML = `✏️ Find & Replace Text`;
       btn.disabled = false;
@@ -4290,9 +4489,16 @@ function renderInsertTextTool() {
   );
 
   document.getElementById("btnRunInsertText").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Please upload a PDF file first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first before inserting text.");
+      return;
+    }
     const text = document.getElementById("insText").value;
-    if (!text) return alert("Please enter text to insert.");
+    if (!text) {
+      renderErrorSummary(toolConfigPanel, "Please enter text to insert.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
 
     const btn = document.getElementById("btnRunInsertText");
     btn.innerHTML = `<span class="spinner"></span> Inserting...`;
@@ -4333,9 +4539,9 @@ function renderInsertTextTool() {
 
       updateActivePdfFromBlob(blob, "Insert Text");
       renderDocStatusBadge("insFileInfo");
-      alert("Text inserted and saved to active in-memory document!");
+      showAppToast("Text inserted and saved to active in-memory document!", "success");
     } catch (err) {
-      alert("Inserting text failed: " + err.message);
+      renderErrorSummary(toolConfigPanel, "Inserting text failed: " + err.message);
     } finally {
       btn.innerHTML = `✍️ Insert Text Box`;
       btn.disabled = false;
@@ -4398,7 +4604,11 @@ function renderWhiteoutTool() {
   );
 
   document.getElementById("btnRunWhiteout").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Upload a PDF file first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first before using whiteout.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
 
     try {
       let blob = null;
@@ -4430,9 +4640,9 @@ function renderWhiteoutTool() {
 
       updateActivePdfFromBlob(blob, "Whiteout");
       renderDocStatusBadge("woFileInfo");
-      alert("Area erased and saved to active in-memory document!");
+      showAppToast("Area erased and saved to active in-memory document!", "success");
     } catch (err) {
-      alert("Whiteout failed: " + err.message);
+      renderErrorSummary(toolConfigPanel, "Whiteout failed: " + err.message);
     }
   });
 }
@@ -4480,7 +4690,11 @@ function renderWatermarkTool() {
   );
 
   document.getElementById("btnRunWm").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Upload a PDF first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first before applying watermark.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
 
     try {
       let blob = null;
@@ -4510,9 +4724,9 @@ function renderWatermarkTool() {
 
       updateActivePdfFromBlob(blob, "Watermark");
       renderDocStatusBadge("wmFileInfo");
-      alert("Watermark applied and saved to active in-memory document!");
+      showAppToast("Watermark applied and saved to active in-memory document!", "success");
     } catch (err) {
-      alert("Watermark failed: " + err.message);
+      renderErrorSummary(toolConfigPanel, "Watermark failed: " + err.message);
     }
   });
 }
@@ -4557,7 +4771,11 @@ function renderPageNumbersTool() {
   );
 
   document.getElementById("btnRunPn").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Upload a PDF first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first before adding page numbers.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
 
     try {
       let blob = null;
@@ -4585,9 +4803,9 @@ function renderPageNumbersTool() {
 
       updateActivePdfFromBlob(blob, "Page Numbers");
       renderDocStatusBadge("pnFileInfo");
-      alert("Page numbers added and saved to active in-memory document!");
+      showAppToast("Page numbers added and saved to active in-memory document!", "success");
     } catch (err) {
-      alert("Page numbering failed: " + err.message);
+      renderErrorSummary(toolConfigPanel, "Page numbering failed: " + err.message);
     }
   });
 }
@@ -4627,7 +4845,11 @@ function renderHeaderFooterTool() {
   );
 
   document.getElementById("btnRunHf").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Upload a PDF first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first before adding header & footer.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
 
     try {
       let blob = null;
@@ -4654,9 +4876,9 @@ function renderHeaderFooterTool() {
 
       updateActivePdfFromBlob(blob, "Header & Footer");
       renderDocStatusBadge("hfFileInfo");
-      alert("Header & footer applied and saved to active in-memory document!");
+      showAppToast("Header & footer applied and saved to active in-memory document!", "success");
     } catch (err) {
-      alert("Header & footer failed: " + err.message);
+      renderErrorSummary(toolConfigPanel, "Header & footer failed: " + err.message);
     }
   });
 }
@@ -4693,9 +4915,16 @@ function renderHighlightTool() {
   );
 
   document.getElementById("btnRunHl").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Upload a PDF first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first before highlighting.");
+      return;
+    }
     const terms = document.getElementById("hlTerms").value;
-    if (!terms) return alert("Enter keywords to highlight.");
+    if (!terms) {
+      renderErrorSummary(toolConfigPanel, "Please enter keywords to highlight.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
 
     const formData = new FormData();
     formData.append("file", state.currentPdfFile);
@@ -4707,9 +4936,9 @@ function renderHighlightTool() {
       const blob = await res.blob();
       updateActivePdfFromBlob(blob, "Highlight");
       renderDocStatusBadge("hlFileInfo");
-      alert("Terms highlighted and saved to active in-memory document!");
+      showAppToast("Terms highlighted and saved to active in-memory document!", "success");
     } catch (err) {
-      alert("Highlight failed: " + err.message);
+      renderErrorSummary(toolConfigPanel, "Highlight failed: " + err.message);
     }
   });
 }
@@ -4752,9 +4981,16 @@ function renderEncryptTool() {
   );
 
   document.getElementById("btnRunEnc").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Upload a PDF first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first before encrypting.");
+      return;
+    }
     const pw = document.getElementById("encPassword").value;
-    if (!pw) return alert("Password cannot be blank.");
+    if (!pw) {
+      renderErrorSummary(toolConfigPanel, "Password cannot be blank.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
 
     const formData = new FormData();
     formData.append("file", state.currentPdfFile);
@@ -4769,7 +5005,7 @@ function renderEncryptTool() {
     const baseName = state.currentPdfFile ? state.currentPdfFile.name.replace(/\.[^/.]+$/, "") : "document";
     const encName = `${baseName}_encrypted.pdf`;
     downloadBlob(blob, encName);
-    alert(`PDF encrypted successfully. Downloaded as ${encName}.`);
+    showAppToast(`PDF encrypted successfully. Downloaded as ${encName}.`, "success");
   });
 }
 
@@ -4804,8 +5040,16 @@ function renderDecryptTool() {
   );
 
   document.getElementById("btnRunDec").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Upload an encrypted PDF first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload an encrypted PDF file first.");
+      return;
+    }
     const pw = document.getElementById("decPassword").value;
+    if (!pw) {
+      renderErrorSummary(toolConfigPanel, "Please enter the password to unlock.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
     const formData = new FormData();
     formData.append("file", state.currentPdfFile);
     formData.append("password", pw);
@@ -4813,12 +5057,13 @@ function renderDecryptTool() {
     const res = await fetch("/api/security/decrypt", { method: "POST", body: formData });
     if (!res.ok) {
       const err = await res.json();
-      return alert("Decryption failed: " + err.detail);
+      renderErrorSummary(toolConfigPanel, "Decryption failed: " + (err.detail || "Incorrect password"));
+      return;
     }
     const blob = await res.blob();
     updateActivePdfFromBlob(blob, "Decrypt");
     renderDocStatusBadge("decFileInfo");
-    alert("Document unlocked and saved into active in-memory document!");
+    showAppToast("Document unlocked and saved into active in-memory document!", "success");
   });
 }
 
@@ -4854,9 +5099,16 @@ function renderRedactTool() {
   );
 
   document.getElementById("btnRunRedact").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Upload a PDF first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first before redaction.");
+      return;
+    }
     const terms = document.getElementById("redactTerms").value;
-    if (!terms) return alert("Enter terms to redact.");
+    if (!terms) {
+      renderErrorSummary(toolConfigPanel, "Please enter sensitive terms to redact.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
 
     const formData = new FormData();
     formData.append("file", state.currentPdfFile);
@@ -4868,7 +5120,7 @@ function renderRedactTool() {
     const blob = await res.blob();
     updateActivePdfFromBlob(blob, "Redaction");
     renderDocStatusBadge("redactFileInfo");
-    alert(`Success: ${count} occurrence(s) permanently wiped and burned to active document!`);
+    showAppToast(`Success: ${count} occurrence(s) permanently wiped and burned to active document!`, "success");
   });
 }
 
@@ -4902,7 +5154,12 @@ function renderSanitizeTool() {
   );
 
   document.getElementById("btnRunSan").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Upload a PDF first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first before sanitizing.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
+
     const formData = new FormData();
     formData.append("file", state.currentPdfFile);
 
@@ -4911,7 +5168,7 @@ function renderSanitizeTool() {
     const blob = await res.blob();
     updateActivePdfFromBlob(blob, "Sanitize");
     renderDocStatusBadge("sanFileInfo");
-    alert("Document sanitized and saved into active in-memory document!");
+    showAppToast("Document sanitized and saved into active in-memory document!", "success");
   });
 }
 
@@ -5032,7 +5289,11 @@ function renderPdfToImagesTool() {
   );
 
   document.getElementById("btnRunImages").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Upload a PDF first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first before exporting images.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
     const formData = new FormData();
     formData.append("file", state.currentPdfFile);
     formData.append("dpi", document.getElementById("imgDpi").value);
@@ -5042,6 +5303,7 @@ function renderPdfToImagesTool() {
     const blob = await res.blob();
     const baseName = state.currentPdfFile ? state.currentPdfFile.name.replace(/\.[^/.]+$/, "") : "document";
     downloadBlob(blob, `${baseName}_images.zip`);
+    showAppToast(`Exported page images ZIP archive successfully!`, "success");
   });
 }
 
@@ -5072,7 +5334,11 @@ function renderImagesToPdfTool() {
   );
 
   document.getElementById("btnRunI2p").addEventListener("click", async () => {
-    if (state.multiFiles.length === 0) return alert("Select at least one image.");
+    if (state.multiFiles.length === 0) {
+      renderErrorSummary(toolConfigPanel, "Please select at least one image file to convert into PDF.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
     const formData = new FormData();
     state.multiFiles.forEach((f) => formData.append("files", f));
 
@@ -5083,6 +5349,7 @@ function renderImagesToPdfTool() {
       : "images";
     const combinedName = `${firstImgBase}_from_${state.multiFiles.length}images.pdf`;
     setPreviewContent(blob, "application/pdf", combinedName);
+    showAppToast(`Converted ${state.multiFiles.length} images into PDF successfully!`, "success");
     workspaceActions.innerHTML = `<button class="btn-primary" id="btnDlI2p">⬇️ Download PDF</button>`;
     document.getElementById("btnDlI2p").onclick = () => downloadBlob(blob, combinedName);
   });
@@ -5110,7 +5377,11 @@ function renderMarkdownTool() {
   );
 
   document.getElementById("btnRunMd").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Upload a PDF first.");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first before extracting markdown.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
     const formData = new FormData();
     formData.append("file", state.currentPdfFile);
 
@@ -5175,7 +5446,10 @@ function renderInspectTool() {
   );
 
   async function executeDeleteMetadata(fields = null) {
-    if (!state.currentPdfFile) return alert("Please upload a PDF file first.");
+    if (!state.currentPdfFile) {
+      showNotification("Please upload a PDF file first.", "warning");
+      return;
+    }
     const fieldMsg = fields
       ? `selected metadata field(s): ${fields}`
       : "ALL document metadata and extended XMP entries";
@@ -5197,14 +5471,17 @@ function renderInspectTool() {
 
       // Re-run deep inspection to refresh data in real-time
       await runInspection();
-      alert(`Success: Metadata deleted and saved into the active in-memory document!`);
+      showAppToast(`Success: Metadata deleted and saved into the active in-memory document!`, "success");
     } catch (err) {
-      alert("Failed to delete metadata: " + err.message);
+      showNotification("Failed to delete metadata: " + err.message, "error");
     }
   }
 
   async function executeSaveMetadata(updates) {
-    if (!state.currentPdfFile) return alert("Please upload a PDF file first.");
+    if (!state.currentPdfFile) {
+      showNotification("Please upload a PDF file first.", "warning");
+      return;
+    }
     try {
       const formData = new FormData();
       formData.append("file", state.currentPdfFile);
@@ -5220,14 +5497,17 @@ function renderInspectTool() {
       renderDocStatusBadge("inspFileInfo");
 
       await runInspection();
-      alert("Success: Metadata updated and saved into active document!");
+      showAppToast("Success: Metadata updated and saved into active document!", "success");
     } catch (err) {
-      alert("Failed to update metadata: " + err.message);
+      showNotification("Failed to update metadata: " + err.message, "error");
     }
   }
 
   function exportInspectionReport(data) {
-    if (!data) return alert("No inspection data available to export.");
+    if (!data) {
+      showNotification("No inspection data available to export.", "warning");
+      return;
+    }
     const jsonStr = JSON.stringify(data, null, 2);
     const blob = new Blob([jsonStr], { type: "application/json" });
     const baseName = state.currentPdfFile
@@ -5235,11 +5515,13 @@ function renderInspectTool() {
       : "document";
     const filename = `${baseName}_inspection.json`;
     downloadBlob(blob, filename);
+    showAppToast(`Exported "${filename}" successfully!`, "success");
   }
 
   async function runInspection() {
     if (!state.currentPdfFile) {
-      return alert("Please upload a PDF document first to run deep inspection.");
+      showNotification("Please upload a PDF document first to run deep inspection.", "warning");
+      return;
     }
     const formData = new FormData();
     formData.append("file", state.currentPdfFile);
@@ -5593,7 +5875,8 @@ function renderInspectTool() {
       document.getElementById("btnDeleteSelectedMeta")?.addEventListener("click", () => {
         const checkedFields = Array.from(document.querySelectorAll(".meta-field-chk:checked")).map((cb) => cb.value);
         if (checkedFields.length === 0) {
-          return alert("Please check at least one metadata field to delete.");
+          showNotification("Please check at least one metadata field to delete.", "warning");
+          return;
         }
         executeDeleteMetadata(checkedFields.join(","));
       });
@@ -5621,7 +5904,7 @@ function renderInspectTool() {
         });
       });
     } catch (err) {
-      alert("Inspection failed: " + err.message);
+      showNotification("Inspection failed: " + err.message, "error");
     } finally {
       if (btn) btn.innerHTML = `🔍 Deep Inspection`;
     }
@@ -5746,7 +6029,10 @@ function renderExportHubTool() {
     exportToImagesZip(dpi);
   });
   document.getElementById("btnHubExportAudit").addEventListener("click", async () => {
-    if (!state.currentPdfFile) return alert("Please upload or open a PDF document first.");
+    if (!state.currentPdfFile) {
+      showNotification("Please upload or open a PDF document first.", "warning");
+      return;
+    }
     const formData = new FormData();
     formData.append("file", state.currentPdfFile);
     try {
@@ -5759,7 +6045,7 @@ function renderExportHubTool() {
       downloadBlob(blob, filename);
       showNotification(`Exported "${filename}" successfully!`, "success", 4000);
     } catch (err) {
-      alert("Audit export failed: " + err.message);
+      showNotification("Audit export failed: " + err.message, "error");
     }
   });
 }

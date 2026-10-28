@@ -1108,6 +1108,11 @@ async function renderInteractivePdfViewer(blob, filename = "document") {
     if (state.activeTool === "crop-pages") {
       updateVisualCropPreview();
     }
+
+    // If Rotate tool active, refresh live rotate preview and badges
+    if (state.activeTool === "rotate-pages") {
+      updateLiveRotatePreview();
+    }
   } catch (err) {
     console.error("PDF.js render error:", err);
     interactivePdfViewer.style.display = "none";

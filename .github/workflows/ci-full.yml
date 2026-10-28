@@ -51,7 +51,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U vellakshya -d vellakshya_db"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -71,9 +71,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: Verify and Wait for PostgreSQL
+        run: |
+          python -c "
+          import time, psycopg2
+          for i in range(30):
+              try:
+                  conn = psycopg2.connect('postgresql://vellakshya:vellakshya_secret@127.0.0.1:5432/vellakshya_db')
+                  conn.autocommit = True
+                  with conn.cursor() as cur:
+                      cur.execute('CREATE EXTENSION IF NOT EXISTS vector;')
+                  conn.close()
+                  print('Postgres and pgvector extension are ready!')
+                  break
+              except Exception as e:
+                  print(f'Waiting for postgres... {e}')
+                  time.sleep(1)
+          "
+
       - name: Run Pytest Layered Suite
         env:
-          DATABASE_URL: postgresql://vellakshya:vellakshya_secret@localhost:5432/vellakshya_db
+          DATABASE_URL: postgresql://vellakshya:vellakshya_secret@127.0.0.1:5432/vellakshya_db
         run: |
           PYTHONPATH=. pytest tests/ -v
 

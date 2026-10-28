@@ -16,7 +16,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from app.ai.router import router as ai_router
+try:
+    from app.ai.router import router as ai_router
+except (ImportError, ModuleNotFoundError):
+    ai_router = None
 from app.api.collaboration_ws import router as collaboration_ws_router
 from app.api.v2_documents import router as v2_documents_router
 from app.core.config import STATIC_DIR, config
@@ -61,7 +64,8 @@ async def add_no_cache_header(request: Request, call_next):
 
 app.include_router(v2_documents_router)
 app.include_router(collaboration_ws_router)
-app.include_router(ai_router)
+if ai_router is not None:
+    app.include_router(ai_router)
 
 
 def make_attachment_filename(source_filename: Optional[str], suffix: str, ext: str = "pdf") -> str:

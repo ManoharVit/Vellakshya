@@ -12,22 +12,18 @@ Verifying:
 9. Offline editing & mobile reconnection synchronization.
 10. Malicious file rejection & sandboxing (zip bombs, polyglot files, oversized files, embedded scripts).
 """
+
 from __future__ import annotations
-import hashlib
-import io
+
 import json
 import time
-from fastapi.testclient import TestClient
+
 import fitz
-import pytest
+from fastapi.testclient import TestClient
 
 from app.main import app
 from app.services import (
     collaboration,
-    converter,
-    editor,
-    inspection,
-    organizer,
     security,
     signatures,
 )
@@ -47,7 +43,9 @@ def test_case_1_500_page_pdf_responsiveness():
     for i in range(500):
         p = doc.new_page(width=612, height=792)
         p.insert_text(fitz.Point(72, 100), f"Page {i + 1} Section Header")
-        p.insert_text(fitz.Point(72, 150), f"Paragraph text for page index {i + 1} of corporate report.")
+        p.insert_text(
+            fitz.Point(72, 150), f"Paragraph text for page index {i + 1} of corporate report."
+        )
         if i == 342:
             p.insert_text(fitz.Point(72, 220), "UNIQUE_ENTERPRISE_KEYWORD_343")
     pdf_bytes = doc.tobytes(deflate=True)
@@ -106,8 +104,18 @@ def test_case_2_text_edit_embedded_fonts_preservation():
     font_size = 15.0
     text_color = (0.1, 0.5, 0.8)
     origin_point = fitz.Point(72, 120)
-    page.insert_text(origin_point, "ACME_FINANCIAL_REPORT_Q3", fontname=font_name, fontsize=font_size, color=text_color)
-    page.insert_text(fitz.Point(72, 160), "Secondary paragraph text that must remain completely untouched.", fontsize=12)
+    page.insert_text(
+        origin_point,
+        "ACME_FINANCIAL_REPORT_Q3",
+        fontname=font_name,
+        fontsize=font_size,
+        color=text_color,
+    )
+    page.insert_text(
+        fitz.Point(72, 160),
+        "Secondary paragraph text that must remain completely untouched.",
+        fontsize=12,
+    )
     orig_bytes = doc.tobytes()
     doc.close()
 
@@ -132,7 +140,9 @@ def test_case_2_text_edit_embedded_fonts_preservation():
     page_edited = edited_doc[0]
     text_dict = page_edited.get_text("dict")
     spans = [
-        s for b in text_dict["blocks"] if b.get("type") == 0
+        s
+        for b in text_dict["blocks"]
+        if b.get("type") == 0
         for l in b.get("lines", [])
         for s in l.get("spans", [])
     ]
@@ -170,25 +180,50 @@ def test_case_3_multicolumn_conversion_and_reading_order():
     page = doc.new_page(width=612, height=792)
 
     # Document Header
-    page.insert_text(fitz.Point(72, 70), "Global Market Analysis", fontsize=18, fontname="Helvetica-Bold")
+    page.insert_text(
+        fitz.Point(72, 70), "Global Market Analysis", fontsize=18, fontname="Helvetica-Bold"
+    )
 
     # Column 1 (Left column: x = 72..280)
-    page.insert_text(fitz.Point(72, 110), "COLUMN_ONE_PARA_1: The North American market showed resilience.", fontsize=10)
-    page.insert_text(fitz.Point(72, 140), "COLUMN_ONE_PARA_2: Energy sectors led with double digit gains.", fontsize=10)
+    page.insert_text(
+        fitz.Point(72, 110),
+        "COLUMN_ONE_PARA_1: The North American market showed resilience.",
+        fontsize=10,
+    )
+    page.insert_text(
+        fitz.Point(72, 140),
+        "COLUMN_ONE_PARA_2: Energy sectors led with double digit gains.",
+        fontsize=10,
+    )
 
     # Column 2 (Right column: x = 320..540)
-    page.insert_text(fitz.Point(320, 110), "COLUMN_TWO_PARA_1: European markets rebounded steadily.", fontsize=10)
-    page.insert_text(fitz.Point(320, 140), "COLUMN_TWO_PARA_2: Tech indices reached new quarterly peaks.", fontsize=10)
+    page.insert_text(
+        fitz.Point(320, 110), "COLUMN_TWO_PARA_1: European markets rebounded steadily.", fontsize=10
+    )
+    page.insert_text(
+        fitz.Point(320, 140),
+        "COLUMN_TWO_PARA_2: Tech indices reached new quarterly peaks.",
+        fontsize=10,
+    )
 
     # Add Hyperlink
     link_rect = fitz.Rect(72, 200, 250, 220)
-    page.insert_text(fitz.Point(72, 215), "Visit Global Market Portal", fontsize=11, color=(0.1, 0.3, 0.8))
-    page.insert_link({"kind": fitz.LINK_URI, "from": link_rect, "uri": "https://example.com/market"})
+    page.insert_text(
+        fitz.Point(72, 215), "Visit Global Market Portal", fontsize=11, color=(0.1, 0.3, 0.8)
+    )
+    page.insert_link(
+        {"kind": fitz.LINK_URI, "from": link_rect, "uri": "https://example.com/market"}
+    )
 
     # Add Table-like drawing
     page.draw_rect(fitz.Rect(72, 240, 540, 300), color=(0.7, 0.7, 0.7), width=1)
     page.draw_line(fitz.Point(72, 270), fitz.Point(540, 270), color=(0.7, 0.7, 0.7))
-    page.insert_text(fitz.Point(80, 260), "Sector Header | Growth | Target", fontsize=10, fontname="Helvetica-Bold")
+    page.insert_text(
+        fitz.Point(80, 260),
+        "Sector Header | Growth | Target",
+        fontsize=10,
+        fontname="Helvetica-Bold",
+    )
     page.insert_text(fitz.Point(80, 290), "Renewables    | +14.2% | Beat", fontsize=10)
 
     pdf_bytes = doc.tobytes()
@@ -228,13 +263,20 @@ def test_case_4_redaction_permanence_and_raw_content_audit():
     sensitive_token = "CONFIDENTIAL_SSN_987-65-4321"
     doc = fitz.open()
     page = doc.new_page(width=612, height=792)
-    page.insert_text(fitz.Point(72, 100), f"Employee record: {sensitive_token} for John Doe.", fontsize=12)
-    page.insert_text(fitz.Point(72, 140), "Public section: Salary and department info.", fontsize=12)
+    page.insert_text(
+        fitz.Point(72, 100), f"Employee record: {sensitive_token} for John Doe.", fontsize=12
+    )
+    page.insert_text(
+        fitz.Point(72, 140), "Public section: Salary and department info.", fontsize=12
+    )
     raw_input = doc.tobytes()
     doc.close()
 
     # Verify input actually contains the token in raw bytes
-    assert sensitive_token.encode("utf-8") in raw_input or sensitive_token in fitz.open(stream=raw_input, filetype="pdf")[0].get_text()
+    assert (
+        sensitive_token.encode("utf-8") in raw_input
+        or sensitive_token in fitz.open(stream=raw_input, filetype="pdf")[0].get_text()
+    )
 
     # Apply redaction
     redacted_bytes, count = security.redact_text_permanently(raw_input, [sensitive_token])
@@ -246,14 +288,18 @@ def test_case_4_redaction_permanence_and_raw_content_audit():
     assert sensitive_token not in extracted_text, "Sensitive text found in text extraction"
 
     # Audit 2: Raw binary bytes inspection (uncompressed streams & catalog)
-    assert sensitive_token.encode("utf-8") not in redacted_bytes, "Sensitive text string found in raw PDF binary bytes!"
+    assert sensitive_token.encode("utf-8") not in redacted_bytes, (
+        "Sensitive text string found in raw PDF binary bytes!"
+    )
 
     # Audit 3: Low-level decompressed stream inspection across all XREFs
     for xref in range(1, doc_out.xref_length()):
         try:
             stream_data = doc_out.xref_stream(xref)
             if stream_data:
-                assert sensitive_token.encode("utf-8") not in stream_data, f"Token leaked in decompressed XREF stream {xref}"
+                assert sensitive_token.encode("utf-8") not in stream_data, (
+                    f"Token leaked in decompressed XREF stream {xref}"
+                )
         except Exception:
             pass
     doc_out.close()
@@ -341,7 +387,9 @@ def test_case_6_digital_signature_and_tamper_detection():
 
     # 3. Tamper with the document: modify the text
     tampered_doc = fitz.open(stream=signed_bytes, filetype="pdf")
-    tampered_doc[0].insert_text(fitz.Point(72, 130), "UNAUTHORIZED_ALTERATION: Salary multiplied by 10.")
+    tampered_doc[0].insert_text(
+        fitz.Point(72, 130), "UNAUTHORIZED_ALTERATION: Salary multiplied by 10."
+    )
     tampered_bytes = tampered_doc.tobytes()
     tampered_doc.close()
 
@@ -369,14 +417,38 @@ def test_case_7_concurrent_collaboration_and_comment_merge():
 
     # User A comments
     user_a_comments = [
-        {"id": "cmt_a1", "user": "Auditor Alice", "page": 1, "text": "Verify column C tax deduction.", "rect": [72, 120, 150, 140]},
-        {"id": "cmt_shared", "user": "Shared Lead", "page": 1, "text": "General review pending signoff.", "rect": [72, 180, 150, 200]},
+        {
+            "id": "cmt_a1",
+            "user": "Auditor Alice",
+            "page": 1,
+            "text": "Verify column C tax deduction.",
+            "rect": [72, 120, 150, 140],
+        },
+        {
+            "id": "cmt_shared",
+            "user": "Shared Lead",
+            "page": 1,
+            "text": "General review pending signoff.",
+            "rect": [72, 180, 150, 200],
+        },
     ]
 
     # User B comments concurrently (includes cmt_shared duplicate)
     user_b_comments = [
-        {"id": "cmt_b1", "user": "Manager Bob", "page": 1, "text": "Approved pending CFO signature.", "rect": [72, 150, 150, 170]},
-        {"id": "cmt_shared", "user": "Shared Lead", "page": 1, "text": "General review pending signoff.", "rect": [72, 180, 150, 200]},
+        {
+            "id": "cmt_b1",
+            "user": "Manager Bob",
+            "page": 1,
+            "text": "Approved pending CFO signature.",
+            "rect": [72, 150, 150, 170],
+        },
+        {
+            "id": "cmt_shared",
+            "user": "Shared Lead",
+            "page": 1,
+            "text": "General review pending signoff.",
+            "rect": [72, 180, 150, 200],
+        },
     ]
 
     # Merge concurrent comments
@@ -423,15 +495,18 @@ def test_case_8_scanned_pdf_and_ocr_accuracy_validation():
     doc_check = fitz.open(stream=raster_pdf_bytes, filetype="pdf")
     page_text = doc_check[0].get_text().strip()
     page_images = doc_check[0].get_images()
-    is_scanned = (len(page_text) == 0 and len(page_images) > 0)
+    is_scanned = len(page_text) == 0 and len(page_images) > 0
     assert is_scanned is True, "Document must be recognized as scanned/image-only"
     doc_check.close()
 
     # 2. Evaluate Character Error Rate (CER) algorithm against ground-truth
     def compute_cer(ground_truth: str, recognized: str) -> float:
         import difflib
+
         sm = difflib.SequenceMatcher(None, ground_truth, recognized)
-        diff_count = sum(max(b2 - b1, a2 - a1) for tag, a1, a2, b1, b2 in sm.get_opcodes() if tag != "equal")
+        diff_count = sum(
+            max(b2 - b1, a2 - a1) for tag, a1, a2, b1, b2 in sm.get_opcodes() if tag != "equal"
+        )
         return diff_count / max(1, len(ground_truth))
 
     gt_clean = "Invoice Number INV-2026-9876 Total Due $4,500.00"
@@ -463,7 +538,12 @@ def test_case_9_offline_mobile_editing_and_reconnection_sync():
 
     # Simulate mobile client going offline and recording mutations
     offline_mutation_queue = [
-        {"type": "add_comment", "page": 1, "text": "Site inspection confirmed safe.", "author": "Field Inspector"},
+        {
+            "type": "add_comment",
+            "page": 1,
+            "text": "Site inspection confirmed safe.",
+            "author": "Field Inspector",
+        },
         {"type": "rotate_page", "page": 1, "angle": 90},
         {"type": "highlight", "page": 1, "text": "Field Inspection"},
     ]
@@ -496,7 +576,9 @@ def test_case_10_malicious_and_malformed_files_rejection():
     oversized files, PDFs with embedded scripts—and verify safe rejection and sandboxing.
     """
     # 1. Polyglot file test (starts with GIF header prepended to PDF)
-    polyglot_payload = b"GIF89a\x01\x00\x01\x00\x80\x00\x00%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF"
+    polyglot_payload = (
+        b"GIF89a\x01\x00\x01\x00\x80\x00\x00%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF"
+    )
     rep_polyglot = security.validate_pdf_security(polyglot_payload)
     assert rep_polyglot["safe"] is False
     assert rep_polyglot["error_type"] == "INVALID_HEADER_POLYGLOT"

@@ -8,19 +8,19 @@ Covers:
 Author: Giri Manohar Vemula
 Repository: https://github.com/ManoharVit/Vellakshya.git
 """
+
 from __future__ import annotations
+
 import difflib
-import io
 import json
 import secrets
 import time
-from typing import Any
+
 import fitz  # PyMuPDF
-import pytest
 from starlette.testclient import TestClient
 
 from app.main import app
-from app.services import auth, collaboration, converter, editor, inspection, security, signatures
+from app.services import auth, signatures
 
 client = TestClient(app)
 
@@ -28,6 +28,7 @@ client = TestClient(app)
 # -------------------------------------------------------------
 # HELPER FIXTURES & GENERATORS
 # -------------------------------------------------------------
+
 
 def create_sample_pdf(text: str = "Hello Vellakshya PDF Test", num_pages: int = 1) -> bytes:
     doc = fitz.open()
@@ -43,6 +44,7 @@ def create_sample_pdf(text: str = "Hello Vellakshya PDF Test", num_pages: int = 
 # SMOKE TESTS (1 to 10) — Run on Every Commit
 # =============================================================
 
+
 def test_smoke_01_user_register_login_logout():
     """
     Smoke 1: User can register, log in, and log out.
@@ -51,7 +53,9 @@ def test_smoke_01_user_register_login_logout():
     password = "SuperSecurePassword123!"
 
     # 1. Register
-    reg_resp = client.post("/api/auth/register", json={"email": unique_email, "password": password, "role": "editor"})
+    reg_resp = client.post(
+        "/api/auth/register", json={"email": unique_email, "password": password, "role": "editor"}
+    )
     assert reg_resp.status_code == 200, reg_resp.text
     reg_data = reg_resp.json()
     assert reg_data["email"] == unique_email
@@ -259,6 +263,7 @@ def test_smoke_10_add_esignature_field_and_complete_signing():
 # REGRESSION TESTS (11 to 22) — Run Nightly
 # =============================================================
 
+
 def test_regression_11_upload_fails_safely_corrupted_oversized_unsupported():
     """
     Regression 11: Upload fails safely for corrupted, oversized, and unsupported files.
@@ -296,7 +301,13 @@ def test_regression_12_edited_pdf_retains_fonts_links_bookmarks_page_order():
     p1 = doc.new_page(width=595, height=842)
     p1.insert_text((72, 100), "Chapter 1: Foundations", fontsize=16)
     link_rect = fitz.Rect(72, 150, 300, 180)
-    p1.insert_link({"kind": fitz.LINK_URI, "from": link_rect, "uri": "https://github.com/ManoharVit/Vellakshya.git"})
+    p1.insert_link(
+        {
+            "kind": fitz.LINK_URI,
+            "from": link_rect,
+            "uri": "https://github.com/ManoharVit/Vellakshya.git",
+        }
+    )
 
     p2 = doc.new_page(width=595, height=842)
     p2.insert_text((72, 100), "Chapter 2: Advanced Verification", fontsize=16)
@@ -380,14 +391,16 @@ def test_regression_14_ocr_extracts_searchable_text_from_scanned_pdf():
 
     # Verify detection of scanned document
     doc_check = fitz.open(stream=raster_pdf_bytes, filetype="pdf")
-    is_scanned = (len(doc_check[0].get_text().strip()) == 0 and len(doc_check[0].get_images()) > 0)
+    is_scanned = len(doc_check[0].get_text().strip()) == 0 and len(doc_check[0].get_images()) > 0
     assert is_scanned is True
     doc_check.close()
 
     # 2. Evaluate Character Error Rate (CER) fidelity against ground-truth
     def compute_cer(gt: str, rec: str) -> float:
         sm = difflib.SequenceMatcher(None, gt, rec)
-        diff = sum(max(b2 - b1, a2 - a1) for tag, a1, a2, b1, b2 in sm.get_opcodes() if tag != "equal")
+        diff = sum(
+            max(b2 - b1, a2 - a1) for tag, a1, a2, b1, b2 in sm.get_opcodes() if tag != "equal"
+        )
         return diff / max(1, len(gt))
 
     gt_clean = "Invoice Number INV-2026-9876 Total Due $4,500.00"
@@ -404,11 +417,29 @@ def test_regression_15_two_users_comment_without_losing_comments():
     """
     pdf_bytes = create_sample_pdf("Collaboration Base Document")
     user_a_comments = [
-        {"id": "c_alice_1", "user": "Alice", "page": 1, "text": "Alice: Please review Section 3.", "rect": [72, 100, 120, 140]},
-        {"id": "c_alice_2", "user": "Alice", "page": 1, "text": "Alice: Typo fixed.", "rect": [72, 150, 120, 190]},
+        {
+            "id": "c_alice_1",
+            "user": "Alice",
+            "page": 1,
+            "text": "Alice: Please review Section 3.",
+            "rect": [72, 100, 120, 140],
+        },
+        {
+            "id": "c_alice_2",
+            "user": "Alice",
+            "page": 1,
+            "text": "Alice: Typo fixed.",
+            "rect": [72, 150, 120, 190],
+        },
     ]
     user_b_comments = [
-        {"id": "c_bob_1", "user": "Bob", "page": 1, "text": "Bob: Verified Section 3 numbers.", "rect": [72, 200, 120, 240]},
+        {
+            "id": "c_bob_1",
+            "user": "Bob",
+            "page": 1,
+            "text": "Bob: Verified Section 3 numbers.",
+            "rect": [72, 200, 120, 240],
+        },
     ]
 
     files = {"file": ("collab.pdf", pdf_bytes, "application/pdf")}
@@ -440,8 +471,13 @@ def test_regression_16_viewer_role_cannot_edit_or_download_restricted_files():
     """
     # 1. Register and login viewer user
     viewer_email = f"viewer_{secrets.token_hex(4)}@vellakshya.io"
-    client.post("/api/auth/register", json={"email": viewer_email, "password": "Pass123!Viewer", "role": "viewer"})
-    viewer_login = client.post("/api/auth/login", json={"email": viewer_email, "password": "Pass123!Viewer"}).json()
+    client.post(
+        "/api/auth/register",
+        json={"email": viewer_email, "password": "Pass123!Viewer", "role": "viewer"},
+    )
+    viewer_login = client.post(
+        "/api/auth/login", json={"email": viewer_email, "password": "Pass123!Viewer"}
+    ).json()
     viewer_token = viewer_login["token"]
 
     # 2. Upload document as editor
@@ -451,7 +487,9 @@ def test_regression_16_viewer_role_cannot_edit_or_download_restricted_files():
     doc_id = upload_resp.json()["doc_id"]
 
     # 3. Viewer can view / render document inline (normal GET without download)
-    view_resp = client.get(f"/api/documents/{doc_id}", headers={"Authorization": f"Bearer {viewer_token}"})
+    view_resp = client.get(
+        f"/api/documents/{doc_id}", headers={"Authorization": f"Bearer {viewer_token}"}
+    )
     assert view_resp.status_code == 200
 
     # 4. Viewer CANNOT download restricted file (download=true triggers RBAC check)
@@ -555,7 +593,9 @@ def test_regression_19_signed_pdf_detects_modification_after_signing():
 
     # 2. Tamper document by modifying text content
     tampered_doc = fitz.open(stream=signed_bytes, filetype="pdf")
-    tampered_doc[0].insert_text(fitz.Point(72, 130), "UNAUTHORIZED_ALTERATION: Contract terms tampered.")
+    tampered_doc[0].insert_text(
+        fitz.Point(72, 130), "UNAUTHORIZED_ALTERATION: Contract terms tampered."
+    )
     tampered_bytes = tampered_doc.tobytes()
     tampered_doc.close()
 
@@ -615,7 +655,10 @@ def test_regression_21_session_expiry_does_not_cause_data_loss():
     assert recover_resp.status_code == 200
     recovered_data = recover_resp.json()["draft_state"]
     assert recovered_data["active_page"] == 3
-    assert recovered_data["pending_annotations"][1]["content"] == "Critical unsaved executive review notes"
+    assert (
+        recovered_data["pending_annotations"][1]["content"]
+        == "Critical unsaved executive review notes"
+    )
 
 
 def test_regression_22_concurrent_edits_do_not_overwrite_silently():
@@ -656,6 +699,7 @@ def test_regression_22_concurrent_edits_do_not_overwrite_silently():
 # ENTERPRISE QUALITY GATES (23 to 25)
 # =============================================================
 
+
 def test_regression_23_performance_sla_under_load_budget():
     """
     Quality Gate 23: Performance SLA under agreed latency budgets (p95 < 500 ms).
@@ -664,7 +708,9 @@ def test_regression_23_performance_sla_under_load_budget():
     latencies = []
     for _ in range(10):
         t0 = time.perf_counter()
-        resp = client.post("/api/inspect", files={"file": ("perf.pdf", pdf_bytes, "application/pdf")})
+        resp = client.post(
+            "/api/inspect", files={"file": ("perf.pdf", pdf_bytes, "application/pdf")}
+        )
         assert resp.status_code == 200
         latencies.append((time.perf_counter() - t0) * 1000)
 
@@ -684,8 +730,8 @@ def test_regression_24_accessibility_wcag_structure_and_labels():
     html = resp.text
 
     assert '<html lang="en">' in html
-    assert '<main' in html
-    assert '<header' in html
+    assert "<main" in html
+    assert "<header" in html
     assert 'name="viewport"' in html
 
 

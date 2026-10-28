@@ -1,5 +1,5 @@
-import pytest
 from starlette.testclient import TestClient
+
 from app.main import app
 
 client = TestClient(app)
@@ -119,5 +119,3 @@ def test_deep_document_inspector_ui():
     assert "chkSelectAllMeta" in res_app_js.text
     assert "exportInspectionReport" in res_app_js.text
     assert "executeSaveMetadata" in res_app_js.text
-
-

@@ -2,6 +2,7 @@
 Isolated Subprocess Worker Runner for Untrusted PDF Processing.
 Executes within constrained sandbox parameters, isolated from the main web API.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,7 +20,9 @@ from app.services import converter
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Vellakshya Isolated Worker Task Runner")
-    parser.add_argument("--task", required=True, choices=["html_fixed", "html_semantic", "images_zip", "markdown"])
+    parser.add_argument(
+        "--task", required=True, choices=["html_fixed", "html_semantic", "images_zip", "markdown"]
+    )
     parser.add_argument("--input", required=True, help="Path to input PDF file")
     parser.add_argument("--output", required=True, help="Path to output artifact file")
     parser.add_argument("--params", default="{}", help="JSON string of task parameters")

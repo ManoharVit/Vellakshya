@@ -2,20 +2,21 @@
 Integration and Unit Tests for Vellakshya Asynchronous Worker Queue & Process Sandbox.
 Validates isolated process boundaries, job lifecycle, resource limits, and API contracts.
 """
+
 import asyncio
 import io
 import time
+
+import fitz
 import pytest
 from fastapi.testclient import TestClient
-import fitz
 
 from app.main import app
+from app.services.queue import queue_instance
 from app.services.sandbox import (
-    run_sandboxed_task,
     SandboxExecutionError,
-    SandboxTimeoutError,
+    run_sandboxed_task,
 )
-from app.services.queue import JobQueue, queue_instance
 
 
 @pytest.fixture
@@ -23,7 +24,9 @@ def sample_pdf_bytes() -> bytes:
     doc = fitz.open()
     page = doc.new_page(width=595, height=842)
     page.insert_text((50, 100), "Vellakshya Sandboxed Worker Test Document", fontsize=16)
-    page.insert_text((50, 140), "Verifying isolated process execution and Redis job queue.", fontsize=11)
+    page.insert_text(
+        (50, 140), "Verifying isolated process execution and Redis job queue.", fontsize=11
+    )
     pdf_bytes = doc.tobytes()
     doc.close()
     return pdf_bytes
@@ -39,13 +42,16 @@ def client():
 # 1. PROCESS SANDBOX UNIT TESTS
 # -------------------------------------------------------------
 
+
 def test_sandbox_runs_html_fixed_in_isolated_process(sample_pdf_bytes):
-    output_bytes, media_type, metrics = asyncio.run(run_sandboxed_task(
-        task="html_fixed",
-        pdf_bytes=sample_pdf_bytes,
-        params={"title": "TestDoc"},
-        timeout_seconds=10,
-    ))
+    output_bytes, media_type, metrics = asyncio.run(
+        run_sandboxed_task(
+            task="html_fixed",
+            pdf_bytes=sample_pdf_bytes,
+            params={"title": "TestDoc"},
+            timeout_seconds=10,
+        )
+    )
 
     assert media_type == "text/html"
     assert b"<!DOCTYPE html>" in output_bytes
@@ -57,12 +63,14 @@ def test_sandbox_runs_html_fixed_in_isolated_process(sample_pdf_bytes):
 
 
 def test_sandbox_runs_images_zip_in_isolated_process(sample_pdf_bytes):
-    output_bytes, media_type, metrics = asyncio.run(run_sandboxed_task(
-        task="images_zip",
-        pdf_bytes=sample_pdf_bytes,
-        params={"dpi": 72, "format": "png"},
-        timeout_seconds=10,
-    ))
+    output_bytes, media_type, metrics = asyncio.run(
+        run_sandboxed_task(
+            task="images_zip",
+            pdf_bytes=sample_pdf_bytes,
+            params={"dpi": 72, "format": "png"},
+            timeout_seconds=10,
+        )
+    )
 
     assert media_type == "application/zip"
     assert output_bytes.startswith(b"PK")  # ZIP magic bytes
@@ -74,11 +82,13 @@ def test_sandbox_rejects_corrupted_input():
     corrupted_bytes = b"NOT_A_VALID_PDF_HEADER_1234567890"
 
     with pytest.raises(SandboxExecutionError) as exc_info:
-        asyncio.run(run_sandboxed_task(
-            task="html_fixed",
-            pdf_bytes=corrupted_bytes,
-            timeout_seconds=5,
-        ))
+        asyncio.run(
+            run_sandboxed_task(
+                task="html_fixed",
+                pdf_bytes=corrupted_bytes,
+                timeout_seconds=5,
+            )
+        )
 
     assert "failed" in str(exc_info.value).lower() or "syntax" in str(exc_info.value).lower()
 
@@ -86,6 +96,7 @@ def test_sandbox_rejects_corrupted_input():
 # -------------------------------------------------------------
 # 2. JOB QUEUE ASYNC LIFECYCLE TESTS
 # -------------------------------------------------------------
+
 
 def test_job_queue_enqueue_and_process(sample_pdf_bytes):
     async def _test():
@@ -154,6 +165,7 @@ def test_job_queue_cancellation():
 # -------------------------------------------------------------
 # 3. FASTAPI REST CONTRACT TESTS FOR ASYNC JOBS
 # -------------------------------------------------------------
+
 
 def test_api_jobs_html_lifecycle(client, sample_pdf_bytes):
     # 1. Enqueue job via HTTP POST

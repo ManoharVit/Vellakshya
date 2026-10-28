@@ -3,6 +3,7 @@ Vellakshya Object Storage Abstraction Layer.
 Implements S3-compatible storage semantics and secure presigned URL generation.
 Separates binary document storage from relational metadata.
 """
+
 from __future__ import annotations
 
 import base64
@@ -17,11 +18,14 @@ from typing import Optional
 STORAGE_ROOT = Path(__file__).resolve().parent.parent.parent / "data" / "object_store"
 STORAGE_ROOT.mkdir(parents=True, exist_ok=True)
 
-SECRET_STORAGE_KEY = os.environ.get("STORAGE_SIGNING_KEY", "vellakshya_secure_storage_hmac_secret_2026")
+SECRET_STORAGE_KEY = os.environ.get(
+    "STORAGE_SIGNING_KEY", "vellakshya_secure_storage_hmac_secret_2026"
+)
 
 
 class ObjectNotFoundError(Exception):
     """Raised when an object key does not exist in storage."""
+
     pass
 
 
@@ -30,6 +34,7 @@ class StorageService:
     Manages immutable binary document storage with cryptographic digest computation
     and time-limited presigned access URLs.
     """
+
     def __init__(self, root_dir: Optional[Path] = None, signing_secret: Optional[str] = None):
         self.root_dir = root_dir or STORAGE_ROOT
         self.root_dir.mkdir(parents=True, exist_ok=True)
@@ -48,10 +53,7 @@ class StorageService:
         return hashlib.sha256(data).hexdigest()
 
     def store_object(
-        self,
-        key: str,
-        data: bytes,
-        content_type: str = "application/pdf"
+        self, key: str, data: bytes, content_type: str = "application/pdf"
     ) -> tuple[str, str, int]:
         """
         Persists immutable binary object and returns (key, sha256_digest, byte_size).
@@ -112,7 +114,9 @@ class StorageService:
         """
         expires_at = int(time.time()) + expires_in_seconds
         payload = f"{method}:{key}:{expires_at}"
-        signature = hmac.new(self.signing_secret, payload.encode("utf-8"), hashlib.sha256).hexdigest()
+        signature = hmac.new(
+            self.signing_secret, payload.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
 
         # Token structure: base64(json)
         token_data = {
@@ -147,7 +151,9 @@ class StorageService:
             raise ValueError("Presigned URL has expired.")
 
         expected_payload = f"{method}:{key}:{exp}"
-        expected_sig = hmac.new(self.signing_secret, expected_payload.encode("utf-8"), hashlib.sha256).hexdigest()
+        expected_sig = hmac.new(
+            self.signing_secret, expected_payload.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
 
         if not hmac.compare_digest(provided_sig, expected_sig):
             raise ValueError("Presigned token cryptographic signature is invalid or tampered.")

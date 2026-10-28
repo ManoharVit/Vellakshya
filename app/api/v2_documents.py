@@ -3,36 +3,42 @@ Vellakshya Enterprise Document Workstation V2 REST API Router.
 Implements the full Guidebook specification for immutable versioning,
 optimistic concurrency control (baseVersion), signed manifests, and presigned object storage.
 """
+
 from __future__ import annotations
 
-import io
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, Response, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+)
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.models.db import (
-    AuditEvent,
-    Comment,
     Document,
     DocumentOperation,
-    DocumentPermission,
     DocumentVersion,
-    IntegrityManifest,
     User,
     get_db,
     init_db,
 )
+from app.services import editor, organizer
 from app.services.document_service import (
     DocumentNotFoundError,
     DocumentService,
     PermissionDeniedError,
     VersionConflictError,
 )
-from app.services.storage import storage_instance, ObjectNotFoundError
-from app.services import organizer, editor
+from app.services.storage import ObjectNotFoundError, storage_instance
 
 # Initialize DB tables automatically
 init_db()
@@ -44,13 +50,20 @@ router = APIRouter(prefix="/api/v2", tags=["Enterprise Document Workstation V2"]
 # Request & Response Schemas
 # -------------------------------------------------------------
 
+
 class DocumentOperationRequest(BaseModel):
-    operation: str = Field(..., description="Operation type (rotate, reorder, delete-pages, watermark, etc.)")
-    baseVersion: Optional[int] = Field(None, ge=1, description="Expected base version of active document")
+    operation: str = Field(
+        ..., description="Operation type (rotate, reorder, delete-pages, watermark, etc.)"
+    )
+    baseVersion: Optional[int] = Field(
+        None, ge=1, description="Expected base version of active document"
+    )
     base_version: Optional[int] = Field(None, ge=1)
     idempotencyKey: Optional[str] = Field(None, description="Unique client key for deduplication")
     idempotency_key: Optional[str] = None
-    params: dict[str, Any] = Field(default_factory=dict, description="Parameters for transformation")
+    params: dict[str, Any] = Field(
+        default_factory=dict, description="Parameters for transformation"
+    )
     parameters: Optional[dict[str, Any]] = None
 
     @property
@@ -93,7 +106,9 @@ class CreateCommentRequest(BaseModel):
     version_no: Optional[int] = None
     pageNo: Optional[int] = Field(None, description="Page number comment anchors to")
     page_number: Optional[int] = None
-    anchor: Optional[Any] = Field(None, description="Bounding box geometry {x, y, w, h} or [x, y, w, h]")
+    anchor: Optional[Any] = Field(
+        None, description="Bounding box geometry {x, y, w, h} or [x, y, w, h]"
+    )
     bounding_box: Optional[Any] = None
     parentCommentId: Optional[str] = Field(None, description="Parent comment ID for threading")
     parent_comment_id: Optional[str] = None
@@ -146,6 +161,7 @@ def _ensure_user_exists(db: Session, user_id: str):
 # -------------------------------------------------------------
 # Endpoints
 # -------------------------------------------------------------
+
 
 @router.get("/documents")
 async def list_documents(
@@ -247,7 +263,9 @@ async def get_upload_url(
     if not safe_filename or ".." in safe_filename:
         safe_filename = "document.pdf"
     target_key = f"documents/{doc_id}/uploads/{safe_filename}"
-    presigned_url = storage_instance.generate_presigned_url(target_key, expires_in_seconds=300, method="PUT")
+    presigned_url = storage_instance.generate_presigned_url(
+        target_key, expires_in_seconds=300, method="PUT"
+    )
     return {
         "document_id": doc_id,
         "object_key": target_key,
@@ -369,7 +387,9 @@ async def get_version(
         raise HTTPException(status_code=404, detail="Version not found.")
 
     manifest = ver.integrity_manifest
-    download_url = storage_instance.generate_presigned_url(ver.object_key, expires_in_seconds=300, method="GET")
+    download_url = storage_instance.generate_presigned_url(
+        ver.object_key, expires_in_seconds=300, method="GET"
+    )
     return {
         "id": ver.id,
         "document_id": ver.document_id,
@@ -411,9 +431,15 @@ async def execute_operation(
         op_type = op_req.operation
 
         # Check idempotency first before fetching base version or computing
-        existing_op = db.query(DocumentOperation).filter_by(document_id=doc_id, idempotency_key=idemp_key).first()
+        existing_op = (
+            db.query(DocumentOperation)
+            .filter_by(document_id=doc_id, idempotency_key=idemp_key)
+            .first()
+        )
         if existing_op and existing_op.output_version_id:
-            existing_ver = db.query(DocumentVersion).filter_by(id=existing_op.output_version_id).first()
+            existing_ver = (
+                db.query(DocumentVersion).filter_by(id=existing_op.output_version_id).first()
+            )
             if existing_ver:
                 return {
                     "status": "succeeded",
@@ -436,7 +462,9 @@ async def execute_operation(
             )
 
         # Read base version binary from storage
-        base_ver = db.query(DocumentVersion).filter_by(document_id=doc_id, version_no=base_ver_no).first()
+        base_ver = (
+            db.query(DocumentVersion).filter_by(document_id=doc_id, version_no=base_ver_no).first()
+        )
         if not base_ver:
             raise HTTPException(status_code=404, detail=f"Base version {base_ver_no} not found.")
 
@@ -458,7 +486,9 @@ async def execute_operation(
             angle = int(p.get("angle", p.get("rotation", 90)))
             page_val = p.get("page_number", p.get("page", p.get("pages", None)))
             pages_list = resolve_page_list(page_val) or None
-            transformed_bytes = organizer.rotate_pages(input_pdf_bytes, pages=pages_list, angle=angle)
+            transformed_bytes = organizer.rotate_pages(
+                input_pdf_bytes, pages=pages_list, angle=angle
+            )
 
         elif op_type in ("watermark", "add_watermark"):
             text = str(p.get("text", "CONFIDENTIAL"))
@@ -485,7 +515,9 @@ async def execute_operation(
             left = float(p.get("left", 0))
             page_val = p.get("pages", p.get("page_number", p.get("page", None)))
             pages_list = resolve_page_list(page_val) or None
-            transformed_bytes = organizer.crop_pages(input_pdf_bytes, pages=pages_list, top=top, right=right, bottom=bottom, left=left)
+            transformed_bytes = organizer.crop_pages(
+                input_pdf_bytes, pages=pages_list, top=top, right=right, bottom=bottom, left=left
+            )
 
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported operation type: {op_type}")
@@ -686,7 +718,9 @@ async def generate_export_download(
     if not ver:
         raise HTTPException(status_code=404, detail=f"Version {target_vno} not found.")
 
-    presigned_url = storage_instance.generate_presigned_url(ver.object_key, expires_in_seconds=300, method="GET")
+    presigned_url = storage_instance.generate_presigned_url(
+        ver.object_key, expires_in_seconds=300, method="GET"
+    )
     return {
         "document_id": doc_id,
         "version_no": target_vno,
@@ -730,7 +764,9 @@ async def access_presigned_storage(token: str = Query(..., description="Presigne
         raise HTTPException(status_code=403, detail=str(e))
 
     if method != "GET":
-        raise HTTPException(status_code=405, detail=f"Method {method} not supported on download route.")
+        raise HTTPException(
+            status_code=405, detail=f"Method {method} not supported on download route."
+        )
 
     try:
         data = storage_instance.get_object(key)

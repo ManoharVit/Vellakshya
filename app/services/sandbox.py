@@ -2,6 +2,7 @@
 Vellakshya Process Sandboxing & Isolation Engine.
 Confines untrusted PDF parsing and conversion to restricted subprocess boundaries.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -18,16 +19,19 @@ from typing import Any
 
 class SandboxExecutionError(Exception):
     """Raised when a task fails or terminates abnormally inside the sandbox."""
+
     pass
 
 
 class SandboxTimeoutError(SandboxExecutionError):
     """Raised when a task exceeds the hard execution time limit."""
+
     pass
 
 
 class SandboxMemoryLimitError(SandboxExecutionError):
     """Raised when a task exceeds memory ceilings inside the sandbox."""
+
     pass
 
 
@@ -36,13 +40,11 @@ def _configure_process_limits(max_memory_mb: int = 512, cpu_timeout_secs: int = 
     Sets POSIX resource limits on the child worker process before exec.
     Guards against memory bombs, fork bombs, and CPU hogging.
     """
+
     def preexec():
         # 1. CPU Time Limit
         try:
-            resource.setrlimit(
-                resource.RLIMIT_CPU,
-                (cpu_timeout_secs, cpu_timeout_secs + 5)
-            )
+            resource.setrlimit(resource.RLIMIT_CPU, (cpu_timeout_secs, cpu_timeout_secs + 5))
         except (ValueError, OSError):
             pass
 
@@ -93,10 +95,14 @@ async def run_sandboxed_task(
         cmd = [
             sys.executable,
             str(runner_script),
-            "--task", task,
-            "--input", str(input_file),
-            "--output", str(output_file),
-            "--params", json.dumps(params),
+            "--task",
+            task,
+            "--input",
+            str(input_file),
+            "--output",
+            str(output_file),
+            "--params",
+            json.dumps(params),
         ]
 
         # Spawn isolated subprocess
@@ -110,8 +116,7 @@ async def run_sandboxed_task(
 
         try:
             stdout_data, stderr_data = await asyncio.wait_for(
-                proc.communicate(),
-                timeout=float(timeout_seconds)
+                proc.communicate(), timeout=float(timeout_seconds)
             )
         except asyncio.TimeoutError:
             try:
@@ -137,13 +142,23 @@ async def run_sandboxed_task(
                     continue
 
         if proc.returncode != 0:
-            error_msg = worker_metrics.get("error") or stderr_text or f"Process exited with code {proc.returncode}"
+            error_msg = (
+                worker_metrics.get("error")
+                or stderr_text
+                or f"Process exited with code {proc.returncode}"
+            )
             if "MemoryError" in error_msg or proc.returncode == -9:
-                raise SandboxMemoryLimitError(f"Process exceeded memory threshold ({max_memory_mb} MB): {error_msg}")
-            raise SandboxExecutionError(f"Sandbox task '{task}' failed (exit code {proc.returncode}): {error_msg}")
+                raise SandboxMemoryLimitError(
+                    f"Process exceeded memory threshold ({max_memory_mb} MB): {error_msg}"
+                )
+            raise SandboxExecutionError(
+                f"Sandbox task '{task}' failed (exit code {proc.returncode}): {error_msg}"
+            )
 
         if not output_file.exists():
-            raise SandboxExecutionError(f"Sandbox completed but output artifact is missing. Logs: {stderr_text}")
+            raise SandboxExecutionError(
+                f"Sandbox completed but output artifact is missing. Logs: {stderr_text}"
+            )
 
         output_bytes = output_file.read_bytes()
         media_type = worker_metrics.get("media_type", "application/octet-stream")

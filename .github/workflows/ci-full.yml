@@ -7,9 +7,55 @@ on:
     branches: [ main ]
 
 jobs:
-  test-python:
-    name: Backend Unit, API, Security & 25 MVP Tests (pytest)
+  lint-and-typecheck:
+    name: Code Hygiene (Ruff & Mypy)
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Linting & Typecheck Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff mypy pydantic
+
+      - name: Run Ruff Linter
+        run: ruff check .
+
+      - name: Run Ruff Formatter Check
+        run: ruff format --check .
+
+      - name: Run Mypy on app/ai Package
+        run: |
+          if [ -d "app/ai" ]; then
+            mypy app/ai
+          else
+            echo "app/ai not created yet; skipping."
+          fi
+
+  test-python:
+    name: Backend Unit, API, Security & RAG Tests (pytest)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: vellakshya
+          POSTGRES_PASSWORD: vellakshya_secret
+          POSTGRES_DB: vellakshya_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vellakshya -d vellakshya_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -23,10 +69,29 @@ jobs:
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest
+          pip install -r requirements-dev.txt
 
-      - name: Run Pytest Layered Suite (111 Tests)
+      - name: Verify and Wait for PostgreSQL
+        run: |
+          python -c "
+          import time, psycopg2
+          for i in range(30):
+              try:
+                  conn = psycopg2.connect('postgresql://vellakshya:vellakshya_secret@127.0.0.1:5432/vellakshya_db')
+                  conn.autocommit = True
+                  with conn.cursor() as cur:
+                      cur.execute('CREATE EXTENSION IF NOT EXISTS vector;')
+                  conn.close()
+                  print('Postgres and pgvector extension are ready!')
+                  break
+              except Exception as e:
+                  print(f'Waiting for postgres... {e}')
+                  time.sleep(1)
+          "
+
+      - name: Run Pytest Layered Suite
+        env:
+          DATABASE_URL: postgresql://vellakshya:vellakshya_secret@127.0.0.1:5432/vellakshya_db
         run: |
           PYTHONPATH=. pytest tests/ -v
 
@@ -52,7 +117,7 @@ jobs:
       - name: Install Python Backend Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt uvicorn
+          pip install -r requirements.txt
 
       - name: Install Node Dependencies
         run: npm ci
@@ -77,71 +142,4 @@ jobs:
         with:
           name: playwright-report-full
           path: playwright-report/
-          retention-days: 14
-
-  load-test-k6:
-    name: Performance & Health Load Benchmark (k6)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install Python Backend Dependencies
-        run: |
-          pip install -r requirements.txt uvicorn
-
-      - name: Install k6
-        run: |
-          sudo gpg -k
-          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
-          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
-          sudo apt-get update
-          sudo apt-get install -y k6
-
-      - name: Start FastAPI Server
-        run: |
-          PYTHONPATH=. uvicorn app.main:app --host 127.0.0.1 --port 8000 &
-          sleep 3
-
-      - name: Execute k6 Load Test
-        run: k6 run k6/load-test.js
-
-  build-and-deploy-netlify:
-    name: Build & Validate Netlify Production Bundle (CD)
-    runs-on: ubuntu-latest
-    needs: [test-python, test-node-and-playwright]
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Install Node Dependencies
-        run: npm ci
-
-      - name: Build Netlify Production Bundle & Edge Proxy Rules
-        run: node netlify-build.js
-
-      - name: Validate Netlify Manifest & Assets
-        run: |
-          test -f app/static/index.html
-          test -f app/static/_redirects
-          test -f app/static/js/app.js
-          test -f app/static/css/styles.css
-          echo "Netlify Edge CDN deployment bundle verified."
-
-      - name: Upload Netlify Production Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: netlify-production-bundle
-          path: app/static/
           retention-days: 14

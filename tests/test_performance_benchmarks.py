@@ -5,12 +5,13 @@ Benchmarks:
 - 500-page enterprise PDF throughput (navigation, text search, thumbnail rendering).
 - Concurrent request latency under load.
 """
+
 from __future__ import annotations
-import os
+
 import time
-from fastapi.testclient import TestClient
+
 import fitz
-import pytest
+from fastapi.testclient import TestClient
 
 from app.main import app
 
@@ -29,7 +30,7 @@ def _generate_synthetic_pdf(target_mb: float) -> bytes:
         for l in range(25):
             page.insert_text(
                 fitz.Point(72, 50 + l * 25),
-                f"Enterprise Performance Benchmark Row {l} on Page {p_idx+1} (Target {target_mb}MB)",
+                f"Enterprise Performance Benchmark Row {l} on Page {p_idx + 1} (Target {target_mb}MB)",
             )
 
     data = doc.tobytes(deflate=False)
@@ -129,4 +130,4 @@ def test_benchmark_concurrent_api_conversions():
         latencies.append(lat)
 
     avg_lat = sum(latencies) / len(latencies)
-    assert avg_lat < 0.30, f"Average conversion latency {avg_lat*1000:.1f}ms exceeds 300ms budget"
+    assert avg_lat < 0.30, f"Average conversion latency {avg_lat * 1000:.1f}ms exceeds 300ms budget"

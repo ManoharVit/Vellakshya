@@ -4,16 +4,13 @@ Tests two-user live synchronization, room state snapshots, presence updates,
 synchronized comments with bounding box geometry, annotation broadcasting,
 multi-room isolation, ping/pong heartbeats, and offline action reconciliation.
 """
+
 from __future__ import annotations
+
 import fitz
-import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.services.collaboration import collaboration_manager
-from app.services.storage import storage_instance
-from app.services.document_service import DocumentService
-from app.models.db import SessionLocal, Document
 
 client = TestClient(app)
 
@@ -22,7 +19,7 @@ def create_sample_pdf(num_pages: int = 2) -> bytes:
     doc = fitz.open()
     for i in range(num_pages):
         page = doc.new_page(width=612, height=792)
-        page.insert_text((72, 100), f"Collab PDF - Page {i+1}", fontsize=14)
+        page.insert_text((72, 100), f"Collab PDF - Page {i + 1}", fontsize=14)
     data = doc.tobytes()
     doc.close()
     return data
@@ -63,11 +60,13 @@ def test_two_user_realtime_presence_and_cursor():
             assert "color" in join_event["user"]
 
             # 4. Bob moves to page 2 and moves mouse cursor
-            ws_bob.send_json({
-                "type": "presence",
-                "page_no": 2,
-                "cursor": {"x": 185.5, "y": 420.0},
-            })
+            ws_bob.send_json(
+                {
+                    "type": "presence",
+                    "page_no": 2,
+                    "cursor": {"x": 185.5, "y": 420.0},
+                }
+            )
 
             # 5. Alice receives presence_update event
             pres_event = ws_alice.receive_json()
@@ -96,12 +95,14 @@ def test_realtime_comment_and_annotation_broadcasting():
             ws_c.receive_json()  # user_joined Diana
 
             # 1. Charlie adds a contextual comment with bounding box
-            ws_c.send_json({
-                "type": "comment",
-                "page_no": 1,
-                "anchor": {"x": 72.0, "y": 140.0, "w": 200.0, "h": 50.0},
-                "body": "Header font weight requires WCAG 2.2 AA audit.",
-            })
+            ws_c.send_json(
+                {
+                    "type": "comment",
+                    "page_no": 1,
+                    "anchor": {"x": 72.0, "y": 140.0, "w": 200.0, "h": 50.0},
+                    "body": "Header font weight requires WCAG 2.2 AA audit.",
+                }
+            )
 
             # Both peers receive the comment broadcast
             c_msg = ws_c.receive_json()
@@ -114,12 +115,14 @@ def test_realtime_comment_and_annotation_broadcasting():
             assert "WCAG 2.2" in d_msg["comment"]["body"]
 
             # 2. Diana broadcasts a drawing overlay (highlight)
-            ws_d.send_json({
-                "type": "annotation",
-                "page_no": 2,
-                "tool": "highlight",
-                "data": {"rect": [50, 100, 300, 130], "color": "#FACC15"},
-            })
+            ws_d.send_json(
+                {
+                    "type": "annotation",
+                    "page_no": 2,
+                    "tool": "highlight",
+                    "data": {"rect": [50, 100, 300, 130], "color": "#FACC15"},
+                }
+            )
 
             annot_c = ws_c.receive_json()
             annot_d = ws_d.receive_json()
@@ -147,11 +150,13 @@ def test_multi_room_isolation():
             assert state_b["users"][0]["user_id"] == "userB"
 
             # userA performs action in Room A
-            ws_a.send_json({
-                "type": "presence",
-                "page_no": 5,
-                "cursor": {"x": 50, "y": 50},
-            })
+            ws_a.send_json(
+                {
+                    "type": "presence",
+                    "page_no": 5,
+                    "cursor": {"x": 50, "y": 50},
+                }
+            )
 
             # Send ping on userB to confirm no leaked messages in ws_b queue
             ws_b.send_json({"type": "ping"})
@@ -219,7 +224,12 @@ def test_offline_reconciliation_and_comment_merge_endpoints():
 
     # 2. Test offline sync replay
     offline_actions = [
-        {"type": "add_comment", "page": 1, "text": "Offline annotation notes", "author": "Field Worker"},
+        {
+            "type": "add_comment",
+            "page": 1,
+            "text": "Offline annotation notes",
+            "author": "Field Worker",
+        },
         {"type": "rotate_page", "page": 2, "angle": 90},
         {"type": "highlight", "page": 1, "text": "Collab"},
     ]
@@ -236,12 +246,30 @@ def test_offline_reconciliation_and_comment_merge_endpoints():
 
     # 3. Test concurrent comment set merge
     comments_a = [
-        {"id": "c1", "user": "Alice", "page": 1, "text": "Review title", "rect": [72, 72, 100, 100]},
+        {
+            "id": "c1",
+            "user": "Alice",
+            "page": 1,
+            "text": "Review title",
+            "rect": [72, 72, 100, 100],
+        },
         {"id": "c2", "user": "Alice", "page": 2, "text": "Check table", "rect": [72, 72, 100, 100]},
     ]
     comments_b = [
-        {"id": "c2", "user": "Alice", "page": 2, "text": "Check table", "rect": [72, 72, 100, 100]},  # Duplicate
-        {"id": "c3", "user": "Bob", "page": 1, "text": "Approve figure", "rect": [72, 72, 100, 100]},
+        {
+            "id": "c2",
+            "user": "Alice",
+            "page": 2,
+            "text": "Check table",
+            "rect": [72, 72, 100, 100],
+        },  # Duplicate
+        {
+            "id": "c3",
+            "user": "Bob",
+            "page": 1,
+            "text": "Approve figure",
+            "rect": [72, 72, 100, 100],
+        },
     ]
     merge_res = client.post(
         f"/api/v2/documents/{doc_id}/merge-comments",

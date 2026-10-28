@@ -3,13 +3,14 @@ Vellakshya Document Lifecycle, Immutable Versioning, and Audit Service.
 Orchestrates relational metadata, optimistic concurrency checks (base_version),
 cryptographic Ed25519 manifests, and hash-chained audit trails.
 """
+
 from __future__ import annotations
 
-import datetime
 import hashlib
 import json
 import uuid
 from typing import Any, Optional
+
 from sqlalchemy.orm import Session
 
 from app.models.db import (
@@ -20,11 +21,10 @@ from app.models.db import (
     DocumentPermission,
     DocumentVersion,
     IntegrityManifest,
-    User,
     utc_now,
 )
 from app.services.signatures import sign_manifest, verify_manifest
-from app.services.storage import storage_instance, ObjectNotFoundError
+from app.services.storage import ObjectNotFoundError, storage_instance
 
 
 class DocumentNotFoundError(Exception):
@@ -33,11 +33,13 @@ class DocumentNotFoundError(Exception):
 
 class VersionConflictError(Exception):
     """Raised when an operation targets a stale base version (HTTP 409)."""
+
     pass
 
 
 class PermissionDeniedError(Exception):
     """Raised when a user attempts an unauthorized document action (HTTP 403)."""
+
     pass
 
 
@@ -57,12 +59,14 @@ class DocumentService:
         db: Session,
         doc_id: str,
         user_id: str,
-        required_role: str = "viewer"  # 'viewer' < 'reviewer' < 'editor' < 'owner'
+        required_role: str = "viewer",  # 'viewer' < 'reviewer' < 'editor' < 'owner'
     ) -> str:
         hierarchy = {"viewer": 1, "reviewer": 2, "editor": 3, "owner": 4}
         perm = db.query(DocumentPermission).filter_by(document_id=doc_id, user_id=user_id).first()
         if not perm:
-            raise PermissionDeniedError(f"User {user_id} does not have access to document {doc_id}.")
+            raise PermissionDeniedError(
+                f"User {user_id} does not have access to document {doc_id}."
+            )
 
         user_level = hierarchy.get(perm.role, 0)
         req_level = hierarchy.get(required_role, 1)
@@ -169,7 +173,9 @@ class DocumentService:
         """
         Lists documents owned by or shared with the actor.
         """
-        perm_doc_ids = db.query(DocumentPermission.document_id).filter_by(user_id=actor_id).subquery()
+        perm_doc_ids = (
+            db.query(DocumentPermission.document_id).filter_by(user_id=actor_id).subquery()
+        )
         docs = (
             db.query(Document)
             .filter((Document.owner_id == actor_id) | (Document.id.in_(perm_doc_ids)))
@@ -196,9 +202,15 @@ class DocumentService:
         Returns: (new_or_existing_version, is_idempotent_replay)
         """
         # Idempotency check scoped to this document
-        existing_op = db.query(DocumentOperation).filter_by(document_id=doc_id, idempotency_key=idempotency_key).first()
+        existing_op = (
+            db.query(DocumentOperation)
+            .filter_by(document_id=doc_id, idempotency_key=idempotency_key)
+            .first()
+        )
         if existing_op and existing_op.output_version_id:
-            existing_ver = db.query(DocumentVersion).filter_by(id=existing_op.output_version_id).first()
+            existing_ver = (
+                db.query(DocumentVersion).filter_by(id=existing_op.output_version_id).first()
+            )
             if existing_ver:
                 return existing_ver, True
 
@@ -216,9 +228,13 @@ class DocumentService:
                 f"but active document is at current_version={doc.current_version}."
             )
 
-        parent_ver = db.query(DocumentVersion).filter_by(document_id=doc_id, version_no=base_version).first()
+        parent_ver = (
+            db.query(DocumentVersion).filter_by(document_id=doc_id, version_no=base_version).first()
+        )
         if not parent_ver:
-            raise DocumentNotFoundError(f"Base version {base_version} not found for document {doc_id}.")
+            raise DocumentNotFoundError(
+                f"Base version {base_version} not found for document {doc_id}."
+            )
 
         next_version_no = doc.current_version + 1
         new_version_id = str(uuid.uuid4())
@@ -351,7 +367,9 @@ class DocumentService:
         # 2. Recompute SHA-256
         actual_sha256 = storage_instance.compute_sha256(stored_bytes)
         manifest = ver.integrity_manifest
-        is_sig_valid = verify_manifest(manifest.manifest_json, manifest.signature) if manifest else False
+        is_sig_valid = (
+            verify_manifest(manifest.manifest_json, manifest.signature) if manifest else False
+        )
 
         if actual_sha256 != ver.sha256:
             return {
@@ -417,7 +435,11 @@ class DocumentService:
         if role not in ("owner", "editor", "reviewer", "viewer"):
             raise ValueError(f"Invalid role: {role}")
 
-        perm = db.query(DocumentPermission).filter_by(document_id=doc_id, user_id=target_user_id).first()
+        perm = (
+            db.query(DocumentPermission)
+            .filter_by(document_id=doc_id, user_id=target_user_id)
+            .first()
+        )
         if perm:
             perm.role = role
         else:
@@ -524,4 +546,3 @@ class DocumentService:
         # 2. Delete database records
         db.delete(doc)
         db.commit()
-

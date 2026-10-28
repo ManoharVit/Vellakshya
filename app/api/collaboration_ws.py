@@ -3,18 +3,21 @@ WebSocket Collaboration & Real-Time Presence Router.
 Implements Guidebook Milestone 4: Multi-user presence, synchronized comments,
 real-time annotation overlays, and offline action replay.
 """
+
 from __future__ import annotations
+
 import secrets
 from typing import Any, Optional
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.models.db import get_db, Document
+from app.models.db import Document, get_db
 from app.services.collaboration import (
     collaboration_manager,
-    sync_offline_actions,
     merge_concurrent_comments,
+    sync_offline_actions,
 )
 from app.services.storage import storage_instance
 
@@ -22,7 +25,9 @@ router = APIRouter(tags=["Real-Time Collaboration & WebSockets"])
 
 
 class OfflineSyncRequest(BaseModel):
-    actions: list[dict[str, Any]] = Field(..., description="Ordered list of mutations executed while offline")
+    actions: list[dict[str, Any]] = Field(
+        ..., description="Ordered list of mutations executed while offline"
+    )
     baseVersion: int = Field(1, ge=1, description="Base version before disconnect")
 
 

@@ -2,9 +2,11 @@
 PDF Content Editor service.
 Handles watermarking, pagination/Bates numbering, headers/footers, text replacement, text block insertion, and annotations.
 """
+
 from __future__ import annotations
-import math
+
 from typing import Optional
+
 import fitz  # PyMuPDF
 
 
@@ -37,13 +39,13 @@ def add_text_watermark(
     Applies a semi-transparent diagonal text watermark across every page.
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    
+
     for page in doc:
         rect = page.rect
         center_x = rect.width / 2
         center_y = rect.height / 2
         pt = fitz.Point(center_x - (len(text) * font_size * 0.22), center_y)
-        
+
         # Use morph for arbitrary rotation angles
         if angle % 90 == 0:
             page.insert_text(
@@ -63,7 +65,7 @@ def add_text_watermark(
                 color=color,
                 fill_opacity=opacity,
             )
-        
+
     out_bytes = doc.tobytes()
     doc.close()
     return out_bytes
@@ -83,12 +85,12 @@ def add_page_numbers(
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     total_pages = len(doc)
     pat = pattern if pattern is not None else format_pattern
-    
+
     for idx, page in enumerate(doc, 1):
         rect = page.rect
         label = pat.format(page=idx, total=total_pages)
         text_len = len(label) * font_size * 0.5
-        
+
         if position == "bottom-center":
             pt = fitz.Point((rect.width - text_len) / 2, rect.height - margin_bottom)
         elif position == "bottom-right":
@@ -97,9 +99,9 @@ def add_page_numbers(
             pt = fitz.Point(rect.width - text_len - 40, 40)
         else:
             pt = fitz.Point(40, rect.height - margin_bottom)
-            
+
         page.insert_text(pt, label, fontsize=font_size, color=(0.3, 0.3, 0.3))
-        
+
     out_bytes = doc.tobytes()
     doc.close()
     return out_bytes
@@ -115,14 +117,21 @@ def add_header_footer(
     Inserts running header and footer text across all pages.
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    
+
     for page in doc:
         rect = page.rect
         if header_text:
-            page.insert_text(fitz.Point(40, 30), header_text, fontsize=font_size, color=(0.4, 0.4, 0.4))
+            page.insert_text(
+                fitz.Point(40, 30), header_text, fontsize=font_size, color=(0.4, 0.4, 0.4)
+            )
         if footer_text:
-            page.insert_text(fitz.Point(40, rect.height - 30), footer_text, fontsize=font_size, color=(0.4, 0.4, 0.4))
-            
+            page.insert_text(
+                fitz.Point(40, rect.height - 30),
+                footer_text,
+                fontsize=font_size,
+                color=(0.4, 0.4, 0.4),
+            )
+
     out_bytes = doc.tobytes()
     doc.close()
     return out_bytes
@@ -137,7 +146,7 @@ def highlight_search_terms(
     Finds and adds visual highlight annotations for specified keywords or search terms.
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    
+
     for page in doc:
         for term in terms:
             if not term.strip():
@@ -147,7 +156,7 @@ def highlight_search_terms(
                 annot = page.add_highlight_annot(quad)
                 annot.set_colors(stroke=color)
                 annot.update()
-                
+
     out_bytes = doc.tobytes()
     doc.close()
     return out_bytes
@@ -209,7 +218,9 @@ def _map_to_standard_pdf_font(font_name: str, flags: int = 0) -> str:
     to the optimal matching standard PDF font variant.
     """
     fn = (font_name or "").lower()
-    is_bold = bool(flags & 16) or any(k in fn for k in ("bold", "black", "heavy", "medium", "semibold", "bld"))
+    is_bold = bool(flags & 16) or any(
+        k in fn for k in ("bold", "black", "heavy", "medium", "semibold", "bld")
+    )
     is_italic = bool(flags & 2) or any(k in fn for k in ("italic", "oblique", "ital", "slanted"))
 
     if any(k in fn for k in ("courier", "mono", "consolas", "menlo", "code", "fixed")):
@@ -221,7 +232,10 @@ def _map_to_standard_pdf_font(font_name: str, flags: int = 0) -> str:
             return "courier-oblique"
         return "courier"
 
-    if any(k in fn for k in ("times", "serif", "georgia", "cambria", "garamond", "palatino", "minion", "roman")):
+    if any(
+        k in fn
+        for k in ("times", "serif", "georgia", "cambria", "garamond", "palatino", "minion", "roman")
+    ):
         if is_bold and is_italic:
             return "times-bolditalic"
         if is_bold:
@@ -325,7 +339,9 @@ def replace_text_batch(
         clean_search = (rule.get("search_text") or rule.get("search") or "").strip()
         if not clean_search:
             continue
-        replacement = rule.get("replacement_text") if "replacement_text" in rule else rule.get("replace", "")
+        replacement = (
+            rule.get("replacement_text") if "replacement_text" in rule else rule.get("replace", "")
+        )
         font_size = rule.get("font_size")
         color = rule.get("color")
         font_name_override = rule.get("font_name")
@@ -367,7 +383,9 @@ def replace_text_batch(
 
                 # 1. Resolve Font Family & Style
                 if best_span and (rule_preserve_style or not font_name_override):
-                    final_font = _map_to_standard_pdf_font(best_span.get("font", ""), best_span.get("flags", 0))
+                    final_font = _map_to_standard_pdf_font(
+                        best_span.get("font", ""), best_span.get("flags", 0)
+                    )
                 elif font_name_override:
                     final_font = _map_to_standard_pdf_font(font_name_override)
                 else:
@@ -376,7 +394,11 @@ def replace_text_batch(
                 # 2. Resolve Font Size
                 if override_size and font_size is not None and font_size > 0:
                     final_fs = float(font_size)
-                elif best_span and best_span.get("size") and (rule_preserve_style or font_size is None or font_size <= 0):
+                elif (
+                    best_span
+                    and best_span.get("size")
+                    and (rule_preserve_style or font_size is None or font_size <= 0)
+                ):
                     final_fs = float(best_span["size"])
                 elif font_size is not None and font_size > 0:
                     final_fs = float(font_size)
@@ -386,7 +408,11 @@ def replace_text_batch(
                 # 3. Resolve Font Color
                 if override_color and color is not None:
                     final_color = color
-                elif best_span and (rule_preserve_style or color is None) and best_span.get("color") is not None:
+                elif (
+                    best_span
+                    and (rule_preserve_style or color is None)
+                    and best_span.get("color") is not None
+                ):
                     c_int = best_span["color"]
                     r_col = ((c_int >> 16) & 255) / 255.0
                     g_col = ((c_int >> 8) & 255) / 255.0
@@ -491,7 +517,7 @@ def insert_text_block(
     if 1 <= page_num <= len(doc):
         page = doc[page_num - 1]
         pt = fitz.Point(x, y)
-        
+
         # If background fill requested, draw a clean background box first
         if bg_fill_color is not None:
             text_lines = text.split("\n")
@@ -500,9 +526,9 @@ def insert_text_block(
             box_h = len(text_lines) * font_size * 1.35 + 6
             bg_rect = fitz.Rect(x - 4, y - font_size - 2, x + box_w, y - font_size + box_h)
             page.draw_rect(bg_rect, color=bg_fill_color, fill=bg_fill_color)
-            
+
         page.insert_text(pt, text, fontsize=font_size, color=color)
-        
+
     out_bytes = doc.tobytes()
     doc.close()
     return out_bytes
@@ -526,7 +552,7 @@ def whiteout_area(
         r = fitz.Rect(x0, y0, x1, y1)
         page.add_redact_annot(r, fill=fill_color)
         page.apply_redactions()
-        
+
     out_bytes = doc.tobytes(deflate=True, garbage=4)
     doc.close()
     return out_bytes

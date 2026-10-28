@@ -11,19 +11,20 @@ Validates the full Guidebook Security Checklist:
 8. HTML converter Content Security Policy (CSP) enforcement
 9. Owner-only retention purging & object storage deletion
 """
+
 from __future__ import annotations
+
 import base64
-import hashlib
 import json
-import time
 import uuid
+
 import fitz
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.services.storage import storage_instance
 from app.services.security import redact_text_permanently, sanitize_document, validate_pdf_security
+from app.services.storage import storage_instance
 
 client = TestClient(app)
 
@@ -32,7 +33,7 @@ def create_sample_pdf(num_pages: int = 2, secret_text: str = "") -> bytes:
     doc = fitz.open()
     for i in range(num_pages):
         page = doc.new_page(width=612, height=792)
-        page.insert_text((72, 100), f"Page {i+1} Standard Content", fontsize=14)
+        page.insert_text((72, 100), f"Page {i + 1} Standard Content", fontsize=14)
         if secret_text:
             page.insert_text((72, 200), secret_text, fontsize=14)
     data = doc.tobytes()
@@ -201,7 +202,9 @@ def test_adversarial_presigned_url_tampering_and_expiration():
     raw_bytes = base64.urlsafe_b64decode(token.encode("utf-8"))
     token_json = json.loads(raw_bytes.decode("utf-8"))
     token_json["key"] = "documents/forged_unauthorized_key.pdf"
-    tampered_token = base64.urlsafe_b64encode(json.dumps(token_json).encode("utf-8")).decode("utf-8")
+    tampered_token = base64.urlsafe_b64encode(json.dumps(token_json).encode("utf-8")).decode(
+        "utf-8"
+    )
     tampered_res = client.get(f"/api/v2/storage/presigned?token={tampered_token}")
     assert tampered_res.status_code == 403
 
@@ -263,7 +266,7 @@ def test_adversarial_html_converter_content_security_policy():
     )
     assert res_fixed.status_code == 200
     html_fixed = res_fixed.text
-    assert "<meta http-equiv=\"Content-Security-Policy\"" in html_fixed
+    assert '<meta http-equiv="Content-Security-Policy"' in html_fixed
     assert "script-src 'none'" in html_fixed
 
     # 2. Semantic responsive layout mode
@@ -274,7 +277,7 @@ def test_adversarial_html_converter_content_security_policy():
     )
     assert res_semantic.status_code == 200
     html_semantic = res_semantic.text
-    assert "<meta http-equiv=\"Content-Security-Policy\"" in html_semantic
+    assert '<meta http-equiv="Content-Security-Policy"' in html_semantic
     assert "script-src 'none'" in html_semantic
 
 
@@ -304,11 +307,13 @@ def test_adversarial_redaction_and_metadata_sanitization():
 
     # 2. Sanitize metadata
     doc_meta = fitz.open(stream=pdf_bytes, filetype="pdf")
-    doc_meta.set_metadata({
-        "title": "Secret Strategy",
-        "author": "Dr. Confidential",
-        "keywords": "sensitive,classified",
-    })
+    doc_meta.set_metadata(
+        {
+            "title": "Secret Strategy",
+            "author": "Dr. Confidential",
+            "keywords": "sensitive,classified",
+        }
+    )
     staged_bytes = doc_meta.tobytes()
     doc_meta.close()
 

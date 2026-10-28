@@ -7,13 +7,13 @@ Audits:
 - Dependency vulnerability scan audit.
 - Malicious JavaScript sandboxing.
 """
+
 from __future__ import annotations
-import os
+
 import re
 from pathlib import Path
+
 from fastapi.testclient import TestClient
-import fitz
-import pytest
 
 from app.main import app
 from app.services import security
@@ -68,13 +68,19 @@ def test_security_secret_scanning_in_codebase():
     scanned_files = 0
     for ext in ("*.py", "*.js", "*.html"):
         for file_path in project_root.rglob(ext):
-            if ".venv" in str(file_path) or "node_modules" in str(file_path) or ".pytest_cache" in str(file_path):
+            if (
+                ".venv" in str(file_path)
+                or "node_modules" in str(file_path)
+                or ".pytest_cache" in str(file_path)
+            ):
                 continue
             scanned_files += 1
             content = file_path.read_text(encoding="utf-8", errors="ignore")
             for pattern in secret_patterns:
                 match = pattern.search(content)
-                assert match is None, f"Potential hardcoded secret detected in {file_path}: {match.group(0)}"
+                assert match is None, (
+                    f"Potential hardcoded secret detected in {file_path}: {match.group(0)}"
+                )
 
     assert scanned_files > 5, "Audit must scan multiple codebase files"
 

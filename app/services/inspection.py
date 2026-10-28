@@ -2,8 +2,11 @@
 PDF Inspection and Metadata Service.
 Provides comprehensive structural analysis, TOC extraction, and metadata editing.
 """
+
 from __future__ import annotations
+
 from typing import Any
+
 import fitz  # PyMuPDF
 
 
@@ -70,20 +73,22 @@ def inspect_pdf(pdf_bytes: bytes) -> dict[str, Any]:
         orientation = "Portrait" if rect.height >= rect.width else "Landscape"
         paper_size = get_paper_format(rect.width, rect.height)
 
-        pages_info.append({
-            "page_number": idx,
-            "width_pt": round(rect.width, 2),
-            "height_pt": round(rect.height, 2),
-            "width_mm": round(rect.width * 25.4 / 72, 1),
-            "height_mm": round(rect.height * 25.4 / 72, 1),
-            "format": paper_size,
-            "orientation": orientation,
-            "rotation": page.rotation,
-            "images_count": len(images),
-            "annots_count": len(annots),
-            "links_count": len(links),
-            "widgets_count": len(widgets),
-        })
+        pages_info.append(
+            {
+                "page_number": idx,
+                "width_pt": round(rect.width, 2),
+                "height_pt": round(rect.height, 2),
+                "width_mm": round(rect.width * 25.4 / 72, 1),
+                "height_mm": round(rect.height * 25.4 / 72, 1),
+                "format": paper_size,
+                "orientation": orientation,
+                "rotation": page.rotation,
+                "images_count": len(images),
+                "annots_count": len(annots),
+                "links_count": len(links),
+                "widgets_count": len(widgets),
+            }
+        )
 
     toc = doc.get_toc()  # [[lvl, title, page, ...]]
     formatted_toc = [{"level": item[0], "title": item[1], "page": item[2]} for item in toc]

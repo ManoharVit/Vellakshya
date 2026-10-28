@@ -1,8 +1,10 @@
 """
 API integration tests for PDF Workbench Pro endpoints.
 """
-from fastapi.testclient import TestClient
+
 import fitz
+from fastapi.testclient import TestClient
+
 from app.main import app
 
 client = TestClient(app)
@@ -161,12 +163,15 @@ def test_api_whiteout():
 
 def test_api_replace_text_batch_and_sequential():
     import json
+
     pdf_bytes = get_sample_pdf_bytes()
     # Step 1: Replace via batch JSON on non-overlapping boundaries
-    rules = json.dumps([
-        {"search": "Hello", "replace": "Hi"},
-        {"search": "Pro", "replace": "Max"},
-    ])
+    rules = json.dumps(
+        [
+            {"search": "Hello", "replace": "Hi"},
+            {"search": "Pro", "replace": "Max"},
+        ]
+    )
     res1 = client.post(
         "/api/edit/replace-text",
         files={"file": ("test.pdf", pdf_bytes, "application/pdf")},
@@ -213,6 +218,7 @@ def test_api_crop_pages():
 
 def test_api_single_replace_vs_replace_all():
     import json
+
     doc = fitz.open()
     page = doc.new_page(width=612, height=792)
     page.insert_text(fitz.Point(72, 100), "DRAFT proposal DRAFT section DRAFT final", fontsize=14)
@@ -224,14 +230,16 @@ def test_api_single_replace_vs_replace_all():
         "/api/edit/replace-text",
         files={"file": ("draft.pdf", multi_pdf, "application/pdf")},
         data={
-            "rules": json.dumps([
-                {
-                    "search_text": "DRAFT",
-                    "replacement_text": "REVIEW",
-                    "single": True,
-                    "occurrence": 1,
-                }
-            ]),
+            "rules": json.dumps(
+                [
+                    {
+                        "search_text": "DRAFT",
+                        "replacement_text": "REVIEW",
+                        "single": True,
+                        "occurrence": 1,
+                    }
+                ]
+            ),
             "single": "true",
         },
     )
@@ -249,13 +257,15 @@ def test_api_single_replace_vs_replace_all():
         "/api/edit/replace-text",
         files={"file": ("draft.pdf", multi_pdf, "application/pdf")},
         data={
-            "rules": json.dumps([
-                {
-                    "search_text": "DRAFT",
-                    "replacement_text": "APPROVED",
-                    "single": False,
-                }
-            ]),
+            "rules": json.dumps(
+                [
+                    {
+                        "search_text": "DRAFT",
+                        "replacement_text": "APPROVED",
+                        "single": False,
+                    }
+                ]
+            ),
             "single": "false",
         },
     )
@@ -271,10 +281,17 @@ def test_api_single_replace_vs_replace_all():
 
 def test_api_replace_text_preserves_same_color_and_font():
     import json
+
     doc = fitz.open()
     page = doc.new_page(width=612, height=792)
     # Magenta bold Times
-    page.insert_text(fitz.Point(72, 120), "Company: OLD_CORP headquarters", fontname="times-bold", fontsize=16, color=(0.75, 0.1, 0.6))
+    page.insert_text(
+        fitz.Point(72, 120),
+        "Company: OLD_CORP headquarters",
+        fontname="times-bold",
+        fontsize=16,
+        color=(0.75, 0.1, 0.6),
+    )
     sample_pdf = doc.tobytes()
     doc.close()
 
@@ -282,13 +299,15 @@ def test_api_replace_text_preserves_same_color_and_font():
         "/api/edit/replace-text",
         files={"file": ("corp.pdf", sample_pdf, "application/pdf")},
         data={
-            "rules": json.dumps([
-                {
-                    "search_text": "OLD_CORP",
-                    "replacement_text": "NEW_VENTURES_INC",
-                    "preserve_style": True,
-                }
-            ]),
+            "rules": json.dumps(
+                [
+                    {
+                        "search_text": "OLD_CORP",
+                        "replacement_text": "NEW_VENTURES_INC",
+                        "preserve_style": True,
+                    }
+                ]
+            ),
             "preserve_style": "true",
         },
     )
@@ -298,7 +317,13 @@ def test_api_replace_text_preserves_same_color_and_font():
     out_doc = fitz.open(stream=res.content, filetype="pdf")
     out_page = out_doc[0]
     blocks = out_page.get_text("dict")["blocks"]
-    spans = [s for b in blocks if b.get("type") == 0 for l in b.get("lines", []) for s in l.get("spans", [])]
+    spans = [
+        s
+        for b in blocks
+        if b.get("type") == 0
+        for l in b.get("lines", [])
+        for s in l.get("spans", [])
+    ]
     target_span = next(s for s in spans if "NEW_VENTURES_INC" in s["text"])
 
     assert target_span["font"] == "Times-Bold"
@@ -350,7 +375,3 @@ def test_api_update_metadata_and_deep_inspection():
     assert data["file_size_bytes"] > 0
     assert len(data["pages"]) >= 1
     assert data["pages"][0]["format"] in ("Letter", "A4", "Custom", "612 × 792 pt")
-
-
-
-

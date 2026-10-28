@@ -1,10 +1,10 @@
 """
 Automated unit tests for PDF Workbench Pro services.
 """
-import io
+
 import fitz  # PyMuPDF
-import pytest
-from app.services import converter, editor, forms, inspection, organizer, security
+
+from app.services import converter, editor, inspection, organizer, security
 
 
 def create_sample_pdf(num_pages: int = 3, text_prefix: str = "Test Page") -> bytes:
@@ -45,11 +45,11 @@ def test_organizer_merge_and_split():
     pdf1 = create_sample_pdf(num_pages=2, text_prefix="Doc A")
     pdf2 = create_sample_pdf(num_pages=3, text_prefix="Doc B")
     merged = organizer.merge_pdfs([pdf1, pdf2])
-    
+
     doc = fitz.open(stream=merged, filetype="pdf")
     assert len(doc) == 5
     doc.close()
-    
+
     parts = organizer.split_pdf_by_ranges(merged, "1-2, 3-5")
     assert len(parts) == 2
 
@@ -57,12 +57,12 @@ def test_organizer_merge_and_split():
 def test_organizer_rotate_and_delete():
     pdf = create_sample_pdf(num_pages=3)
     rotated = organizer.rotate_pages(pdf, pages=[1], angle=90)
-    
+
     doc = fitz.open(stream=rotated, filetype="pdf")
     assert doc[0].rotation == 90
     assert doc[1].rotation == 0
     doc.close()
-    
+
     deleted = organizer.delete_pages(pdf, pages_to_delete=[2])
     doc_del = fitz.open(stream=deleted, filetype="pdf")
     assert len(doc_del) == 2
@@ -76,7 +76,7 @@ def test_editor_watermark_and_numbers():
     text = doc_wm[0].get_text()
     assert "SAMPLE WATERMARK" in text
     doc_wm.close()
-    
+
     paginated = editor.add_page_numbers(pdf, pattern="Page {page} of {total}")
     doc_pg = fitz.open(stream=paginated, filetype="pdf")
     text_pg = doc_pg[0].get_text()
@@ -88,7 +88,7 @@ def test_security_redaction():
     pdf = create_sample_pdf(num_pages=1)
     redacted_pdf, count = security.redact_text_permanently(pdf, terms_to_redact=["SECRET-9988"])
     assert count == 1
-    
+
     doc = fitz.open(stream=redacted_pdf, filetype="pdf")
     text = doc[0].get_text()
     assert "SECRET-9988" not in text
@@ -98,12 +98,12 @@ def test_security_redaction():
 def test_security_encryption_and_decryption():
     pdf = create_sample_pdf(num_pages=1)
     encrypted = security.encrypt_pdf(pdf, user_password="testpassword123")
-    
+
     # Verify it is encrypted
     doc = fitz.open(stream=encrypted, filetype="pdf")
     assert doc.is_encrypted
     doc.close()
-    
+
     # Decrypt
     decrypted = security.decrypt_pdf(encrypted, password="testpassword123")
     doc_dec = fitz.open(stream=decrypted, filetype="pdf")
@@ -123,12 +123,14 @@ def test_delete_metadata():
     pdf = create_sample_pdf(num_pages=1)
     # Set metadata first
     doc = fitz.open(stream=pdf, filetype="pdf")
-    doc.set_metadata({
-        "title": "Confidential Research",
-        "author": "Dr. Smith",
-        "subject": "Bioinformatics",
-        "keywords": "DNA, RNA",
-    })
+    doc.set_metadata(
+        {
+            "title": "Confidential Research",
+            "author": "Dr. Smith",
+            "subject": "Bioinformatics",
+            "keywords": "DNA, RNA",
+        }
+    )
     meta_pdf = doc.tobytes()
     doc.close()
 
@@ -296,11 +298,29 @@ def test_replace_text_preserves_same_font_and_color():
     doc = fitz.open()
     page = doc.new_page(width=612, height=792)
     # 1. Blue italic Times serif
-    page.insert_text(fitz.Point(72, 100), "Status: PENDING_APPROVAL on page", fontname="times-italic", fontsize=15, color=(0.1, 0.4, 0.9))
+    page.insert_text(
+        fitz.Point(72, 100),
+        "Status: PENDING_APPROVAL on page",
+        fontname="times-italic",
+        fontsize=15,
+        color=(0.1, 0.4, 0.9),
+    )
     # 2. Red bold Helvetica sans-serif
-    page.insert_text(fitz.Point(72, 160), "Priority: HIGH_URGENCY note", fontname="hebo", fontsize=20, color=(0.85, 0.15, 0.15))
+    page.insert_text(
+        fitz.Point(72, 160),
+        "Priority: HIGH_URGENCY note",
+        fontname="hebo",
+        fontsize=20,
+        color=(0.85, 0.15, 0.15),
+    )
     # 3. Purple bold Courier monospace
-    page.insert_text(fitz.Point(72, 220), "Token: SEC_KEY_9988 hash", fontname="courier-bold", fontsize=12, color=(0.6, 0.1, 0.7))
+    page.insert_text(
+        fitz.Point(72, 220),
+        "Token: SEC_KEY_9988 hash",
+        fontname="courier-bold",
+        fontsize=12,
+        color=(0.6, 0.1, 0.7),
+    )
     sample_pdf = doc.tobytes()
     doc.close()
 
@@ -320,7 +340,13 @@ def test_replace_text_preserves_same_font_and_color():
     res_doc = fitz.open(stream=replaced_pdf, filetype="pdf")
     res_page = res_doc[0]
     blocks = res_page.get_text("dict")["blocks"]
-    spans = [s for b in blocks if b.get("type") == 0 for l in b.get("lines", []) for s in l.get("spans", [])]
+    spans = [
+        s
+        for b in blocks
+        if b.get("type") == 0
+        for l in b.get("lines", [])
+        for s in l.get("spans", [])
+    ]
 
     # Verify 1: ACCEPTED_OFFICIAL preserved Times-Italic font and (0.1, 0.4, 0.9) color
     span1 = next(s for s in spans if "ACCEPTED_OFFICIAL" in s["text"])
@@ -357,12 +383,9 @@ def test_replace_text_preserves_same_font_and_color():
 
 def test_parse_page_spec_ranges_and_keywords():
     from app.services.organizer import parse_page_spec
+
     assert parse_page_spec("1-5", total_pages=10) == [1, 2, 3, 4, 5]
     assert parse_page_spec("odd", total_pages=6) == [1, 3, 5]
     assert parse_page_spec("even", total_pages=6) == [2, 4, 6]
     assert parse_page_spec("all", total_pages=4) == [1, 2, 3, 4]
     assert parse_page_spec("1, 3, 5-7, odd", total_pages=8) == [1, 3, 5, 6, 7]
-
-
-
-

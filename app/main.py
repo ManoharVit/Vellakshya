@@ -2,21 +2,36 @@
 PDF Workbench Pro — FastAPI backend.
 Comprehensive PDF manipulation matching Adobe Acrobat Pro features with high-fidelity PDF-to-HTML conversion.
 """
+
 from __future__ import annotations
+
 import json
-from pathlib import Path
 import secrets
+from pathlib import Path
 from typing import Any, Optional
+
+import fitz
 from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, Response, StreamingResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from app.core.config import STATIC_DIR, config
-from app.services import auth, collaboration, converter, editor, forms, inspection, organizer, security, signatures
-from app.services.queue import queue_instance
-from app.api.v2_documents import router as v2_documents_router
+from app.ai.router import router as ai_router
 from app.api.collaboration_ws import router as collaboration_ws_router
+from app.api.v2_documents import router as v2_documents_router
+from app.core.config import STATIC_DIR, config
+from app.services import (
+    auth,
+    collaboration,
+    converter,
+    editor,
+    forms,
+    inspection,
+    organizer,
+    security,
+    signatures,
+)
+from app.services.queue import queue_instance
 
 app = FastAPI(
     title=config.title,
@@ -46,6 +61,7 @@ async def add_no_cache_header(request: Request, call_next):
 
 app.include_router(v2_documents_router)
 app.include_router(collaboration_ws_router)
+app.include_router(ai_router)
 
 
 def make_attachment_filename(source_filename: Optional[str], suffix: str, ext: str = "pdf") -> str:
@@ -83,26 +99,48 @@ async def get_sample_document(sample_type: str = "invoice"):
     Generates synthetic high-quality sample PDF documents for instant testing and relief from the blank page.
     """
     import fitz
+
     doc = fitz.open()
 
     if sample_type == "report":
         p1 = doc.new_page(width=595, height=842)
-        p1.insert_text((50, 70), "Vellakshya Enterprise Document Audit", fontsize=20, color=(0.1, 0.2, 0.5))
-        p1.insert_text((50, 100), "Executive Preflight & Compliance Report", fontsize=14, color=(0.4, 0.4, 0.4))
-        p1.insert_text((50, 140), "1. Executive Summary\nThis document benchmarks rendering fidelity, typographic metrics, and\naccessibility tagging across multi-page enterprise records.", fontsize=11, color=(0, 0, 0))
+        p1.insert_text(
+            (50, 70), "Vellakshya Enterprise Document Audit", fontsize=20, color=(0.1, 0.2, 0.5)
+        )
+        p1.insert_text(
+            (50, 100), "Executive Preflight & Compliance Report", fontsize=14, color=(0.4, 0.4, 0.4)
+        )
+        p1.insert_text(
+            (50, 140),
+            "1. Executive Summary\nThis document benchmarks rendering fidelity, typographic metrics, and\naccessibility tagging across multi-page enterprise records.",
+            fontsize=11,
+            color=(0, 0, 0),
+        )
 
         p2 = doc.new_page(width=595, height=842)
         p2.insert_text((50, 70), "2. Security & Compliance", fontsize=16, color=(0.1, 0.2, 0.5))
-        p2.insert_text((50, 100), "Digital signature digest: SHA-256 authenticated.\nBitmask permissions: Printing Allowed, Copying Allowed, Annotations Allowed.", fontsize=11, color=(0, 0, 0))
+        p2.insert_text(
+            (50, 100),
+            "Digital signature digest: SHA-256 authenticated.\nBitmask permissions: Printing Allowed, Copying Allowed, Annotations Allowed.",
+            fontsize=11,
+            color=(0, 0, 0),
+        )
 
         p3 = doc.new_page(width=595, height=842)
         p3.insert_text((50, 70), "3. Operational Sign-Off", fontsize=16, color=(0.1, 0.2, 0.5))
-        p3.insert_text((50, 100), "Lead Architect: Giri Manohar Vemula\nStatus: APPROVED FOR PRODUCTION", fontsize=11, color=(0.1, 0.5, 0.2))
+        p3.insert_text(
+            (50, 100),
+            "Lead Architect: Giri Manohar Vemula\nStatus: APPROVED FOR PRODUCTION",
+            fontsize=11,
+            color=(0.1, 0.5, 0.2),
+        )
         filename = "Sample_Enterprise_Report.pdf"
     else:
         p1 = doc.new_page(width=595, height=842)
         # Header & Brand
-        p1.insert_text((50, 60), "VELLAKSHYA ENTERPRISE SOLUTIONS", fontsize=11, color=(0.4, 0.4, 0.5))
+        p1.insert_text(
+            (50, 60), "VELLAKSHYA ENTERPRISE SOLUTIONS", fontsize=11, color=(0.4, 0.4, 0.5)
+        )
         p1.insert_text((50, 85), "INVOICE #INV-2026-001", fontsize=20, color=(0.1, 0.2, 0.55))
         p1.insert_text((420, 60), "Invoice Date: Oct 26, 2026", fontsize=9, color=(0.3, 0.3, 0.3))
         p1.insert_text((420, 75), "Payment Terms: Net 30", fontsize=9, color=(0.3, 0.3, 0.3))
@@ -110,10 +148,20 @@ async def get_sample_document(sample_type: str = "invoice"):
 
         # Parties
         p1.insert_text((50, 125), "ISSUED BY:", fontsize=9, color=(0.5, 0.5, 0.5))
-        p1.insert_text((50, 140), "Vellakshya Systems Inc.\n100 Technology Plaza, Suite 400\nSan Francisco, CA 94105", fontsize=10, color=(0.1, 0.1, 0.1))
+        p1.insert_text(
+            (50, 140),
+            "Vellakshya Systems Inc.\n100 Technology Plaza, Suite 400\nSan Francisco, CA 94105",
+            fontsize=10,
+            color=(0.1, 0.1, 0.1),
+        )
 
         p1.insert_text((300, 125), "BILLED TO:", fontsize=9, color=(0.5, 0.5, 0.5))
-        p1.insert_text((300, 140), "Acros Global Enterprises Inc.\nAttn: Accounts Payable\n742 Enterprise Blvd, New York, NY 10001", fontsize=10, color=(0.1, 0.1, 0.1))
+        p1.insert_text(
+            (300, 140),
+            "Acros Global Enterprises Inc.\nAttn: Accounts Payable\n742 Enterprise Blvd, New York, NY 10001",
+            fontsize=10,
+            color=(0.1, 0.1, 0.1),
+        )
 
         # Table Header
         p1.draw_rect(fitz.Rect(50, 195, 545, 215), color=(0.85, 0.88, 0.95), fill=(0.94, 0.96, 1.0))
@@ -136,7 +184,9 @@ async def get_sample_document(sample_type: str = "invoice"):
             p1.insert_text((345, curr_y), qty, fontsize=9.5, color=(0.3, 0.3, 0.3))
             p1.insert_text((400, curr_y), unit, fontsize=9.5, color=(0.3, 0.3, 0.3))
             p1.insert_text((485, curr_y), total, fontsize=9.5, color=(0.1, 0.1, 0.1))
-            p1.draw_line(fitz.Point(50, curr_y + 8), fitz.Point(545, curr_y + 8), color=(0.9, 0.9, 0.92))
+            p1.draw_line(
+                fitz.Point(50, curr_y + 8), fitz.Point(545, curr_y + 8), color=(0.9, 0.9, 0.92)
+            )
             curr_y += 28
 
         # Summary Block
@@ -144,30 +194,72 @@ async def get_sample_document(sample_type: str = "invoice"):
         p1.insert_text((360, summary_top), "Subtotal:", fontsize=10, color=(0.4, 0.4, 0.4))
         p1.insert_text((485, summary_top), "$2,500.00", fontsize=10, color=(0.1, 0.1, 0.1))
 
-        p1.insert_text((360, summary_top + 20), "Estimated Tax (8.25%):", fontsize=10, color=(0.4, 0.4, 0.4))
+        p1.insert_text(
+            (360, summary_top + 20), "Estimated Tax (8.25%):", fontsize=10, color=(0.4, 0.4, 0.4)
+        )
         p1.insert_text((485, summary_top + 20), "$206.25", fontsize=10, color=(0.1, 0.1, 0.1))
 
-        p1.draw_rect(fitz.Rect(350, summary_top + 32, 545, summary_top + 62), color=(0.1, 0.5, 0.25), fill=(0.92, 0.98, 0.94))
+        p1.draw_rect(
+            fitz.Rect(350, summary_top + 32, 545, summary_top + 62),
+            color=(0.1, 0.5, 0.25),
+            fill=(0.92, 0.98, 0.94),
+        )
         p1.insert_text((360, summary_top + 52), "TOTAL DUE:", fontsize=11, color=(0.05, 0.4, 0.15))
         p1.insert_text((475, summary_top + 52), "$2,706.25", fontsize=12, color=(0.05, 0.4, 0.15))
 
         # Remittance & Wire Instructions
         wire_y = summary_top + 95
-        p1.insert_text((50, wire_y), "WIRE TRANSFER & REMITTANCE DETAILS", fontsize=9, color=(0.4, 0.4, 0.5))
-        p1.draw_line(fitz.Point(50, wire_y + 5), fitz.Point(320, wire_y + 5), color=(0.85, 0.88, 0.95))
-        p1.insert_text((50, wire_y + 22), "Bank Name: Silicon Valley Commercial Bank, N.A.", fontsize=9, color=(0.25, 0.25, 0.25))
-        p1.insert_text((50, wire_y + 36), "Routing Transit Number (ABA): 121000358", fontsize=9, color=(0.25, 0.25, 0.25))
-        p1.insert_text((50, wire_y + 50), "Account Number: 9840-2391-4402", fontsize=9, color=(0.25, 0.25, 0.25))
-        p1.insert_text((50, wire_y + 64), "SWIFT / BIC Code: SVCBUS33XXX", fontsize=9, color=(0.25, 0.25, 0.25))
+        p1.insert_text(
+            (50, wire_y), "WIRE TRANSFER & REMITTANCE DETAILS", fontsize=9, color=(0.4, 0.4, 0.5)
+        )
+        p1.draw_line(
+            fitz.Point(50, wire_y + 5), fitz.Point(320, wire_y + 5), color=(0.85, 0.88, 0.95)
+        )
+        p1.insert_text(
+            (50, wire_y + 22),
+            "Bank Name: Silicon Valley Commercial Bank, N.A.",
+            fontsize=9,
+            color=(0.25, 0.25, 0.25),
+        )
+        p1.insert_text(
+            (50, wire_y + 36),
+            "Routing Transit Number (ABA): 121000358",
+            fontsize=9,
+            color=(0.25, 0.25, 0.25),
+        )
+        p1.insert_text(
+            (50, wire_y + 50),
+            "Account Number: 9840-2391-4402",
+            fontsize=9,
+            color=(0.25, 0.25, 0.25),
+        )
+        p1.insert_text(
+            (50, wire_y + 64), "SWIFT / BIC Code: SVCBUS33XXX", fontsize=9, color=(0.25, 0.25, 0.25)
+        )
 
         # Sign-off & Compliance block
         sign_y = wire_y + 110
-        p1.insert_text((50, sign_y), "Lead Architect & Sign-Off: Giri Manohar Vemula", fontsize=9.5, color=(0.2, 0.25, 0.4))
-        p1.insert_text((50, sign_y + 15), "Verification Status: Certified Cryptographic Manifest (SHA-256 / Ed25519)", fontsize=8.5, color=(0.1, 0.5, 0.25))
+        p1.insert_text(
+            (50, sign_y),
+            "Lead Architect & Sign-Off: Giri Manohar Vemula",
+            fontsize=9.5,
+            color=(0.2, 0.25, 0.4),
+        )
+        p1.insert_text(
+            (50, sign_y + 15),
+            "Verification Status: Certified Cryptographic Manifest (SHA-256 / Ed25519)",
+            fontsize=8.5,
+            color=(0.1, 0.5, 0.25),
+        )
 
         # Footer
         p1.draw_line(fitz.Point(50, 785), fitz.Point(545, 785), color=(0.88, 0.9, 0.94))
-        p1.insert_text((50, 800), "Thank you for partnering with Vellakshya. For inquiries: billing@vellakshya.internal", fontsize=8, color=(0.5, 0.5, 0.5))
+        p1.insert_text(
+            (50, 800),
+            "Thank you for partnering with Vellakshya. For inquiries: billing@vellakshya.internal",
+            fontsize=8,
+            color=(0.5, 0.5, 0.5),
+        )
         p1.insert_text((470, 800), "Page 1 of 1", fontsize=8, color=(0.5, 0.5, 0.5))
         filename = "Sample_Invoice.pdf"
 
@@ -177,13 +269,14 @@ async def get_sample_document(sample_type: str = "invoice"):
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
 # -------------------------------------------------------------
 # 0. ASYNCHRONOUS WORKER QUEUE & PROCESS SANDBOX ENDPOINTS
 # -------------------------------------------------------------
+
 
 @app.post("/api/jobs/convert/html", status_code=202)
 async def queue_convert_pdf_to_html(
@@ -268,7 +361,9 @@ async def get_job_result(job_id: str):
     if job.status in ("queued", "processing"):
         raise HTTPException(status_code=425, detail="Job is still processing in sandbox.")
     if job.status != "succeeded":
-        raise HTTPException(status_code=400, detail=f"Job {job.status}: {job.error or 'Execution failed'}")
+        raise HTTPException(
+            status_code=400, detail=f"Job {job.status}: {job.error or 'Execution failed'}"
+        )
 
     artifact = queue_instance.get_job_artifact(job_id)
     if not artifact:
@@ -312,6 +407,7 @@ async def list_recent_jobs(limit: int = Query(20, ge=1, le=100)):
 # 1. CONVERSION ENDPOINTS
 # -------------------------------------------------------------
 
+
 @app.post("/api/convert/html")
 async def convert_pdf_to_html(
     file: UploadFile = File(...),
@@ -323,13 +419,13 @@ async def convert_pdf_to_html(
     pdf_bytes = await file.read()
     if not pdf_bytes.startswith(b"%PDF"):
         raise HTTPException(status_code=400, detail="Uploaded file is not a valid PDF.")
-        
+
     title = Path(file.filename or "document").stem
     if mode == "semantic":
         result_html = converter.pdf_to_html_semantic(pdf_bytes, title=title)
     else:
         result_html = converter.pdf_to_html_fixed(pdf_bytes, title=title)
-        
+
     return HTMLResponse(content=result_html, media_type="text/html")
 
 
@@ -347,7 +443,9 @@ async def convert_pdf_to_images(
     return Response(
         content=zip_bytes,
         media_type="application/zip",
-        headers={"Content-Disposition": f"attachment; filename={Path(file.filename or 'doc').stem}_images.zip"},
+        headers={
+            "Content-Disposition": f"attachment; filename={Path(file.filename or 'doc').stem}_images.zip"
+        },
     )
 
 
@@ -362,13 +460,15 @@ async def convert_images_to_pdf(
     for f in files:
         data = await f.read()
         images_data.append((f.filename or "image.png", data))
-        
+
     pdf_bytes = converter.images_to_pdf(images_data)
-    first_img_stem = Path(files[0].filename or 'image').stem if files else 'images'
+    first_img_stem = Path(files[0].filename or "image").stem if files else "images"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={first_img_stem}_from_{len(files)}images.pdf"},
+        headers={
+            "Content-Disposition": f"attachment; filename={first_img_stem}_from_{len(files)}images.pdf"
+        },
     )
 
 
@@ -388,6 +488,7 @@ async def convert_pdf_to_markdown(
 # 2. PAGE ORGANIZATION ENDPOINTS (Merge, Split, Rotate, Delete, Reorder, Extract)
 # -------------------------------------------------------------
 
+
 @app.post("/api/organize/merge")
 async def merge_pdf_files(
     files: list[UploadFile] = File(...),
@@ -397,11 +498,13 @@ async def merge_pdf_files(
     """
     pdf_bytes_list = [await f.read() for f in files]
     merged = organizer.merge_pdfs(pdf_bytes_list)
-    first_stem = Path(files[0].filename or 'document').stem if files else 'document'
+    first_stem = Path(files[0].filename or "document").stem if files else "document"
     return Response(
         content=merged,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={first_stem}_merged_{len(files)}files.pdf"},
+        headers={
+            "Content-Disposition": f"attachment; filename={first_stem}_merged_{len(files)}files.pdf"
+        },
     )
 
 
@@ -417,18 +520,20 @@ async def split_pdf(
     parts = organizer.split_pdf_by_ranges(pdf_bytes, ranges)
     if not parts:
         raise HTTPException(status_code=400, detail="Invalid page ranges specified.")
-        
-    stem = Path(file.filename or 'document').stem
+
+    stem = Path(file.filename or "document").stem
     # Return as single or zip
     if len(parts) == 1:
-        part_clean = parts[0][0].replace('.pdf', '')
+        part_clean = parts[0][0].replace(".pdf", "")
         return Response(
             content=parts[0][1],
             media_type="application/pdf",
             headers={"Content-Disposition": f"attachment; filename={stem}_{part_clean}.pdf"},
         )
     else:
-        import io, zipfile
+        import io
+        import zipfile
+
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
             for name, content in parts:
@@ -458,7 +563,9 @@ async def rotate_pdf_pages(
     return Response(
         content=rotated,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'rotated')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'rotated')}"
+        },
     )
 
 
@@ -473,7 +580,9 @@ async def delete_pdf_pages(
     pdf_bytes = await file.read()
     page_list = organizer.parse_page_spec(pages)
     if not page_list:
-        raise HTTPException(status_code=400, detail="No valid page numbers or ranges provided to delete.")
+        raise HTTPException(
+            status_code=400, detail="No valid page numbers or ranges provided to delete."
+        )
     try:
         modified = organizer.delete_pages(pdf_bytes, pages_to_delete=page_list)
     except ValueError as e:
@@ -484,7 +593,9 @@ async def delete_pdf_pages(
     return Response(
         content=modified,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'deleted')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'deleted')}"
+        },
     )
 
 
@@ -502,7 +613,9 @@ async def reorder_pdf_pages(
     return Response(
         content=reordered,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'reordered')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'reordered')}"
+        },
     )
 
 
@@ -517,12 +630,16 @@ async def extract_pdf_pages(
     pdf_bytes = await file.read()
     page_list = organizer.parse_page_spec(pages)
     if not page_list:
-        raise HTTPException(status_code=400, detail="No valid page numbers or ranges provided to extract.")
+        raise HTTPException(
+            status_code=400, detail="No valid page numbers or ranges provided to extract."
+        )
     extracted = organizer.extract_pages(pdf_bytes, pages_to_extract=page_list)
     return Response(
         content=extracted,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'extracted')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'extracted')}"
+        },
     )
 
 
@@ -560,13 +677,16 @@ async def crop_pdf_pages(
     return Response(
         content=cropped,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'cropped')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'cropped')}"
+        },
     )
 
 
 # -------------------------------------------------------------
 # 3. CONTENT EDITING & ANNOTATION (Watermark, Pagination, Header/Footer, Highlight)
 # -------------------------------------------------------------
+
 
 @app.post("/api/edit/watermark")
 async def add_watermark(
@@ -586,7 +706,9 @@ async def add_watermark(
     return Response(
         content=watermarked,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'watermarked')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'watermarked')}"
+        },
     )
 
 
@@ -607,7 +729,9 @@ async def add_page_numbers(
     return Response(
         content=paginated,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'numbered')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'numbered')}"
+        },
     )
 
 
@@ -625,7 +749,9 @@ async def add_header_footer(
     return Response(
         content=modified,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'header_footer')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'header_footer')}"
+        },
     )
 
 
@@ -643,7 +769,9 @@ async def highlight_terms(
     return Response(
         content=highlighted,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'highlighted')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'highlighted')}"
+        },
     )
 
 
@@ -690,6 +818,7 @@ async def replace_pdf_text(
     Supports either targeted single-match replacement (single=True) or document-wide Replace All (single=False).
     """
     import json
+
     pdf_bytes = await file.read()
     page_list = [int(p.strip()) for p in pages.split(",") if p.strip()] if pages else None
     parsed_color = editor.hex_to_rgb(color) if color and color.strip() and color != "auto" else None
@@ -813,7 +942,9 @@ async def insert_pdf_text(
     return Response(
         content=modified,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'text_inserted')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'text_inserted')}"
+        },
     )
 
 
@@ -834,13 +965,16 @@ async def whiteout_pdf_area(
     return Response(
         content=modified,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'whiteout')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'whiteout')}"
+        },
     )
 
 
 # -------------------------------------------------------------
 # 4. SECURITY & REDACTION (AES-256 Encryption, Decrypt, Redact, Sanitize)
 # -------------------------------------------------------------
+
 
 @app.post("/api/security/encrypt")
 async def encrypt_document(
@@ -864,7 +998,9 @@ async def encrypt_document(
     return Response(
         content=encrypted,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'encrypted')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'encrypted')}"
+        },
     )
 
 
@@ -881,11 +1017,13 @@ async def decrypt_document(
         decrypted = security.decrypt_pdf(pdf_bytes, password=password)
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
-        
+
     return Response(
         content=decrypted,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'decrypted')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'decrypted')}"
+        },
     )
 
 
@@ -922,13 +1060,16 @@ async def sanitize_document(
     return Response(
         content=sanitized,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'sanitized')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'sanitized')}"
+        },
     )
 
 
 # -------------------------------------------------------------
 # 5. FORMS & FIELD HANDLING
 # -------------------------------------------------------------
+
 
 @app.post("/api/forms/fields")
 async def list_form_fields(
@@ -956,13 +1097,16 @@ async def fill_form_fields(
     return Response(
         content=filled,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'filled')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'filled')}"
+        },
     )
 
 
 # -------------------------------------------------------------
 # 6. INSPECTION & METADATA
 # -------------------------------------------------------------
+
 
 @app.post("/api/inspect")
 async def inspect_document(
@@ -1003,7 +1147,9 @@ async def update_metadata(
     return Response(
         content=updated,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'metadata')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'metadata')}"
+        },
     )
 
 
@@ -1023,13 +1169,16 @@ async def delete_metadata(
     return Response(
         content=cleared,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'cleared_meta')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'cleared_meta')}"
+        },
     )
 
 
 # -------------------------------------------------------------
 # 7. SIGNATURES, COLLABORATION, AND SECURITY VALIDATION
 # -------------------------------------------------------------
+
 
 @app.post("/api/signatures/sign")
 async def sign_document(
@@ -1046,7 +1195,9 @@ async def sign_document(
     return Response(
         content=signed_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'signed')}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'signed')}"
+        },
     )
 
 
@@ -1135,7 +1286,10 @@ async def validate_document_security(
 # 11. AUTHENTICATION, RBAC & DOCUMENT LIFECYCLE ENDPOINTS
 # -------------------------------------------------------------
 
-def _resolve_user(token: Optional[str] = None, authorization: Optional[str] = None) -> Optional[dict[str, Any]]:
+
+def _resolve_user(
+    token: Optional[str] = None, authorization: Optional[str] = None
+) -> Optional[dict[str, Any]]:
     active_token = token
     if not active_token and authorization and authorization.startswith("Bearer "):
         active_token = authorization.split(" ")[1].strip()
@@ -1255,7 +1409,9 @@ async def get_managed_document(
     user = _resolve_user(token, authorization)
     if download and user:
         if not auth.verify_role_permission(user["role"], "download"):
-            raise HTTPException(status_code=403, detail="Viewer role cannot download restricted files.")
+            raise HTTPException(
+                status_code=403, detail="Viewer role cannot download restricted files."
+            )
 
     content = auth.get_document(doc_id)
     if content is None:

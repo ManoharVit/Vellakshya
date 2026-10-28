@@ -2,7 +2,9 @@
 PDF page organization service.
 Provides page merge, split, rotate, delete, reorder, and extract capabilities.
 """
+
 from __future__ import annotations
+
 import fitz  # PyMuPDF
 
 
@@ -15,7 +17,7 @@ def merge_pdfs(pdf_list: list[bytes]) -> bytes:
         sub_doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         merged_doc.insert_pdf(sub_doc)
         sub_doc.close()
-        
+
     out_bytes = merged_doc.tobytes()
     merged_doc.close()
     return out_bytes
@@ -27,15 +29,15 @@ def rotate_pages(pdf_bytes: bytes, pages: list[int] | None = None, angle: int = 
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     total_pages = len(doc)
-    
+
     target_pages = set(pages) if pages is not None else set(range(1, total_pages + 1))
-    
+
     for page_num in range(1, total_pages + 1):
         if page_num in target_pages:
             page = doc[page_num - 1]
             current_rot = page.rotation
             page.set_rotation((current_rot + angle) % 360)
-            
+
     out_bytes = doc.tobytes()
     doc.close()
     return out_bytes
@@ -88,14 +90,14 @@ def delete_pages(pdf_bytes: bytes, pages_to_delete: list[int]) -> bytes:
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     # Convert 1-indexed to 0-indexed and sort descending to prevent index shifts
     zero_indexed = sorted({p - 1 for p in pages_to_delete if 1 <= p <= len(doc)}, reverse=True)
-    
+
     if len(zero_indexed) >= len(doc):
         doc.close()
         raise ValueError("Cannot delete all pages from a document. At least one page must remain.")
-        
+
     for idx in zero_indexed:
         doc.delete_page(idx)
-        
+
     out_bytes = doc.tobytes()
     doc.close()
     return out_bytes
@@ -107,11 +109,11 @@ def reorder_pages(pdf_bytes: bytes, new_order: list[int]) -> bytes:
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     new_doc = fitz.open()
-    
+
     for page_num in new_order:
         if 1 <= page_num <= len(doc):
             new_doc.insert_pdf(doc, from_page=page_num - 1, to_page=page_num - 1)
-            
+
     out_bytes = new_doc.tobytes()
     doc.close()
     new_doc.close()
@@ -124,11 +126,11 @@ def extract_pages(pdf_bytes: bytes, pages_to_extract: list[int]) -> bytes:
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     new_doc = fitz.open()
-    
+
     for page_num in pages_to_extract:
         if 1 <= page_num <= len(doc):
             new_doc.insert_pdf(doc, from_page=page_num - 1, to_page=page_num - 1)
-            
+
     out_bytes = new_doc.tobytes()
     doc.close()
     new_doc.close()
@@ -142,7 +144,7 @@ def split_pdf_by_ranges(pdf_bytes: bytes, range_str: str) -> list[tuple[str, byt
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     total_pages = len(doc)
     results: list[tuple[str, bytes]] = []
-    
+
     chunks = [c.strip() for c in range_str.split(",") if c.strip()]
     for idx, chunk in enumerate(chunks, 1):
         target_pages: list[int] = []
@@ -155,14 +157,14 @@ def split_pdf_by_ranges(pdf_bytes: bytes, range_str: str) -> list[tuple[str, byt
             p = int(chunk)
             if 1 <= p <= total_pages:
                 target_pages = [p]
-                
+
         if target_pages:
             sub_doc = fitz.open()
             for p in target_pages:
                 sub_doc.insert_pdf(doc, from_page=p - 1, to_page=p - 1)
             results.append((f"split_part_{idx}_pages_{chunk}.pdf", sub_doc.tobytes()))
             sub_doc.close()
-            
+
     doc.close()
     return results
 
@@ -214,4 +216,3 @@ def crop_pages(
     out_bytes = doc.tobytes(deflate=True, garbage=4)
     doc.close()
     return out_bytes
-

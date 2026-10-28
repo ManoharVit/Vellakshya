@@ -6,12 +6,13 @@ Implements:
 - Document lifecycle (storage, retrieval, deletion, 404 enforcement).
 - Session draft preservation against sudden expiry.
 """
+
 from __future__ import annotations
+
 import hashlib
 import secrets
 import time
 from typing import Any, Optional
-
 
 # In-memory stores (in production backed by Redis / Postgres)
 _USERS_DB: dict[str, dict[str, Any]] = {}
@@ -36,7 +37,7 @@ def register_user(email: str, password: str, role: str = "editor") -> dict[str, 
     email_clean = email.lower().strip()
     if email_clean in _USERS_DB:
         raise ValueError("User with this email already exists.")
-    
+
     hashed_pw, salt = _hash_password(password)
     user_record = {
         "email": email_clean,
@@ -57,11 +58,11 @@ def login_user(email: str, password: str) -> dict[str, Any]:
     user = _USERS_DB.get(email_clean)
     if not user:
         raise ValueError("Invalid email or password.")
-        
+
     hashed_input, _ = _hash_password(password, user["salt"])
     if hashed_input != user["password_hash"]:
         raise ValueError("Invalid email or password.")
-        
+
     token = secrets.token_urlsafe(32)
     session_data = {
         "token": token,
@@ -95,12 +96,12 @@ def get_current_user_from_token(token: Optional[str]) -> Optional[dict[str, Any]
     """
     if not token or token not in _SESSIONS_DB:
         return None
-        
+
     session = _SESSIONS_DB[token]
     if time.time() > session["expires_at"]:
         del _SESSIONS_DB[token]
         return None
-        
+
     return {
         "email": session["email"],
         "role": session["role"],
@@ -172,13 +173,13 @@ def update_document_content(
     doc_record = get_document_record(doc_id)
     if not doc_record:
         raise KeyError("Document not found or has been deleted.")
-        
+
     current_version = doc_record.get("version", 1)
     if expected_version != current_version:
         raise ValueError(
             f"Concurrent edit conflict detected. Base version {expected_version} does not match current version {current_version}."
         )
-        
+
     doc_record["version"] = current_version + 1
     doc_record["content"] = new_content
     doc_record["size_bytes"] = len(new_content)

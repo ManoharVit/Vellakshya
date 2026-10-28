@@ -2,10 +2,16 @@
 Digital Signatures and Tamper Detection Service.
 Provides cryptographic content hashing, signature generation, and verification.
 """
+
 from __future__ import annotations
+
+import base64
 import hashlib
+import hmac
 import json
+import os
 from typing import Any
+
 import fitz  # PyMuPDF
 
 
@@ -32,18 +38,40 @@ def sign_pdf(
     and attaching a visible signature stamp.
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    
+
     # 1. Compute content hash before adding signature stamp
     digest = _compute_document_content_hash(doc)
-    
+
     # 2. Add visual signature badge to the last page
     page = doc[-1]
-    rect = fitz.Rect(page.rect.width - 220, page.rect.height - 85, page.rect.width - 20, page.rect.height - 15)
+    rect = fitz.Rect(
+        page.rect.width - 220, page.rect.height - 85, page.rect.width - 20, page.rect.height - 15
+    )
     page.draw_rect(rect, color=(0.12, 0.45, 0.85), width=1.5, fill=(0.95, 0.97, 1.0))
-    page.insert_text(fitz.Point(rect.x0 + 8, rect.y0 + 20), f"Digitally Signed: {signer_name}", fontsize=9, color=(0.1, 0.2, 0.6))
-    page.insert_text(fitz.Point(rect.x0 + 8, rect.y0 + 36), f"Reason: {reason}", fontsize=8, color=(0.25, 0.25, 0.25))
-    page.insert_text(fitz.Point(rect.x0 + 8, rect.y0 + 52), f"Digest: {digest[:16]}...", fontsize=7, color=(0.4, 0.4, 0.4))
-    page.insert_text(fitz.Point(rect.x0 + 8, rect.y0 + 64), f"Location: {location}", fontsize=7, color=(0.4, 0.4, 0.4))
+    page.insert_text(
+        fitz.Point(rect.x0 + 8, rect.y0 + 20),
+        f"Digitally Signed: {signer_name}",
+        fontsize=9,
+        color=(0.1, 0.2, 0.6),
+    )
+    page.insert_text(
+        fitz.Point(rect.x0 + 8, rect.y0 + 36),
+        f"Reason: {reason}",
+        fontsize=8,
+        color=(0.25, 0.25, 0.25),
+    )
+    page.insert_text(
+        fitz.Point(rect.x0 + 8, rect.y0 + 52),
+        f"Digest: {digest[:16]}...",
+        fontsize=7,
+        color=(0.4, 0.4, 0.4),
+    )
+    page.insert_text(
+        fitz.Point(rect.x0 + 8, rect.y0 + 64),
+        f"Location: {location}",
+        fontsize=7,
+        color=(0.4, 0.4, 0.4),
+    )
 
     # 3. Store signature record in document metadata
     meta = doc.metadata or {}
@@ -55,7 +83,9 @@ def sign_pdf(
         "version": 1,
     }
     existing_kw = meta.get("keywords") or ""
-    meta["keywords"] = existing_kw + (";" if existing_kw else "") + f"DIGITAL_SIG:{json.dumps(sig_payload)}"
+    meta["keywords"] = (
+        existing_kw + (";" if existing_kw else "") + f"DIGITAL_SIG:{json.dumps(sig_payload)}"
+    )
     doc.set_metadata(meta)
 
     out_bytes = doc.tobytes(deflate=True)
@@ -106,7 +136,8 @@ def verify_pdf_signature(pdf_bytes: bytes) -> dict[str, Any]:
         if idx == len(doc) - 1:
             # Filter out signature badge lines
             lines = [
-                line for line in text.splitlines()
+                line
+                for line in text.splitlines()
                 if not line.startswith("Digitally Signed:")
                 and not line.startswith("Reason:")
                 and not line.startswith("Digest:")
@@ -123,7 +154,7 @@ def verify_pdf_signature(pdf_bytes: bytes) -> dict[str, Any]:
     current_digest = hasher.hexdigest()
     doc.close()
 
-    is_valid = (current_digest == expected_digest)
+    is_valid = current_digest == expected_digest
     return {
         "has_signature": True,
         "is_valid": is_valid,
@@ -140,13 +171,8 @@ def verify_pdf_signature(pdf_bytes: bytes) -> dict[str, Any]:
 # Canonical Integrity Manifest Signing & Verification (Ed25519 / HMAC-SHA256)
 # -------------------------------------------------------------
 
-import hmac
-import base64
-import os
-
 _MANIFEST_SIGNING_KEY = os.environ.get(
-    "MANIFEST_SIGNING_KEY",
-    "vellakshya_canonical_manifest_secret_key_2026_ed25519_prod"
+    "MANIFEST_SIGNING_KEY", "vellakshya_canonical_manifest_secret_key_2026_ed25519_prod"
 ).encode("utf-8")
 
 
@@ -155,21 +181,18 @@ def _canonicalize_dict(data: dict[str, Any]) -> bytes:
     return json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
-def sign_manifest(
-    manifest_data: dict[str, Any],
-    key_id: str = "ed25519_key_v1"
-) -> dict[str, Any]:
+def sign_manifest(manifest_data: dict[str, Any], key_id: str = "ed25519_key_v1") -> dict[str, Any]:
     """
     Digitally signs a canonical integrity manifest.
     Returns: {"manifest_hash": str, "signature": str, "key_id": str}
     """
     canonical_bytes = _canonicalize_dict(manifest_data)
     manifest_hash = hashlib.sha256(canonical_bytes).hexdigest()
-    
+
     # Compute cryptographic signature over canonical manifest bytes
     sig_raw = hmac.new(_MANIFEST_SIGNING_KEY, canonical_bytes, hashlib.sha256).digest()
     sig_b64 = base64.b64encode(sig_raw).decode("utf-8")
-    
+
     return {
         "manifest_hash": manifest_hash,
         "signature": sig_b64,

@@ -4,17 +4,16 @@ Tests relational DB persistence, version tracking, S3-compatible presigned stora
 optimistic concurrency control (HTTP 409), idempotency replay, Ed25519 manifests,
 tamper detection, RBAC authorization, threaded geometry comments, and hash-chained audit trails.
 """
+
 import hashlib
-import json
 import uuid
+
 import fitz
-import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.services.storage import storage_instance
 from app.services.document_service import DocumentService
-from app.models.db import SessionLocal, Document, DocumentVersion
+from app.services.storage import storage_instance
 
 client = TestClient(app)
 
@@ -23,7 +22,7 @@ def create_sample_pdf(num_pages: int = 3, text: str = "Enterprise Workstation Do
     doc = fitz.open()
     for i in range(num_pages):
         page = doc.new_page(width=612, height=792)
-        page.insert_text((72, 100), f"{text} - Page {i+1}", fontsize=16)
+        page.insert_text((72, 100), f"{text} - Page {i + 1}", fontsize=16)
     pdf_bytes = doc.tobytes()
     doc.close()
     return pdf_bytes
@@ -451,5 +450,7 @@ def test_v2_hash_chained_audit_trail():
     for event in trail:
         assert event["previous_event_hash"] == prev_hash
         expected_hash = DocumentService._compute_event_hash(event["event_data"], prev_hash)
-        assert event["event_hash"] == expected_hash, f"Hash mismatch in audit chain at event {event['id']}"
+        assert event["event_hash"] == expected_hash, (
+            f"Hash mismatch in audit chain at event {event['id']}"
+        )
         prev_hash = event["event_hash"]

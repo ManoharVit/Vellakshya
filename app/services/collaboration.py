@@ -3,14 +3,16 @@ PDF Collaboration and Multi-User Synchronization Service.
 Handles concurrent edits, non-destructive comment merging, duplicate suppression,
 version history tracking, and offline sync reconciliation.
 """
+
 from __future__ import annotations
+
 import asyncio
-from dataclasses import asdict, dataclass, field
 import datetime
-import json
 import time
 import uuid
+from dataclasses import dataclass, field
 from typing import Any, Optional
+
 import fitz  # PyMuPDF
 from fastapi import WebSocket
 
@@ -35,7 +37,10 @@ def merge_concurrent_comments(
     merged_comments = []
 
     for comment in comments_user_a + comments_user_b:
-        cid = comment.get("id") or f"{comment.get('user')}_{comment.get('page')}_{comment.get('text')}"
+        cid = (
+            comment.get("id")
+            or f"{comment.get('user')}_{comment.get('page')}_{comment.get('text')}"
+        )
         if cid not in seen_ids:
             seen_ids.add(cid)
             merged_comments.append(comment)
@@ -48,17 +53,21 @@ def merge_concurrent_comments(
             rect = c.get("rect", [72, 72, 100, 100])
             fitz_rect = fitz.Rect(rect[0], rect[1], rect[2], rect[3])
             annot = page.add_text_annot(fitz_rect.tl, c.get("text", ""))
-            annot.set_info({
-                "title": c.get("user", "Collaborator"),
-                "content": c.get("text", ""),
-                "subject": "Comment",
-            })
+            annot.set_info(
+                {
+                    "title": c.get("user", "Collaborator"),
+                    "content": c.get("text", ""),
+                    "subject": "Comment",
+                }
+            )
             annot.update()
 
     # Update version history metadata
     new_version = base_version + 1
     meta = doc.metadata or {}
-    meta["keywords"] = (meta.get("keywords") or "") + f";REV:{new_version};COMMENTS:{len(merged_comments)}"
+    meta["keywords"] = (
+        meta.get("keywords") or ""
+    ) + f";REV:{new_version};COMMENTS:{len(merged_comments)}"
     doc.set_metadata(meta)
 
     out_bytes = doc.tobytes(deflate=True)
@@ -71,7 +80,8 @@ def merge_concurrent_comments(
         "total_comments_applied": len(merged_comments),
         "user_a_count": len(comments_user_a),
         "user_b_count": len(comments_user_b),
-        "duplicates_suppressed": (len(comments_user_a) + len(comments_user_b)) - len(merged_comments),
+        "duplicates_suppressed": (len(comments_user_a) + len(comments_user_b))
+        - len(merged_comments),
     }
     return out_bytes, result_summary
 
@@ -102,7 +112,9 @@ def sync_offline_actions(
         if action_type == "add_comment":
             rect = fitz.Rect(72, 72, 120, 120)
             annot = page.add_text_annot(rect.tl, action.get("text", "Offline Note"))
-            annot.set_info({"title": action.get("author", "Mobile Offline"), "content": action.get("text", "")})
+            annot.set_info(
+                {"title": action.get("author", "Mobile Offline"), "content": action.get("text", "")}
+            )
             annot.update()
             applied += 1
 
@@ -164,7 +176,9 @@ class CollaboratorPresence:
     color: str
     page_no: int = 1
     cursor: dict[str, float] = field(default_factory=lambda: {"x": 0.0, "y": 0.0})
-    connected_at: str = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
+    connected_at: str = field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
+    )
     last_active: float = field(default_factory=time.time)
 
     def to_dict(self) -> dict[str, Any]:
@@ -416,4 +430,3 @@ class CollaborationManager:
 
 # Global singleton instance for collaboration state
 collaboration_manager = CollaborationManager()
-

@@ -3,6 +3,7 @@ Vellakshya Asynchronous Job Queue System.
 Backed by Redis with seamless local fallback to Fakeredis.
 Orchestrates worker jobs and offloads untrusted PDF processing to the sandbox.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -15,14 +16,14 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
-import redis
 import fakeredis
+import redis
 
 from app.services.sandbox import (
-    run_sandboxed_task,
     SandboxExecutionError,
-    SandboxTimeoutError,
     SandboxMemoryLimitError,
+    SandboxTimeoutError,
+    run_sandboxed_task,
 )
 
 logger = logging.getLogger("vellakshya.queue")
@@ -56,6 +57,7 @@ class JobQueue:
     """
     Asynchronous job dispatcher and worker pool.
     """
+
     def __init__(self, redis_url: Optional[str] = None):
         self.redis_url = redis_url or os.environ.get("REDIS_URL", "redis://localhost:6379/0")
         self.client: redis.Redis = self._init_redis_client()
@@ -182,7 +184,9 @@ class JobQueue:
                     await asyncio.sleep(0.15)
                     continue
 
-                item = json.loads(raw_item.decode("utf-8") if isinstance(raw_item, bytes) else raw_item)
+                item = json.loads(
+                    raw_item.decode("utf-8") if isinstance(raw_item, bytes) else raw_item
+                )
                 job_id = item["job_id"]
                 params = item.get("params", {})
 

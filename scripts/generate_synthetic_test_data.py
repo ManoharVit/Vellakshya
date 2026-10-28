@@ -9,11 +9,13 @@ All data produced by this generator is 100% synthetic, procedural, or anonymized
 Author: Giri Manohar Vemula
 Repository: https://github.com/ManoharVit/Vellakshya.git
 """
+
 from __future__ import annotations
+
 import json
-import os
 from pathlib import Path
-import secrets
+from typing import Any
+
 import fitz  # PyMuPDF
 
 TEST_DATA_DIR = Path(__file__).resolve().parent.parent / "test-data"
@@ -64,13 +66,39 @@ def generate_multilingual_pdf(output_path: Path) -> Path:
     doc = fitz.open()
     page = doc.new_page(width=595, height=842)
 
-    page.insert_text(fitz.Point(72, 72), "Vellakshya International Unicode & Typography Test", fontsize=16)
-    page.insert_text(fitz.Point(72, 110), "English: High fidelity visual layout across all platforms.", fontsize=11)
-    page.insert_text(fitz.Point(72, 140), "Hindi (Devanagari): उच्च-विश्वसनीयता वाला पीडीएफ दस्तावेज़ इंजन।", fontsize=11)
-    page.insert_text(fitz.Point(72, 170), "Spanish: Diseño visual exacto e independiente de la plataforma.", fontsize=11)
-    page.insert_text(fitz.Point(72, 200), "Cyrillic: Точное визуальное отображение документов на всех устройствах.", fontsize=11)
-    page.insert_text(fitz.Point(72, 230), "Japanese (CJK): すべてのデバイスで崩れない正確なPDFレイアウト。", fontsize=11)
-    page.insert_text(fitz.Point(72, 260), "Arabic (RTL): تصميم مستندات ثابت ومستقل عن المنصة بدون أي تشويه.", fontsize=11)
+    page.insert_text(
+        fitz.Point(72, 72), "Vellakshya International Unicode & Typography Test", fontsize=16
+    )
+    page.insert_text(
+        fitz.Point(72, 110),
+        "English: High fidelity visual layout across all platforms.",
+        fontsize=11,
+    )
+    page.insert_text(
+        fitz.Point(72, 140),
+        "Hindi (Devanagari): उच्च-विश्वसनीयता वाला पीडीएफ दस्तावेज़ इंजन।",
+        fontsize=11,
+    )
+    page.insert_text(
+        fitz.Point(72, 170),
+        "Spanish: Diseño visual exacto e independiente de la plataforma.",
+        fontsize=11,
+    )
+    page.insert_text(
+        fitz.Point(72, 200),
+        "Cyrillic: Точное визуальное отображение документов на всех устройствах.",
+        fontsize=11,
+    )
+    page.insert_text(
+        fitz.Point(72, 230),
+        "Japanese (CJK): すべてのデバイスで崩れない正確なPDFレイアウト。",
+        fontsize=11,
+    )
+    page.insert_text(
+        fitz.Point(72, 260),
+        "Arabic (RTL): تصميم مستندات ثابت ومستقل عن المنصة بدون أي تشويه.",
+        fontsize=11,
+    )
 
     meta = {
         "title": "Vellakshya International Unicode Benchmark",
@@ -111,12 +139,30 @@ def generate_user_roles_matrix() -> dict[str, Any]:
     roles = {
         "roles": {
             "admin": {
-                "permissions": ["view", "upload", "edit", "annotate", "convert", "sign", "download", "delete", "manage_users"],
+                "permissions": [
+                    "view",
+                    "upload",
+                    "edit",
+                    "annotate",
+                    "convert",
+                    "sign",
+                    "download",
+                    "delete",
+                    "manage_users",
+                ],
                 "can_download_restricted": True,
                 "can_edit_restricted": True,
             },
             "editor": {
-                "permissions": ["view", "upload", "edit", "annotate", "convert", "sign", "download"],
+                "permissions": [
+                    "view",
+                    "upload",
+                    "edit",
+                    "annotate",
+                    "convert",
+                    "sign",
+                    "download",
+                ],
                 "can_download_restricted": True,
                 "can_edit_restricted": True,
             },
@@ -150,7 +196,12 @@ def generate_structured_table_pdf(output_path: Path) -> Path:
     doc = fitz.open()
     page = doc.new_page(width=612, height=792)
 
-    page.insert_text(fitz.Point(72, 72), "Consolidated Corporate Statement", fontsize=16, fontname="Helvetica-Bold")
+    page.insert_text(
+        fitz.Point(72, 72),
+        "Consolidated Corporate Statement",
+        fontsize=16,
+        fontname="Helvetica-Bold",
+    )
 
     # Table layout parameters
     start_x = 72
@@ -168,16 +219,28 @@ def generate_structured_table_pdf(output_path: Path) -> Path:
     ]
 
     # Draw table header background
-    page.draw_rect(fitz.Rect(start_x, start_y, start_x + sum(col_w), start_y + row_h), color=(0.2, 0.4, 0.8), fill=(0.9, 0.94, 1.0))
+    page.draw_rect(
+        fitz.Rect(start_x, start_y, start_x + sum(col_w), start_y + row_h),
+        color=(0.2, 0.4, 0.8),
+        fill=(0.9, 0.94, 1.0),
+    )
     curr_x = start_x
     for i, h in enumerate(headers):
-        page.insert_text(fitz.Point(curr_x + 6, start_y + 16), h, fontsize=10, fontname="Helvetica-Bold", color=(0.1, 0.2, 0.6))
+        page.insert_text(
+            fitz.Point(curr_x + 6, start_y + 16),
+            h,
+            fontsize=10,
+            fontname="Helvetica-Bold",
+            color=(0.1, 0.2, 0.6),
+        )
         curr_x += col_w[i]
 
     # Draw data rows
     for r_idx, row in enumerate(data):
         y = start_y + (r_idx + 1) * row_h
-        page.draw_rect(fitz.Rect(start_x, y, start_x + sum(col_w), y + row_h), color=(0.85, 0.85, 0.85))
+        page.draw_rect(
+            fitz.Rect(start_x, y, start_x + sum(col_w), y + row_h), color=(0.85, 0.85, 0.85)
+        )
         c_x = start_x
         for c_idx, val in enumerate(row):
             page.insert_text(fitz.Point(c_x + 6, y + 16), val, fontsize=9, color=(0.15, 0.15, 0.15))

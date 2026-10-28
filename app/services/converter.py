@@ -2,12 +2,14 @@
 PDF to HTML and multi-format conversion service.
 Supports high-fidelity fixed-layout HTML, semantic responsive HTML, images, and Markdown.
 """
+
 from __future__ import annotations
+
 import base64
 import html
 import io
 import zipfile
-from typing import Literal
+
 import fitz  # PyMuPDF
 
 
@@ -32,12 +34,12 @@ def _drawings_to_svg(page: fitz.Page) -> str:
         stroke_opacity = d.get("stroke_opacity", 1.0)
 
         fill_str = (
-            f"rgb({int(fill[0]*255)},{int(fill[1]*255)},{int(fill[2]*255)})"
+            f"rgb({int(fill[0] * 255)},{int(fill[1] * 255)},{int(fill[2] * 255)})"
             if fill
             else "none"
         )
         stroke_str = (
-            f"rgb({int(color[0]*255)},{int(color[1]*255)},{int(color[2]*255)})"
+            f"rgb({int(color[0] * 255)},{int(color[1] * 255)},{int(color[2] * 255)})"
             if color
             else "none"
         )
@@ -104,11 +106,11 @@ def _extract_embedded_fonts(doc: fitz.Document) -> str:
                     b64_font = base64.b64encode(content).decode("ascii")
                     mime = f"font/{ext}" if ext != "ttf" else "font/ttf"
                     font_css_rules.append(
-                        f'@font-face {{\n'
+                        f"@font-face {{\n"
                         f'  font-family: "{font_name}";\n'
                         f'  src: url("data:{mime};base64,{b64_font}") format("{ext}");\n'
-                        f'  font-display: swap;\n'
-                        f'}}'
+                        f"  font-display: swap;\n"
+                        f"}}"
                     )
             except Exception:
                 continue
@@ -124,16 +126,16 @@ def pdf_to_html_fixed(pdf_bytes: bytes, title: str = "Converted Document") -> st
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     pages_html: list[str] = []
     embedded_fonts_css = _extract_embedded_fonts(doc)
-    
+
     for page_idx, page in enumerate(doc):
         rect = page.rect
         page_w = rect.width
         page_h = rect.height
-        
+
         # PyMuPDF HTML extraction for this page (includes vector text, fonts, and embedded images)
         raw_page_html = page.get_text("html")
         svg_vector_layer = _drawings_to_svg(page)
-        
+
         # Wrap each page in an interactive container
         page_block = f"""
         <section class="pdf-page-container" id="page-{page_idx + 1}" data-page="{page_idx + 1}" data-width="{page_w}" data-height="{page_h}" style="width: {page_w}pt; min-height: {page_h}pt;">
@@ -148,9 +150,9 @@ def pdf_to_html_fixed(pdf_bytes: bytes, title: str = "Converted Document") -> st
         </section>
         """
         pages_html.append(page_block)
-        
+
     doc.close()
-    
+
     full_html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -362,15 +364,17 @@ def pdf_to_html_semantic(pdf_bytes: bytes, title: str = "Converted Document") ->
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     sections_html: list[str] = []
-    
+
     for page_idx, page in enumerate(doc):
         # Extract text blocks: (x0, y0, x1, y1, "text", block_no, block_type)
         blocks = page.get_text("blocks")
         page_links = page.get_links()
         page_content: list[str] = []
-        
-        page_content.append(f"<div class='semantic-page-divider' id='p{page_idx + 1}'><span>Page {page_idx + 1}</span></div>")
-        
+
+        page_content.append(
+            f"<div class='semantic-page-divider' id='p{page_idx + 1}'><span>Page {page_idx + 1}</span></div>"
+        )
+
         for block in blocks:
             # block_type == 0 is text, 1 is image
             if block[6] == 0:
@@ -387,9 +391,12 @@ def pdf_to_html_semantic(pdf_bytes: bytes, title: str = "Converted Document") ->
 
                 lines = raw_text.split("\n")
                 first_line = lines[0].strip()
-                
+
                 # Heuristic for headers: short line, title/uppercase or larger font size
-                if len(first_line) < 80 and (first_line.isupper() or (len(lines) == 1 and len(first_line) < 45 and not first_line.endswith("."))):
+                if len(first_line) < 80 and (
+                    first_line.isupper()
+                    or (len(lines) == 1 and len(first_line) < 45 and not first_line.endswith("."))
+                ):
                     item_html = f"<h2>{html.escape(first_line)}</h2>"
                     if len(lines) > 1:
                         remainder = "\n".join(lines[1:]).strip()
@@ -404,17 +411,21 @@ def pdf_to_html_semantic(pdf_bytes: bytes, title: str = "Converted Document") ->
                 page_content.append(item_html)
             elif block[6] == 1:
                 page_content.append("<div class='image-placeholder'>[Image Object]</div>")
-                
+
         # Append standalone page links not embedded within a text block
         for l in page_links:
             uri = l.get("uri")
             if uri and uri not in [p for p in page_content if uri in p]:
-                page_content.append(f"<p><a href='{html.escape(uri)}' class='semantic-link' target='_blank' rel='noopener'>{html.escape(uri)}</a></p>")
+                page_content.append(
+                    f"<p><a href='{html.escape(uri)}' class='semantic-link' target='_blank' rel='noopener'>{html.escape(uri)}</a></p>"
+                )
 
-        sections_html.append(f"<section class='semantic-page-card'>{''.join(page_content)}</section>")
-        
+        sections_html.append(
+            f"<section class='semantic-page-card'>{''.join(page_content)}</section>"
+        )
+
     doc.close()
-    
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -507,14 +518,14 @@ def pdf_to_images_zip(pdf_bytes: bytes, dpi: int = 150, img_format: str = "png")
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     zip_buffer = io.BytesIO()
-    
+
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         for idx, page in enumerate(doc):
             pix = page.get_pixmap(dpi=dpi)
             img_data = pix.tobytes(img_format)
             filename = f"page_{idx + 1:03d}.{img_format}"
             zf.writestr(filename, img_data)
-            
+
     doc.close()
     return zip_buffer.getvalue()
 
@@ -529,11 +540,11 @@ def images_to_pdf(images: list[tuple[str, bytes]]) -> bytes:
         rect = img_doc[0].rect
         pdf_bytes = img_doc.convert_to_pdf()
         img_doc.close()
-        
+
         temp_pdf = fitz.open("pdf", pdf_bytes)
         doc.insert_pdf(temp_pdf)
         temp_pdf.close()
-        
+
     out_pdf = doc.tobytes()
     doc.close()
     return out_pdf
@@ -545,7 +556,7 @@ def pdf_to_markdown(pdf_bytes: bytes) -> str:
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     md_pages: list[str] = []
-    
+
     for idx, page in enumerate(doc):
         md_pages.append(f"\n\n## Page {idx + 1}\n\n")
         blocks = page.get_text("blocks")
@@ -554,6 +565,6 @@ def pdf_to_markdown(pdf_bytes: bytes) -> str:
                 text = block[4].strip()
                 if text:
                     md_pages.append(f"{text}\n\n")
-                    
+
     doc.close()
     return "".join(md_pages)

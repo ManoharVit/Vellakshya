@@ -4,13 +4,14 @@ Audits:
 - Semantic HTML landmarks, ARIA labels, keyboard navigation shortcuts, mobile viewports.
 - Visual regression & pixel fidelity between original and edited outputs.
 """
+
 from __future__ import annotations
-from fastapi.testclient import TestClient
+
 import fitz
-import pytest
+from fastapi.testclient import TestClient
 
 from app.main import app
-from app.services import inspection, organizer
+from app.services import inspection
 
 client = TestClient(app)
 
@@ -26,7 +27,9 @@ def test_accessibility_semantic_landmarks_and_aria():
 
     # 1. Semantic landmarks
     assert "<main" in html_src, "Missing <main> semantic landmark"
-    assert "<aside" in html_src or "<nav" in html_src, "Missing <aside> or <nav> navigation landmark"
+    assert "<aside" in html_src or "<nav" in html_src, (
+        "Missing <aside> or <nav> navigation landmark"
+    )
     assert "<header" in html_src, "Missing <header> landmark"
 
     # 2. Viewport tag for mobile/tablet responsive scaling
@@ -96,7 +99,9 @@ def test_visual_regression_pixel_fidelity():
     doc_orig.close()
 
     # Perform an operation on Page 2 (e.g. metadata update or delete metadata)
-    modified_bytes = inspection.update_metadata(orig_bytes, {"title": "Regression Baseline Document"})
+    modified_bytes = inspection.update_metadata(
+        orig_bytes, {"title": "Regression Baseline Document"}
+    )
 
     # Render modified Page 1 pixmap at 150 DPI
     doc_mod = fitz.open(stream=modified_bytes, filetype="pdf")
@@ -106,7 +111,7 @@ def test_visual_regression_pixel_fidelity():
 
     # Compute pixel differences
     assert len(samples_orig) == len(samples_mod), "Rendered dimensions changed!"
-    
+
     diff_bytes = 0
     for b1, b2 in zip(samples_orig, samples_mod):
         if b1 != b2:

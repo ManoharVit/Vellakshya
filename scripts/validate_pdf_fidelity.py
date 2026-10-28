@@ -11,13 +11,16 @@ Automates validation across:
 Author: Giri Manohar Vemula
 Repository: https://github.com/ManoharVit/Vellakshya.git
 """
+
 from __future__ import annotations
+
 import argparse
 import difflib
 import json
 import sys
 from pathlib import Path
 from typing import Any
+
 import fitz  # PyMuPDF
 
 
@@ -70,7 +73,9 @@ def validate_pdf_pair(
         # 1. Dimension parity
         rect_b = page_b.rect
         rect_t = page_t.rect
-        dims_match = (round(rect_b.width) == round(rect_t.width)) and (round(rect_b.height) == round(rect_t.height))
+        dims_match = (round(rect_b.width) == round(rect_t.width)) and (
+            round(rect_b.height) == round(rect_t.height)
+        )
 
         # 2. Text extraction parity
         text_b = page_b.get_text()
@@ -107,9 +112,11 @@ def validate_pdf_pair(
         }
 
         if not dims_match:
-            report["failures"].append(f"Page {idx+1}: dimension mismatch.")
+            report["failures"].append(f"Page {idx + 1}: dimension mismatch.")
         if similarity < expected_text_retention:
-            report["failures"].append(f"Page {idx+1}: text retention ({similarity:.2f}) below threshold {expected_text_retention}.")
+            report["failures"].append(
+                f"Page {idx + 1}: text retention ({similarity:.2f}) below threshold {expected_text_retention}."
+            )
 
         report["pages"].append(page_report)
 
@@ -126,20 +133,26 @@ def main():
     parser = argparse.ArgumentParser(description="PDF Structural and Visual Parity Validator")
     parser.add_argument("baseline", help="Path to baseline reference PDF")
     parser.add_argument("target", help="Path to target modified or converted PDF")
-    parser.add_argument("--retention", type=float, default=0.95, help="Minimum text retention ratio (0.0 to 1.0)")
+    parser.add_argument(
+        "--retention", type=float, default=0.95, help="Minimum text retention ratio (0.0 to 1.0)"
+    )
     parser.add_argument("--json", action="store_true", help="Output validation report as JSON")
 
     args = parser.parse_args()
 
     try:
-        report = validate_pdf_pair(args.baseline, args.target, expected_text_retention=args.retention)
+        report = validate_pdf_pair(
+            args.baseline, args.target, expected_text_retention=args.retention
+        )
         if args.json:
             print(json.dumps(report, indent=2))
         else:
             print(f"Validation Result: {report['overall_status']}")
             print(f"Pages: {report['page_count']['baseline']} vs {report['page_count']['target']}")
             for p in report["pages"]:
-                print(f" - Page {p['page_number']}: Sim={p['text_similarity'] * 100:.1f}%, Drift={p['visual_drift_pct']:.2f}%")
+                print(
+                    f" - Page {p['page_number']}: Sim={p['text_similarity'] * 100:.1f}%, Drift={p['visual_drift_pct']:.2f}%"
+                )
             if report["failures"]:
                 print("\nFailures:")
                 for f in report["failures"]:

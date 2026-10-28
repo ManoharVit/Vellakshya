@@ -1,0 +1,49 @@
+name: Deploy to Google Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'Dockerfile'
+      - 'requirements.txt'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy-cloud-run:
+    name: Build & Deploy Container to Cloud Run
+    runs-on: ubuntu-latest
+    if: github.repository == 'ManoharVit/Vellakshya'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        if: env.GCP_SA_KEY != ''
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        if: env.GCP_SA_KEY != ''
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        if: env.GCP_SA_KEY != ''
+        run: |
+          gcloud run deploy vellakshya \
+            --source . \
+            --region us-central1 \
+            --platform managed \
+            --allow-unauthenticated \
+            --memory 1Gi \
+            --cpu 1 \
+            --min-instances 0 \
+            --max-instances 1 \
+            --set-env-vars ENVIRONMENT=production
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}

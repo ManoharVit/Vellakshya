@@ -136,12 +136,14 @@ test.describe('Theme & Self-Hosted Typography Verification (Step 8)', () => {
     expect(activeNavStyles.color).toBe('rgb(55, 48, 163)');
     expect(activeNavStyles.borderLeftColor).toBe('rgb(79, 70, 229)');
 
-    // Save visual screenshot for verification artifact
-    await page.screenshot({ path: '/Users/girimanoharv/.gemini/antigravity/brain/0e08655c-3da7-43d3-a0d8-178d85741da0/light_theme_palette_conformance.png' });
-
-    // Click Crop tool to match user uploaded view and capture
-    await page.locator('[data-tool="crop-pages"]').click();
-    await page.waitForTimeout(300);
-    await page.screenshot({ path: '/Users/girimanoharv/.gemini/antigravity/brain/0e08655c-3da7-43d3-a0d8-178d85741da0/light_theme_crop_conformance.png' });
+    // Save visual screenshots if target directory exists (local development)
+    const fs = await import('fs');
+    const artifactDir = '/Users/girimanoharv/.gemini/antigravity/brain/0e08655c-3da7-43d3-a0d8-178d85741da0';
+    if (fs.existsSync(artifactDir)) {
+      await page.screenshot({ path: `${artifactDir}/light_theme_palette_conformance.png` });
+      await page.locator('[data-tool="crop-pages"]').click();
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: `${artifactDir}/light_theme_crop_conformance.png` });
+    }
   });
 });

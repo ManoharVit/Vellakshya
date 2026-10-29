@@ -325,6 +325,23 @@ button,
   font-feature-settings: "tnum" 1;
 }
 
+/* Self-hosted brand lettering; the application UI keeps its existing typography. */
+@font-face {
+  font-family: 'Geist Brand';
+  src: url('../fonts/GeistBrand-620.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 620;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Geist Mono Brand';
+  src: url('../fonts/GeistMonoBrand-550.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 550;
+  font-display: swap;
+}
+
 /* Header */
 .app-header {
   height: 48px;
@@ -346,19 +363,12 @@ button,
 }
 
 .brand-icon {
-  background: var(--bg-card);
   color: var(--accent-sky);
-  font-weight: 800;
-  font-size: 13px;
   width: 32px;
   height: 32px;
-  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  letter-spacing: -0.02em;
   flex-shrink: 0;
 }
 
@@ -369,19 +379,21 @@ button,
 }
 
 .brand-title {
-  font-family: var(--font-title);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-family: 'Geist Brand', var(--font-title);
+  font-size: 16px;
+  font-weight: 620;
+  letter-spacing: -0.02em;
   color: var(--text-main);
   line-height: 1.2;
 }
 
 .brand-tagline {
-  font-size: 10px;
+  font-family: 'Geist Mono Brand', monospace;
+  font-size: 9px;
   color: var(--text-muted);
-  font-weight: 500;
-  letter-spacing: 0.02em;
+  font-weight: 550;
+  letter-spacing: 0.16em;
+  line-height: 1.2;
 }
 
 .brand-tag {
@@ -2324,6 +2336,9 @@ button,
 
 /* Responsive Mobile Header Adaptations */
 @media (max-width: 768px) {
+  .brand-title {
+    font-size: 14px;
+  }
   .app-header {
     padding: 0 8px;
     gap: 6px;

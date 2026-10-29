@@ -50,20 +50,48 @@ def hybrid_search(
 ) -> list[DocumentChunk]:
     """
     Executes hybrid retrieval:
-    1. Computes vector embeddings and runs cosine similarity search.
-    2. Runs full-text keyword search.
-    3. Fuses rankings with RRF (k=60).
+    1. Computes query vector in the matching document embedding space.
+    2. Runs vector similarity search (if spaces match and provider is healthy).
+    3. Runs full-text keyword search.
+    4. Fuses rankings with RRF (k=60).
     """
-    # 1. Vector candidates
-    query_vector = get_embedding(query)
-    vector_candidates = query_vector_chunks(db, document_id, query_vector, limit=20)
+    from app.ai.embeddings import LOCAL_DETERMINISTIC_HASH_MODEL, get_embedding_with_metadata
+    from app.ai.storage import AIDocument
+
+    ai_doc = db.query(AIDocument).filter_by(id=document_id).first()
+    model_name = ai_doc.embedding_model if ai_doc else "local-deterministic-hash-v1"
+    allow_ext = bool(ai_doc.allow_external_ai) if ai_doc else False
+    dim = ai_doc.embedding_dim if ai_doc else 768
+
+    vector_candidates: list[DocumentChunk] = []
+    # 1. Compute query vector preserving space provenance
+    query_res = get_embedding_with_metadata(
+        text=query,
+        model_name=model_name,
+        dim=dim,
+        allow_external=allow_ext,
+        allow_silent_fallback=True,
+    )
+
+    # Invariant: Never compare mismatched spaces (e.g. hash fallback query against dense cloud vectors)
+    space_compatible = not (
+        query_res.is_fallback
+        and model_name not in (LOCAL_DETERMINISTIC_HASH_MODEL, "text-embedding-004")
+    )
+
+    if space_compatible:
+        vector_candidates = query_vector_chunks(db, document_id, query_res.vector, limit=20)
 
     # 2. Keyword candidates
     keyword_candidates = query_keyword_chunks(db, document_id, query, limit=20)
 
     # 3. Fuse via RRF
+    candidates_to_fuse = [keyword_candidates]
+    if vector_candidates:
+        candidates_to_fuse.insert(0, vector_candidates)
+
     fused = reciprocal_rank_fusion(
-        [vector_candidates, keyword_candidates],
+        candidates_to_fuse,
         k=60,
         top_n=top_n,
     )

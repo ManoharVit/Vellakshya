@@ -543,14 +543,22 @@ function setupCenterDropzone() {
   const fileInput = document.getElementById("centerEmptyFileInput");
   if (!emptyState || !fileInput) return;
 
+  const btnChoose = document.getElementById("btnEmptyChoosePdf");
+  if (btnChoose) {
+    btnChoose.addEventListener("click", (e) => {
+      e.stopPropagation();
+      fileInput.click();
+    });
+  }
+
   emptyState.addEventListener("click", (e) => {
-    if (e.target.closest(".btn-sample-doc")) return;
+    if (e.target.closest(".btn-sample-doc") || e.target.closest(".btn-choose-pdf")) return;
     fileInput.click();
   });
 
   emptyState.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
-      if (e.target.closest(".btn-sample-doc")) return;
+      if (e.target.closest(".btn-sample-doc") || e.target.closest(".btn-choose-pdf")) return;
       e.preventDefault();
       fileInput.click();
     }
@@ -567,6 +575,7 @@ function setupCenterDropzone() {
       e.preventDefault();
       e.stopPropagation();
       emptyState.classList.add("dragover");
+      emptyState.setAttribute("data-dragging", "true");
     });
   });
 
@@ -575,6 +584,7 @@ function setupCenterDropzone() {
       e.preventDefault();
       e.stopPropagation();
       emptyState.classList.remove("dragover");
+      emptyState.removeAttribute("data-dragging");
     });
   });
 

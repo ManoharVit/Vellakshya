@@ -438,17 +438,21 @@
                             </div>
                         </div>
 
-                        <div class="empty-state drop-zone-center" id="emptyState" tabindex="0" role="button" aria-label="Drop PDF file here or click to browse">
+                        <div class="empty-state drop-zone-center pdf-dropzone" id="emptyState" tabindex="0" role="button" aria-label="Drop PDF file here or click to browse">
                             <input type="file" id="centerEmptyFileInput" accept=".pdf,application/pdf" style="display: none;" />
-                            <div class="empty-state-icon-wrap">
-                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <div class="empty-state-icon-wrap pdf-dropzone__icon">
+                                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                     <polyline points="17 8 12 3 7 8"></polyline>
                                     <line x1="12" y1="3" x2="12" y2="15"></line>
                                 </svg>
                             </div>
                             <h3 class="empty-state-title">Drop PDF here to begin</h3>
-                            <p class="empty-state-desc">or click to browse from your device (standard PDF up to 30 MB)</p>
+                            <p class="empty-state-desc pdf-dropzone__description">or click to browse from your device (standard PDF up to 30 MB)</p>
+                            <button type="button" class="btn-choose-pdf" id="btnEmptyChoosePdf" aria-label="Choose PDF file from your device">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                <span>Choose PDF</span>
+                            </button>
                             <div class="quick-samples-container">
                                 <button type="button" class="btn-sample-doc" id="btnSampleInvoice" title="Load synthetic single-page invoice">
                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>

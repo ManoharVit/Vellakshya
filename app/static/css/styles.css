@@ -126,43 +126,59 @@
 }
 
 /* -------------------------------------------------------------
-   Light Mode Token Set ("Blue eclipse" Light Tokens)
+   Light Mode Token Set (Refined High-Contrast Indigo & Slate)
    ------------------------------------------------------------- */
 [data-theme="light"],
 .theme-light {
-  --bg: #F5F7FB;
-  --surface: #FFFFFF;
-  --border-subtle: #D5DBE8;
-  --border-strong: #7A879F;
-  --text-primary: #0F172A;
-  --text-secondary: #475569;
-  --accent: #2F6FED;
-  --accent-hover: #2563EB;
-  --text-on-accent: #FFFFFF;
-  --success: #15803D;
-  --warning: #B45309;
-  --error: #B91C1C;
+  --bg: #F8FAFC;                  /* App background: Overall workspace */
+  --surface: #FFFFFF;             /* Surface: Header, sidebar, settings panel, inputs */
+  --preview-canvas: #F1F5F9;      /* Preview canvas: Area behind PDF pages */
+  --text-primary: #0F172A;        /* Primary text: Headings, labels, body text */
+  --text-secondary: #475569;      /* Secondary text: Descriptions, helper text, metadata */
+  --border-subtle: #E2E8F0;       /* Subtle divider: Panel separators and decorative borders */
+  --border-strong: #64748B;       /* Control outline: Input borders where needed to identify control */
+  --control-outline: #64748B;     /* Input borders */
+  --accent: #4F46E5;              /* Primary action: Choose PDF, Apply Crop, enabled Export */
+  --accent-hover: #4338CA;        /* Primary hover: Hovered primary buttons */
+  --text-on-accent: #FFFFFF;      /* White text on primary buttons (6.29:1 contrast) */
+  --selected-bg: #EEF2FF;         /* Selected background: Active navigation item, selected tool */
+  --selected-text: #3730A3;       /* Selected text: Labels and icons on selected backgrounds */
+  --success: #15803D;             /* Success: Ready or completed status */
+  --warning: #B45309;             /* Warning */
+  --error: #B91C1C;               /* Error: Failed actions and validation messages */
 
-  --bg-canvas: var(--bg);
-  --bg-primary: var(--bg);
-  --bg-secondary: var(--surface);
-  --bg-surface: var(--surface);
-  --bg-card: var(--surface);
-  --bg-card-alt: var(--surface);
-  --bg-hover: var(--border-subtle);
+  /* Legacy & Semantic Mapping */
+  --bg-canvas: #F1F5F9;           /* Area behind PDF pages */
+  --bg-primary: #F8FAFC;          /* Overall workspace background */
+  --bg-secondary: #FFFFFF;        /* Header and sidebar surface */
+  --bg-surface: #FFFFFF;          /* Settings panel and cards */
+  --bg-card: #FFFFFF;
+  --bg-card-alt: #FFFFFF;
+  --bg-hover: #F1F5F9;            /* Pale slate background on hover */
   --bg-input: #FFFFFF;
 
-  --border-color: var(--border-subtle);
-  --border-focus: var(--accent);
+  --border-color: #E2E8F0;        /* Subtle divider */
+  --border-focus: #4F46E5;        /* Primary indigo focus outline */
 
-  --text-main: var(--text-primary);
-  --text-muted: var(--text-secondary);
+  --text-main: #0F172A;
+  --text-muted: #475569;
   --text-disabled: rgba(15, 23, 42, 0.38);
 
+  --accent-color: #4F46E5;
+  --accent-blue: #4F46E5;
+  --accent-light: #6366F1;
+  --accent-sky: #4F46E5;
+  --accent-muted: #3730A3;
+  --accent-subtle: rgba(79, 70, 229, 0.12);
+  --accent-glow: rgba(79, 70, 229, 0.25);
+
+  --status-success: #15803D;
   --status-success-bg: rgba(21, 128, 61, 0.12);
   --status-success-border: rgba(21, 128, 61, 0.3);
+  --status-warning: #B45309;
   --status-warning-bg: rgba(180, 83, 9, 0.12);
   --status-warning-border: rgba(180, 83, 9, 0.3);
+  --status-danger: #B91C1C;
   --status-danger-bg: rgba(185, 28, 28, 0.12);
   --status-danger-border: rgba(185, 28, 28, 0.3);
 }
@@ -879,6 +895,7 @@ button,
   font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary);
+  border-left: 3px solid transparent;
   cursor: pointer;
   transition: all 0.12s ease;
 }
@@ -888,7 +905,7 @@ button,
 }
 
 .nav-item.active .nav-icon {
-  color: var(--accent-light);
+  color: var(--accent);
 }
 
 .nav-item:hover {
@@ -897,21 +914,27 @@ button,
 }
 
 .nav-item.active {
-  background-color: rgba(37, 99, 235, 0.15);
-  color: var(--accent-muted);
-  font-weight: 600;
-  border-left: 3px solid var(--accent-color);
+  background-color: var(--selected-bg, rgba(79, 70, 229, 0.15));
+  color: var(--selected-text, var(--accent-muted));
+  font-weight: 700 !important;
+  border-left: 3px solid var(--accent);
 }
 
 .nav-item.highlight-html {
-  background-color: rgba(37, 99, 235, 0.08);
-  color: var(--accent-muted);
+  background-color: transparent;
+  color: var(--text-secondary);
+}
+
+.nav-item.highlight-html:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-main);
 }
 
 .nav-item.highlight-html.active {
-  background-color: rgba(37, 99, 235, 0.2);
-  color: var(--text-main);
-  border-left: 3px solid var(--accent-blue);
+  background-color: var(--selected-bg, rgba(79, 70, 229, 0.15));
+  color: var(--selected-text, var(--accent-muted));
+  font-weight: 700 !important;
+  border-left: 3px solid var(--accent);
 }
 
 /* Main Content Workspace */
@@ -2186,9 +2209,9 @@ button,
 }
 
 .btn-sample-doc {
-  background: rgba(30, 41, 59, 0.85);
-  color: var(--text-main);
-  border: 1px solid var(--border-color);
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
   padding: 10px 18px;
   border-radius: 6px;
   font-size: 13px;
@@ -2199,12 +2222,27 @@ button,
   gap: 8px;
   transition: all 0.15s ease;
   user-select: none;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 
 .btn-sample-doc:hover {
-  background: rgba(51, 65, 85, 0.95);
-  border-color: var(--accent-sky);
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
   transform: translateY(-1px);
+}
+
+[data-theme="dark"] .btn-sample-doc,
+:root:not([data-theme="light"]):not(.theme-light) .btn-sample-doc {
+  background: rgba(30, 41, 59, 0.85);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}
+
+[data-theme="dark"] .btn-sample-doc:hover,
+:root:not([data-theme="light"]):not(.theme-light) .btn-sample-doc:hover {
+  background: rgba(51, 65, 85, 0.95);
+  border-color: var(--accent);
 }
 
 .btn-sample-doc:active {
@@ -3071,13 +3109,19 @@ button,
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(30, 41, 59, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
   border-radius: 5px;
   padding: 6px 10px;
   font-size: 11px;
   color: var(--text-secondary);
   margin-bottom: 8px;
+}
+
+[data-theme="dark"] .tool-hint-line,
+:root:not([data-theme="light"]):not(.theme-light) .tool-hint-line {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Preview Hidden Placeholder & State Toggles */
@@ -3694,11 +3738,13 @@ a:focus-visible {
   opacity: 0.8;
 }
 
-/* Central Empty State Dropzone */
+/* Central Empty State Dropzone & PDF Dropzone Modern Architecture */
+.pdf-dropzone,
 .drop-zone-center {
-  border: 2px dashed var(--border-strong) !important;
+  border: 2px dashed #64748B !important;
   border-radius: 12px;
-  background: rgba(19, 28, 46, 0.7);
+  background: #FFFFFF !important;
+  color: #0F172A !important;
   padding: 44px 32px;
   margin: 40px auto;
   max-width: 580px;
@@ -3711,21 +3757,24 @@ a:focus-visible {
   cursor: pointer;
   transition: all 0.2s ease;
   outline: none;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05);
 }
 
-.drop-zone-center:hover,
+.pdf-dropzone[data-dragging="true"],
 .drop-zone-center.dragover {
-  border-color: var(--accent) !important;
-  background: rgba(47, 111, 237, 0.08);
+  background: #EEF2FF !important;
+  border-color: #4F46E5 !important;
   transform: translateY(-1px);
 }
 
-.drop-zone-center:focus-visible {
-  outline: 2px solid var(--accent) !important;
+.drop-zone-center:focus-visible,
+.pdf-dropzone:focus-visible {
+  outline: 2px solid #4F46E5 !important;
   outline-offset: 3px;
-  border-color: var(--accent) !important;
+  border-color: #4F46E5 !important;
 }
 
+.pdf-dropzone__icon,
 .empty-state-icon-wrap {
   display: flex;
   align-items: center;
@@ -3733,22 +3782,93 @@ a:focus-visible {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: rgba(47, 111, 237, 0.12);
-  color: var(--accent-light);
+  color: #4F46E5 !important;
+  background: #EEF2FF !important;
+  border: 1px solid #C7D2FE !important;
   margin-bottom: 16px;
-  border: 1px solid rgba(47, 111, 237, 0.25);
+  transition: all 0.2s ease;
 }
 
 .empty-state-title {
   font-family: var(--font-title);
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #0F172A !important;
   margin: 0 0 6px 0;
 }
 
+.pdf-dropzone__description,
 .empty-state-desc {
   font-family: var(--font-body);
+  font-size: 13px;
+  color: #475569 !important;
+  margin: 0 0 20px 0;
+  line-height: 1.4;
+}
+
+/* Solid Indigo Choose PDF Primary Action Button */
+.btn-choose-pdf {
+  background: #4F46E5 !important;
+  color: #FFFFFF !important;
+  border: 1px solid transparent !important;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.25);
+  transition: all 0.15s ease;
+  margin-bottom: 20px;
+}
+
+.btn-choose-pdf:hover {
+  background: #4338CA !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(79, 70, 229, 0.35);
+}
+
+.btn-choose-pdf:active {
+  transform: translateY(0);
+}
+
+/* Dark Mode Overrides for Dropzone */
+[data-theme="dark"] .drop-zone-center,
+:root:not([data-theme="light"]):not(.theme-light) .drop-zone-center {
+  background: rgba(19, 28, 46, 0.7) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .drop-zone-center:hover,
+:root:not([data-theme="light"]):not(.theme-light) .drop-zone-center:hover,
+[data-theme="dark"] .drop-zone-center.dragover,
+:root:not([data-theme="light"]):not(.theme-light) .drop-zone-center.dragover {
+  border-color: var(--accent) !important;
+  background: rgba(47, 111, 237, 0.12) !important;
+}
+
+[data-theme="dark"] .empty-state-icon-wrap,
+:root:not([data-theme="light"]):not(.theme-light) .empty-state-icon-wrap {
+  background: rgba(47, 111, 237, 0.12) !important;
+  color: var(--accent-light) !important;
+  border: 1px solid rgba(47, 111, 237, 0.25) !important;
+}
+
+[data-theme="dark"] .empty-state-title,
+:root:not([data-theme="light"]):not(.theme-light) .empty-state-title {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .empty-state-desc,
+:root:not([data-theme="light"]):not(.theme-light) .empty-state-desc {
+  color: var(--text-secondary) !important;
+}
   font-size: 13px;
   color: var(--text-secondary);
   margin: 0 0 20px 0;

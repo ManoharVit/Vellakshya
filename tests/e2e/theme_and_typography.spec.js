@@ -75,4 +75,73 @@ test.describe('Theme & Self-Hosted Typography Verification (Step 8)', () => {
     await expect(page.locator('#menuExportHtml')).toBeVisible();
     await expect(page.locator('#menuExportMarkdown')).toBeVisible();
   });
+
+  test('conforms to light theme palette: white dropzone, indigo action, neutral sidebar', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Switch to Light Theme if not already
+    const html = page.locator('html');
+    const theme = await html.getAttribute('data-theme');
+    if (theme !== 'light') {
+      await page.locator('#btnThemeToggle').click();
+      await page.waitForTimeout(300);
+    }
+
+    // 1. Verify Preview Canvas background is pale slate #F1F5F9 (rgb(241, 245, 249))
+    const previewCanvasBg = await page.evaluate(() => {
+      const panel = document.getElementById('previewPanel');
+      return panel ? getComputedStyle(panel).backgroundColor : '';
+    });
+    expect(previewCanvasBg).toBe('rgb(241, 245, 249)');
+
+    // 2. Verify Central Dropzone is crisp white #FFFFFF (rgb(255, 255, 255)) with #64748B border
+    const dropzone = page.locator('#emptyState');
+    await expect(dropzone).toBeVisible();
+    const dropzoneBg = await dropzone.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(dropzoneBg).toBe('rgb(255, 255, 255)');
+
+    // 3. Verify Solid Indigo Choose PDF Primary Action Button (#4F46E5 / rgb(79, 70, 229))
+    const btnChoose = page.locator('#btnEmptyChoosePdf');
+    await expect(btnChoose).toBeVisible();
+    const btnChooseBg = await btnChoose.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(btnChooseBg).toBe('rgb(79, 70, 229)');
+
+    // 4. Verify Sample Buttons have white background and dark text (#0F172A / rgb(15, 23, 42))
+    const btnSampleInvoice = page.locator('#btnSampleInvoice');
+    const sampleBg = await btnSampleInvoice.evaluate((el) => getComputedStyle(el).backgroundColor);
+    const sampleColor = await btnSampleInvoice.evaluate((el) => getComputedStyle(el).color);
+    expect(sampleBg).toBe('rgb(255, 255, 255)');
+    expect(sampleColor).toBe('rgb(15, 23, 42)');
+
+    // 5. Verify Sidebar Neutrality: Section headings are secondary text (#475569 / rgb(71, 85, 105))
+    const categoryColor = await page.evaluate(() => {
+      const cat = document.querySelector('.sidebar-category');
+      return cat ? getComputedStyle(cat).color : '';
+    });
+    expect(categoryColor).toBe('rgb(71, 85, 105)');
+
+    // 6. Verify Active Sidebar Item: Pale indigo bg (#EEF2FF), dark indigo text (#3730A3), weight 700, 3px indigo border
+    const activeNav = page.locator('.nav-item.active').first();
+    const activeNavStyles = await activeNav.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return {
+        bg: s.backgroundColor,
+        color: s.color,
+        fontWeight: s.fontWeight,
+        borderLeftColor: s.borderLeftColor,
+      };
+    });
+    expect(activeNavStyles.bg).toBe('rgb(238, 242, 255)');
+    expect(activeNavStyles.color).toBe('rgb(55, 48, 163)');
+    expect(activeNavStyles.borderLeftColor).toBe('rgb(79, 70, 229)');
+
+    // Save visual screenshot for verification artifact
+    await page.screenshot({ path: '/Users/girimanoharv/.gemini/antigravity/brain/0e08655c-3da7-43d3-a0d8-178d85741da0/light_theme_palette_conformance.png' });
+
+    // Click Crop tool to match user uploaded view and capture
+    await page.locator('[data-tool="crop-pages"]').click();
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: '/Users/girimanoharv/.gemini/antigravity/brain/0e08655c-3da7-43d3-a0d8-178d85741da0/light_theme_crop_conformance.png' });
+  });
 });

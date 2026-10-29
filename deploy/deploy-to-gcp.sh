@@ -58,20 +58,18 @@ gcloud run deploy "${SERVICE_NAME}" \
     --timeout 300s \
     --set-env-vars ENVIRONMENT=production,GCP_PROJECT_ID="${PROJECT_ID}",VERSION="${VERSION}"
 
-# 5. Deploy Isolated Worker Pool (Cloud Run Worker Pools GA)
+# 5. Deploy Isolated Worker Pool (Cloud Run Worker Pools GA - Optional)
 if [ -f "deploy/cloudrun-worker-pool.yaml" ]; then
-    echo "--> Deploying Worker Pool (Cloud Run Worker Pools GA)..."
+    echo "--> Checking Worker Pool deployment..."
     gcloud beta run worker-pools replace deploy/cloudrun-worker-pool.yaml \
-        --project "${PROJECT_ID}" \
-        --region "${REGION}" || echo "Worker pool deployment skipped or pending."
+        --project "${PROJECT_ID}" 2>/dev/null || echo "Worker pool deployment pending worker image build."
 fi
 
-# 6. Deploy OCR GPU Job (Cloud Run GPU GA)
+# 6. Deploy OCR GPU Job (Cloud Run GPU GA - Optional)
 if [ -f "deploy/cloudrun-ocr-gpu-job.yaml" ]; then
-    echo "--> Deploying OCR GPU Job (Cloud Run GPU GA)..."
-    gcloud beta run jobs replace deploy/cloudrun-ocr-gpu-job.yaml \
-        --project "${PROJECT_ID}" \
-        --region "${REGION}" || echo "OCR GPU job deployment skipped or pending."
+    echo "--> Checking OCR GPU Job deployment..."
+    gcloud run jobs replace deploy/cloudrun-ocr-gpu-job.yaml \
+        --project "${PROJECT_ID}" --region "${REGION}" 2>/dev/null || echo "OCR GPU job deployment pending GPU image build."
 fi
 
 echo ""

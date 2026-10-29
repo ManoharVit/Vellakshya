@@ -6396,7 +6396,7 @@ function renderInspectTool() {
               ${metadataEntries
                 .map(
                   ([k, v]) => `
-                <tr style="border-bottom: 1px solid #1e293b;">
+                <tr style="border-bottom: 1px solid var(--border-color);">
                   <td style="padding:8px 12px; text-align:center;">
                     <input type="checkbox" class="meta-field-chk" value="${k}" ${v ? "" : "disabled"} />
                   </td>
@@ -6459,7 +6459,7 @@ function renderInspectTool() {
               ${(data.pages || [])
                 .map(
                   (p) => `
-                <tr style="border-bottom: 1px solid #1e293b;">
+                <tr style="border-bottom: 1px solid var(--border-color);">
                   <td style="padding:8px 12px; font-weight:600;">Page ${p.page_number}</td>
                   <td style="padding:8px;"><span style="background:rgba(56,189,248,0.12); color: var(--accent-sky); border:1px solid rgba(56,189,248,0.3); padding:2px 6px; border-radius:4px; font-size:11px;">${p.format || "Custom"}</span></td>
                   <td style="padding:8px;">${p.width_pt} &times; ${p.height_pt} pt</td>

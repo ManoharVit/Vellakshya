@@ -26,6 +26,8 @@ jobs:
     name: Build & Deploy Container to Cloud Run (vellakshya-gcp)
     runs-on: ubuntu-latest
     if: github.repository == 'ManoharVit/Vellakshya'
+    env:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -71,5 +73,3 @@ jobs:
           if [ -f "deploy/cloudrun-ocr-gpu-job.yaml" ]; then
             gcloud beta run jobs replace deploy/cloudrun-ocr-gpu-job.yaml --project vellakshya-gcp --region us-central1 || true
           fi
-        env:
-          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}

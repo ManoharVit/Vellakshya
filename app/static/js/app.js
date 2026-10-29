@@ -80,6 +80,16 @@ if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdf.worker.min.js";
 }
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // =============================================================
 // REAL UI FEEDBACK SYSTEM: IN-APP TOASTS & ACCESSIBLE ALERTS
 // =============================================================
@@ -103,14 +113,26 @@ function showNotification(message, type = "info", duration = 4000) {
 
   const toast = document.createElement("div");
   toast.className = `app-toast toast-${type}`;
-  toast.innerHTML = `
-    <span>${icons[type] || getLucideSvg("info", 14)}</span>
-    <span style="flex: 1; line-height: 1.4;">${message}</span>
-    <button type="button" class="app-toast-close" title="Dismiss">&times;</button>
-  `;
 
-  const closeBtn = toast.querySelector(".app-toast-close");
+  const iconSpan = document.createElement("span");
+  iconSpan.innerHTML = icons[type] || getLucideSvg("info", 14);
+
+  const msgSpan = document.createElement("span");
+  msgSpan.className = "app-toast-message";
+  msgSpan.style.flex = "1";
+  msgSpan.style.lineHeight = "1.4";
+  msgSpan.textContent = String(message ?? "");
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "app-toast-close";
+  closeBtn.title = "Dismiss";
+  closeBtn.innerHTML = "&times;";
   closeBtn.onclick = () => toast.remove();
+
+  toast.appendChild(iconSpan);
+  toast.appendChild(msgSpan);
+  toast.appendChild(closeBtn);
 
   container.appendChild(toast);
 
@@ -1081,7 +1103,14 @@ function setPreviewContent(blob, mimeType, filename = "document") {
   const url = URL.createObjectURL(blob);
   state.currentPdfBlobUrl = url;
   state.currentPdfBlob = blob;
-  previewStatus.innerHTML = `<span style="display:none;">${filename}</span><span>${(blob.size / 1024).toFixed(1)} KB</span>`;
+  previewStatus.replaceChildren();
+  const hiddenNameSpan = document.createElement("span");
+  hiddenNameSpan.style.display = "none";
+  hiddenNameSpan.textContent = filename;
+  const sizeSpan = document.createElement("span");
+  sizeSpan.textContent = `${(blob.size / 1024).toFixed(1)} KB`;
+  previewStatus.appendChild(hiddenNameSpan);
+  previewStatus.appendChild(sizeSpan);
 
   const realDocName = state.currentPdfFile ? state.currentPdfFile.name : filename;
   updateViewerDocTitle(realDocName, state.editCount || 0);
@@ -1120,7 +1149,14 @@ function setHtmlPreview(htmlString, title = "Converted HTML") {
   if (wordFindBar) wordFindBar.style.display = "none";
   previewFrame.style.display = "block";
   previewFrame.src = url;
-  previewStatus.innerHTML = `<span style="display:none;">${title}</span><span>${(blob.size / 1024).toFixed(1)} KB</span>`;
+  previewStatus.replaceChildren();
+  const hiddenTitleSpan = document.createElement("span");
+  hiddenTitleSpan.style.display = "none";
+  hiddenTitleSpan.textContent = title;
+  const htmlSizeSpan = document.createElement("span");
+  htmlSizeSpan.textContent = `${(blob.size / 1024).toFixed(1)} KB`;
+  previewStatus.appendChild(hiddenTitleSpan);
+  previewStatus.appendChild(htmlSizeSpan);
 
   // Add Action button to download HTML
   workspaceActions.innerHTML = `
@@ -3011,16 +3047,6 @@ function setupGlobalExportHandlers() {
   }
 }
 
-function escapeHtml(str) {
-  if (!str) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
 // -------------------------------------------------------------
 // Document History (Undo & Redo Engine)
 // -------------------------------------------------------------
@@ -3764,7 +3790,7 @@ function renderMergeTool() {
       .map(
         (f, i) => `
         <div class="file-pill">
-          <span>${i + 1}. ${f.name}</span>
+          <span>${i + 1}. ${escapeHtml(f.name)}</span>
           <button type="button" style="background:none; border:none; color: var(--status-danger-light); cursor:pointer; display:inline-flex; align-items:center;" onclick="removeMergeFile(${i})" aria-label="Remove file" title="Remove file">${getLucideSvg("x", 12)}</button>
         </div>
       `
@@ -5869,8 +5895,8 @@ function renderFormsTool() {
           .map(
             (f) => `
             <div class="form-group">
-              <label class="form-label">${f.name} (${f.type})</label>
-              <input type="text" class="form-input form-field-input" data-name="${f.name}" value="${f.value || ""}" />
+              <label class="form-label">${escapeHtml(f.name)} (${escapeHtml(f.type)})</label>
+              <input type="text" class="form-input form-field-input" data-name="${escapeHtml(f.name)}" value="${escapeHtml(f.value || "")}" />
             </div>
           `
           )
@@ -5984,7 +6010,7 @@ function renderImagesToPdfTool() {
   uploadArea.appendChild(
     buildDropZone(".png,.jpg,.jpeg", true, (files) => {
       state.multiFiles.push(...files);
-      listArea.innerHTML = state.multiFiles.map((f, i) => `<div class="file-pill">${i + 1}. ${f.name}</div>`).join("");
+      listArea.innerHTML = state.multiFiles.map((f, i) => `<div class="file-pill">${i + 1}. ${escapeHtml(f.name)}</div>`).join("");
     })
   );
 
@@ -7131,14 +7157,14 @@ function renderCommentsList() {
       (c) => `
     <div class="comment-card" id="commentCard_${c.id}">
       <div class="comment-card-head">
-        <span class="comment-card-author">${c.author}</span>
+        <span class="comment-card-author">${escapeHtml(c.author)}</span>
         <div style="display: flex; align-items: center; gap: 6px;">
           <span class="comment-card-page">Page ${c.page}</span>
           <button type="button" class="btn-resolve-comment" data-id="${c.id}" style="background: none; border: none; font-size: 11px; cursor: pointer; color: var(--status-success); display:inline-flex; align-items:center;" title="Resolve comment" aria-label="Resolve comment">${getLucideSvg("check", 12)}</button>
         </div>
       </div>
-      <div class="comment-card-text">${c.text}</div>
-      <div style="font-size: 9px; color: var(--text-muted); margin-top: 2px;">${c.time}</div>
+      <div class="comment-card-text">${escapeHtml(c.text)}</div>
+      <div style="font-size: 9px; color: var(--text-muted); margin-top: 2px;">${escapeHtml(c.time)}</div>
     </div>
   `
     )
@@ -7455,14 +7481,14 @@ function renderCollaborationTool() {
         ${comments.length === 0 ? `<div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 8px;">No comments yet.</div>` : comments.map(c => `
           <div class="comment-card" id="toolCommentCard_${c.id}">
             <div class="comment-card-head">
-              <span class="comment-card-author">${c.author}</span>
+              <span class="comment-card-author">${escapeHtml(c.author)}</span>
               <div style="display: flex; align-items: center; gap: 6px;">
                 <span class="comment-card-page">Page ${c.page}</span>
                 <button type="button" class="btn-tool-resolve-comment" data-id="${c.id}" style="background: none; border: none; font-size: 11px; cursor: pointer; color: var(--status-success); display:inline-flex; align-items:center;" title="Resolve comment" aria-label="Resolve comment">${getLucideSvg("check", 12)}</button>
               </div>
             </div>
-            <div class="comment-card-text">${c.text}</div>
-            <div style="font-size: 9px; color: var(--text-muted); margin-top: 2px;">${c.time}</div>
+            <div class="comment-card-text">${escapeHtml(c.text)}</div>
+            <div style="font-size: 9px; color: var(--text-muted); margin-top: 2px;">${escapeHtml(c.time)}</div>
           </div>
         `).join("")}
       </div>

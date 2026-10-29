@@ -293,3 +293,111 @@ def test_f10_session_draft_user_binding():
     )
     assert alice_rec.status_code == 200
     assert alice_rec.json()["draft_state"]["annotations"] == ["secret note"]
+
+
+# =========================================================================
+# F07: Client-Side XSS & DOM TextContent / Entity Encoding
+# =========================================================================
+
+
+def test_f07_client_js_xss_sinks_eliminated():
+    """Verify that dangerous unsanitized DOM sinks in app.js have been eliminated."""
+    with open("app/static/js/app.js", "r", encoding="utf-8") as f:
+        js_content = f.read()
+
+    # Verify previewStatus.innerHTML does NOT interpolate raw unescaped filename or title
+    assert (
+        'previewStatus.innerHTML = `<span style="display:none;">${filename}</span>'
+        not in js_content
+    )
+    assert (
+        'previewStatus.innerHTML = `<span style="display:none;">${title}</span>' not in js_content
+    )
+
+    # Verify previewStatus uses safe replaceChildren / textContent
+    assert "previewStatus.replaceChildren();" in js_content
+
+    # Verify showNotification uses textContent for message rendering
+    assert 'msgSpan.textContent = String(message ?? "");' in js_content
+
+    # Verify AcroForm fieldsList uses escapeHtml
+    assert "escapeHtml(f.name)" in js_content
+    assert 'escapeHtml(f.value || "")' in js_content
+
+
+# =========================================================================
+# F08: Deep PDF Scrubbing of Embedded Files and XMP Metadata
+# =========================================================================
+
+
+def test_f08_deep_pdf_scrubbing_embedded_files_and_xmp():
+    """Verify sanitize_document comprehensively removes attachments, XMP, and metadata."""
+    from app.services.security import sanitize_document
+
+    doc = fitz.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 100), "Sensitive internal corporate report", fontsize=12)
+    page.add_rect_annot(fitz.Rect(70, 95, 300, 115))
+
+    # Add dangerous / sensitive artifacts
+    doc.set_xml_metadata("<x:xmpmeta>Confidential Internal Dossier</x:xmpmeta>")
+    doc.embfile_add(
+        "confidential.csv", b"salary,ssn\n100000,123-45-6789", filename="confidential.csv"
+    )
+    doc.set_metadata(
+        {
+            "title": "Unredacted Corporate Financials",
+            "author": "Chief Executive Officer",
+            "subject": "Acquisition Targets",
+            "keywords": "secret, acquisition, confidential",
+        }
+    )
+
+    raw_dirty_bytes = doc.tobytes()
+    doc.close()
+
+    # Pre-condition: check that dirty PDF actually has the embedded file & XMP
+    verify_dirty = fitz.open(stream=raw_dirty_bytes, filetype="pdf")
+    assert "confidential.csv" in verify_dirty.embfile_names()
+    assert "Confidential Internal Dossier" in (verify_dirty.get_xml_metadata() or "")
+    assert verify_dirty.metadata.get("title") == "Unredacted Corporate Financials"
+    assert len(list(verify_dirty[0].annots())) == 1
+    verify_dirty.close()
+
+    # Run deep sanitization
+    sanitized_bytes = sanitize_document(raw_dirty_bytes)
+
+    # Post-condition: verify comprehensive purge
+    clean_doc = fitz.open(stream=sanitized_bytes, filetype="pdf")
+    assert clean_doc.embfile_names() == []
+    assert clean_doc.embfile_count() == 0
+    assert clean_doc.get_xml_metadata() in ("", None)
+    assert clean_doc.metadata.get("title") == ""
+    assert clean_doc.metadata.get("author") == ""
+    assert clean_doc.metadata.get("subject") == ""
+    assert clean_doc.metadata.get("keywords") == ""
+    assert list(clean_doc[0].annots()) == []
+    clean_doc.close()
+
+
+def test_f08_api_sanitize_endpoint_scrubs_deep_metadata():
+    """Verify POST /api/security/sanitize route purges embedded files and XMP streams."""
+    doc = fitz.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 100), "Public facing report", fontsize=12)
+    doc.set_xml_metadata("<x:xmpmeta>Secret Tracking Beacon</x:xmpmeta>")
+    doc.embfile_add("tracking.bin", b"beacon_data_payload", filename="tracking.bin")
+    pdf_bytes = doc.tobytes()
+    doc.close()
+
+    res = client.post(
+        "/api/security/sanitize",
+        files={"file": ("dirty_report.pdf", pdf_bytes, "application/pdf")},
+    )
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "application/pdf"
+
+    clean_doc = fitz.open(stream=res.content, filetype="pdf")
+    assert clean_doc.embfile_names() == []
+    assert clean_doc.get_xml_metadata() in ("", None)
+    clean_doc.close()

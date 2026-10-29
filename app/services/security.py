@@ -88,11 +88,39 @@ def redact_text_permanently(
 
 def sanitize_document(pdf_bytes: bytes) -> bytes:
     """
-    Strips all metadata, embedded files, and annotations to sanitize the document.
+    Strips all metadata, embedded attachments, XML/XMP streams, JavaScript actions,
+    and annotations to sanitize the document.
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
-    # Clear metadata
+    # 1. Purge embedded attachment files
+    for emb_name in list(doc.embfile_names()):
+        try:
+            doc.embfile_del(emb_name)
+        except Exception:
+            pass
+
+    # 2. PyMuPDF deep scrubbing
+    try:
+        doc.scrub(
+            attached_files=True,
+            clean_pages=True,
+            embedded_files=True,
+            javascript=True,
+            metadata=True,
+            reset_fields=True,
+            reset_responses=True,
+            xml_metadata=True,
+        )
+    except Exception:
+        pass
+
+    # 3. Explicitly purge XML/XMP metadata and standard metadata dictionary
+    try:
+        doc.set_xml_metadata("")
+    except Exception:
+        pass
+
     doc.set_metadata(
         {
             "title": "",
@@ -106,11 +134,12 @@ def sanitize_document(pdf_bytes: bytes) -> bytes:
         }
     )
 
-    # Remove annotations across all pages
+    # 4. Remove annotations across all pages
     for page in doc:
         for annot in list(page.annots()):
             page.delete_annot(annot)
 
+    # Defrag and garbage collect unreferenced streams/objects
     out_bytes = doc.tobytes(deflate=True, garbage=4)
     doc.close()
     return out_bytes

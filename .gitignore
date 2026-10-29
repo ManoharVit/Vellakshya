@@ -15,11 +15,14 @@ playwright/.cache/
 venv/
 ENV/
 
-# Python Cache
+# Python Cache & Builds
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.egg-info/
+dist/
+build/
 
 # Testing & Coverage
 .pytest_cache/

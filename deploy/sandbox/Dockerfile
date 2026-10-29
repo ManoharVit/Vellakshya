@@ -2,7 +2,7 @@
 # Vellakshya Isolated Worker Sandbox Container
 # Hardened rootless container for processing untrusted PDF inputs.
 # ==============================================================================
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # Prevent interactive prompts and Python bytecode writes
 ENV DEBIAN_FRONTEND=noninteractive \

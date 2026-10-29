@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vellakshya"
-version = "1.0.0"
+version = "2.0.0"
 description = "Enterprise Document Workstation & PDF Intelligence System"
 readme = "README.md"
-requires-python = ">=3.12,<3.14"
+requires-python = ">=3.12,<3.15"
 authors = [
     { name = "Giri Manohar Vemula" }
 ]
@@ -18,9 +18,9 @@ Repository = "https://github.com/ManoharVit/Vellakshya"
 Documentation = "https://github.com/ManoharVit/Vellakshya#readme"
 
 dependencies = [
-    "fastapi>=0.119.0,<0.120.0",
-    "starlette>=0.40.0,<0.49.0",
-    "uvicorn>=0.32.0,<0.33.0",
+    "fastapi>=0.140.0,<0.141.0",
+    "starlette>=0.46.0,<2.0.0",
+    "uvicorn>=0.49.0,<0.50.0",
     "python-multipart>=0.0.30,<0.1.0",
     "pymupdf>=1.28.0,<1.29.0",
     "jinja2>=3.1.4,<3.2.0",
@@ -31,6 +31,7 @@ dependencies = [
     "sqlalchemy>=2.0.30,<2.1.0",
     "psycopg2-binary>=2.9.9,<3.0.0",
     "pgvector>=0.3.0,<0.4.0",
+    "pdf2docx>=0.5.13,<0.6.0",
 ]
 
 [tool.pytest.ini_options]

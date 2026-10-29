@@ -3,173 +3,324 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vellakshya — Professional PDF Workstation</title>
-    <link rel="stylesheet" href="/css/styles.css?v=3.7.0">
+    <title>Vellakshya - Professional PDF Workstation</title>
+    <link rel="stylesheet" href="/css/styles.css?v=2.0.0">
 </head>
 <body>
     <!-- Top Header -->
     <header class="app-header">
-        <div class="brand">
-            <div class="brand-icon" aria-hidden="true" title="Vellakshya PDF Workstation">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <polyline points="9 15 11 17 15 13"></polyline>
-                </svg>
+        <div class="header-left">
+            <div class="brand">
+                <div class="brand-icon" aria-hidden="true" title="Vellakshya PDF Workstation">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <polyline points="9 15 11 17 15 13"></polyline>
+                    </svg>
+                </div>
+                <div class="brand-title">Vellakshya</div>
             </div>
-            <div class="brand-title">Vellakshya</div>
-        </div>
 
-        <!-- Consolidated Document Status & Governance Menu (Fix #3) -->
+            <!-- Consolidated Document Status & Governance Menu -->
             <div class="header-status-wrap" id="headerStatusWrap">
-                <button type="button" class="btn-hdr-status-menu" id="btnHeaderStatusMenu" title="Document Governance, Manifests & Collaboration">
-                    <span class="status-menu-dot" id="statusMenuDot"></span>
-                    <span class="status-menu-label" id="statusMenuLabel">Ready</span>
-                    <span class="status-menu-caret">▾</span>
+                <button type="button" class="btn-hdr-status-menu" id="btnHeaderStatusMenu" title="Document Governance, Manifests &amp; Collaboration">
+                    <span class="status-menu-icon" id="statusMenuIcon">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M10 10.3c.2-.4.5-.8.9-1a2.1 2.1 0 0 1 2.6.4c.6.5.9 1.3.6 2.1-.3.7-1.1 1.2-1.6 1.7-.3.3-.5.7-.5 1.1v.4"/><line x1="12" x2="12.01" y1="18" y2="18"/></svg>
+                    </span>
+                    <span class="status-menu-label" id="statusMenuLabel">No Document</span>
+                    <svg class="dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                 </button>
                 <div class="header-status-dropdown" id="headerStatusDropdown" style="display: none;">
                     <div class="status-dropdown-header">Document Governance &amp; Security</div>
                     <div class="status-dropdown-body">
                         <button type="button" class="btn-integrity-pill" id="btnHeaderIntegrity" style="display: none;" title="Cryptographic Integrity: Ed25519 Signed Manifest">
-                            <span class="integrity-dot"></span>
-                            <span id="integrityLabel">Verified ✓</span>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+                            <span id="integrityLabel">Verified</span>
                         </button>
                         <button type="button" class="btn-version-pill" id="btnHeaderVersion" style="display: none;" title="Document Version History">
-                            <span id="versionLabel">v1.0 (Signed)</span>
+                            <span id="versionLabel">v2.0 (Signed)</span>
                         </button>
                         <div class="collab-presence-bar" id="collabPresenceBar" title="Active document collaborators (Click to view comments)">
-                            <span class="collab-status-dot" id="collabStatusDot" title="Live Collaboration Active"></span>
+                            <span class="collab-status-icon" id="collabStatusIcon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
                             <span class="collab-status-label" id="collabStatusLabel">Live Sync</span>
                             <div class="collab-avatars" id="collabAvatarsList"></div>
                         </div>
                     </div>
                     <div class="status-dropdown-divider"></div>
                     <div class="status-dropdown-shortcuts">
-                        <button type="button" class="status-shortcut-btn" id="btnToggleHistoryDrawer" title="Version History & Cryptographic Manifests">
-                            <span>📜</span> Revisions
+                        <button type="button" class="status-shortcut-btn" id="btnToggleHistoryDrawer" title="Version History &amp; Cryptographic Manifests">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+                            <span>Revisions</span>
                         </button>
-                        <button type="button" class="status-shortcut-btn" id="btnToggleCollabDrawer" title="Collaborators & Discussion Comments">
-                            <span>💬</span> Comments <span class="comment-count-badge" id="commentCountBadge">2</span>
+                        <button type="button" class="status-shortcut-btn" id="btnToggleCollabDrawer" title="Collaborators &amp; Discussion Comments">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            <span>Comments</span> <span class="comment-count-badge" id="commentCountBadge">2</span>
                         </button>
-                        <button type="button" class="status-shortcut-btn" id="btnToggleSecurityDrawer" title="Sandbox & Security Model">
-                            <span>🛡️</span> Security
+                        <button type="button" class="status-shortcut-btn" id="btnToggleSecurityDrawer" title="Sandbox &amp; Security Model">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+                            <span>Security</span>
                         </button>
                         <button type="button" class="status-shortcut-btn" id="btnToggleThumbnails" title="Toggle Page Thumbnails Filmstrip">
-                            <span>📑</span> Pages
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                            <span>Pages</span>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="header-actions">
-            <button type="button" class="btn-hdr-action" id="btnHeaderUndo" disabled title="Undo last action (Ctrl+Z / Cmd+Z)">
-                <span>↩️</span> <span class="btn-hdr-text">Undo</span>
-                <span class="undo-badge" id="undoBadge" style="display: none;">0</span>
-            </button>
-            <button type="button" class="btn-hdr-action" id="btnHeaderRedo" disabled title="Redo action (Ctrl+Y / Cmd+Shift+Z)">
-                <span>↪️</span> <span class="btn-hdr-text">Redo</span>
-                <span class="redo-badge" id="redoBadge" style="display: none;">0</span>
-            </button>
-            <div class="history-step-pill" id="historyStepPill" style="display: none;">
-                <span style="font-size:10px;">📜</span>
-                <span id="historyStepText">Original Document</span>
-            </div>
-            <!-- Global Export Dropdown Button -->
-            <div class="header-export-wrap" id="headerExportWrap">
-                <button type="button" class="btn-hdr-export" id="btnHeaderExport" title="Export / Download Document">
-                    <span>⬇️</span> Export <span class="export-caret">▾</span>
+
+        <div class="header-right">
+            <div class="header-actions">
+                <button type="button" class="btn-hdr-action" id="btnHeaderUndo" disabled title="Undo last action">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
+                    <span class="btn-hdr-text">Undo</span>
+                    <span class="undo-badge" id="undoBadge" style="display: none;">0</span>
                 </button>
-                <div class="export-dropdown-menu" id="exportDropdownMenu" style="display: none;">
-                    <button type="button" class="export-dropdown-item" id="menuExportPdf">
-                        <span class="export-item-icon">📄</span>
-                        <div class="export-item-text">
-                            <span class="export-item-title">Download PDF</span>
-                            <span class="export-item-desc">Current document with all edits applied</span>
-                        </div>
+                <button type="button" class="btn-hdr-action" id="btnHeaderRedo" disabled title="Redo action">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></svg>
+                    <span class="btn-hdr-text">Redo</span>
+                    <span class="redo-badge" id="redoBadge" style="display: none;">0</span>
+                </button>
+                <div class="history-step-pill" id="historyStepPill" style="display: none;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+                    <span id="historyStepText">Original Document</span>
+                </div>
+                <!-- Global Export Dropdown Button -->
+                <div class="header-export-wrap" id="headerExportWrap">
+                    <button type="button" class="btn-hdr-export" id="btnHeaderExport" disabled title="Open or upload a PDF document first to export">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" x2="12" y2="3"/></svg>
+                        <span>Export</span>
+                        <svg class="dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                     </button>
-                    <button type="button" class="export-dropdown-item" id="menuExportHtml">
-                        <span class="export-item-icon">🌐</span>
-                        <div class="export-item-text">
-                            <span class="export-item-title">Export as Web HTML</span>
-                            <span class="export-item-desc">High-fidelity responsive webpage</span>
-                        </div>
+                    <div class="export-dropdown-menu" id="exportDropdownMenu" style="display: none;">
+                        <button type="button" class="export-dropdown-item" id="menuExportPdf">
+                            <span class="export-item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg></span>
+                            <div class="export-item-text">
+                                <span class="export-item-title">Download PDF</span>
+                                <span class="export-item-desc">Current document with all edits applied</span>
+                            </div>
+                        </button>
+                        <button type="button" class="export-dropdown-item" id="menuExportHtml">
+                            <span class="export-item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg></span>
+                            <div class="export-item-text">
+                                <span class="export-item-title">Export as Web HTML</span>
+                                <span class="export-item-desc">High-fidelity responsive webpage</span>
+                            </div>
+                        </button>
+                        <button type="button" class="export-dropdown-item" id="menuExportDocx">
+                            <span class="export-item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg></span>
+                            <div class="export-item-text">
+                                <span class="export-item-title">Export as Word (DOCX)</span>
+                                <span class="export-item-desc">Editable document with preserved formatting</span>
+                            </div>
+                        </button>
+                        <button type="button" class="export-dropdown-item" id="menuExportMarkdown">
+                            <span class="export-item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="m10 13-2 2 2 2"/><path d="m14 17 2-2-2-2"/></svg></span>
+                            <div class="export-item-text">
+                                <span class="export-item-title">Export as Markdown</span>
+                                <span class="export-item-desc">Structured text and tables</span>
+                            </div>
+                        </button>
+                        <button type="button" class="export-dropdown-item" id="menuExportImages">
+                            <span class="export-item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></span>
+                            <div class="export-item-text">
+                                <span class="export-item-title">Export Images (ZIP)</span>
+                                <span class="export-item-desc">Rendered PNG pages archive</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+                <!-- Theme Control (System, Light, Dark) -->
+                <div class="header-theme-wrap" id="headerThemeWrap">
+                    <button type="button" class="btn-hdr-action btn-theme-toggle" id="btnThemeToggle" aria-haspopup="true" aria-expanded="false" title="Theme Mode: System, Light, Dark">
+                        <svg class="icon-theme-dark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                        <svg class="icon-theme-light" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                        <svg class="icon-theme-system" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+                        <span class="btn-hdr-text" id="themeToggleText">Theme: Dark</span>
+                        <svg class="dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                     </button>
-                    <button type="button" class="export-dropdown-item" id="menuExportMarkdown">
-                        <span class="export-item-icon">📝</span>
-                        <div class="export-item-text">
-                            <span class="export-item-title">Export as Markdown</span>
-                            <span class="export-item-desc">Structured text and tables</span>
-                        </div>
-                    </button>
-                    <button type="button" class="export-dropdown-item" id="menuExportImages">
-                        <span class="export-item-icon">🖼️</span>
-                        <div class="export-item-text">
-                            <span class="export-item-title">Export Images (ZIP)</span>
-                            <span class="export-item-desc">Rendered PNG pages archive</span>
-                        </div>
-                    </button>
+                    <div class="theme-dropdown-menu" id="themeDropdownMenu" style="display: none;">
+                        <button type="button" class="theme-dropdown-item" data-theme-val="system">
+                            <span class="theme-item-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg></span>
+                            <span>System</span>
+                            <span class="theme-check" id="checkThemeSystem" style="display: none;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        </button>
+                        <button type="button" class="theme-dropdown-item" data-theme-val="light">
+                            <span class="theme-item-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
+                            <span>Light</span>
+                            <span class="theme-check" id="checkThemeLight" style="display: none;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        </button>
+                        <button type="button" class="theme-dropdown-item active" data-theme-val="dark">
+                            <span class="theme-item-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></span>
+                            <span>Dark</span>
+                            <span class="theme-check" id="checkThemeDark"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        </button>
+                    </div>
                 </div>
             </div>
+            <div class="header-divider" aria-hidden="true"></div>
+            <div class="header-status" id="headerStatus">
+                <span class="status-indicator-icon" id="headerStatusIcon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                </span>
+                <span class="header-status-text" id="headerStatusText">Ready</span>
+            </div>
         </div>
-        <div class="header-status" id="headerStatus">Ready</div>
+    </header>
+        </div>
     </header>
 
     <!-- Main Application Layout -->
     <div class="app-layout">
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
+            <div class="sidebar-search-box">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="sidebarToolSearch" placeholder="Search 20+ tools..." aria-label="Search tools" />
+            </div>
+
             <div class="sidebar-category">Core Engine</div>
             <ul class="sidebar-nav">
                 <li class="nav-item highlight-html active" data-tool="pdf-to-html">
-                    <span>🌐</span> PDF to HTML Engine
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    <span>PDF to HTML Engine</span>
+                </li>
+                <li class="nav-item" data-tool="pdf-to-docx">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+                    <span>PDF to Word (.docx)</span>
                 </li>
             </ul>
 
             <div class="sidebar-category">Organize Pages</div>
             <ul class="sidebar-nav">
-                <li class="nav-item" data-tool="merge-pdf"><span>📑</span> Merge PDFs</li>
-                <li class="nav-item" data-tool="split-pdf"><span>✂️</span> Split PDF</li>
-                <li class="nav-item" data-tool="rotate-pages"><span>🔄</span> Rotate Pages</li>
-                <li class="nav-item" data-tool="delete-pages"><span>🗑️</span> Delete Pages</li>
-                <li class="nav-item" data-tool="reorder-pages"><span>🔢</span> Reorder Pages</li>
-                <li class="nav-item" data-tool="extract-pages"><span>📤</span> Extract Pages</li>
-                <li class="nav-item" data-tool="crop-pages"><span>📐</span> Crop & Resize Margins</li>
+                <li class="nav-item" data-tool="merge-pdf">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="14" height="14" rx="2"/><path d="M6 2h14a2 2 0 0 1 2 2v14"/></svg>
+                    <span>Merge PDFs</span>
+                </li>
+                <li class="nav-item" data-tool="split-pdf">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+                    <span>Split PDF</span>
+                </li>
+                <li class="nav-item" data-tool="rotate-pages">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><polyline points="21 3 21 8 16 8"/></svg>
+                    <span>Rotate Pages</span>
+                </li>
+                <li class="nav-item" data-tool="delete-pages">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    <span>Delete Pages</span>
+                </li>
+                <li class="nav-item" data-tool="reorder-pages">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/><polyline points="5 12 12 5 19 12"/></svg>
+                    <span>Reorder Pages</span>
+                </li>
+                <li class="nav-item" data-tool="extract-pages">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    <span>Extract Pages</span>
+                </li>
+                <li class="nav-item" data-tool="crop-pages">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
+                    <span>Crop &amp; Resize Margins</span>
+                </li>
             </ul>
 
-            <div class="sidebar-category">Edit & Annotate</div>
+            <div class="sidebar-category">Edit &amp; Annotate</div>
             <ul class="sidebar-nav">
-                <li class="nav-item" data-tool="replace-text"><span>✏️</span> Find & Replace Text</li>
-                <li class="nav-item" data-tool="insert-text"><span>✍️</span> Insert Text Box</li>
-                <li class="nav-item" data-tool="whiteout"><span>⬜</span> Erase / Whiteout</li>
-                <li class="nav-item" data-tool="watermark"><span>💧</span> Watermark</li>
-                <li class="nav-item" data-tool="page-numbers"><span>📄</span> Page / Bates Numbers</li>
-                <li class="nav-item" data-tool="header-footer"><span>🔝</span> Header & Footer</li>
-                <li class="nav-item" data-tool="highlight"><span>🖍️</span> Keyword Highlight</li>
+                <li class="nav-item" data-tool="replace-text">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    <span>Find &amp; Replace Text</span>
+                </li>
+                <li class="nav-item" data-tool="insert-text">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                    <span>Insert Text Box</span>
+                </li>
+                <li class="nav-item" data-tool="whiteout">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+                    <span>Erase / Whiteout</span>
+                </li>
+                <li class="nav-item" data-tool="watermark">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                    <span>Watermark</span>
+                </li>
+                <li class="nav-item" data-tool="page-numbers">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+                    <span>Page / Bates Numbers</span>
+                </li>
+                <li class="nav-item" data-tool="header-footer">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="17" x2="21" y2="17"/></svg>
+                    <span>Header &amp; Footer</span>
+                </li>
+                <li class="nav-item" data-tool="highlight">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11-6 6v3h3l6-6"/><path d="m22 2-7.5 7.5L11 6 18.5-1.5z"/></svg>
+                    <span>Keyword Highlight</span>
+                </li>
             </ul>
 
-            <div class="sidebar-category">Protect & Redact</div>
+            <div class="sidebar-category">Protect &amp; Redact</div>
             <ul class="sidebar-nav">
-                <li class="nav-item" data-tool="encrypt"><span>🔒</span> Encrypt (AES-256)</li>
-                <li class="nav-item" data-tool="decrypt"><span>🔓</span> Decrypt / Unlock</li>
-                <li class="nav-item" data-tool="redact"><span>⬛</span> Permanent Redact</li>
-                <li class="nav-item" data-tool="sanitize"><span>🧹</span> Sanitize Metadata</li>
+                <li class="nav-item" data-tool="encrypt">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Encrypt (AES-256)</span>
+                </li>
+                <li class="nav-item" data-tool="decrypt">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                    <span>Decrypt / Unlock</span>
+                </li>
+                <li class="nav-item" data-tool="redact">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    <span>Permanent Redact</span>
+                </li>
+                <li class="nav-item" data-tool="sanitize">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>
+                    <span>Sanitize Metadata</span>
+                </li>
             </ul>
 
-            <div class="sidebar-category">Governance & Audit</div>
+            <div class="sidebar-category">Governance &amp; Audit</div>
             <ul class="sidebar-nav">
-                <li class="nav-item" data-tool="version-history"><span>📜</span> Version History & Manifests</li>
-                <li class="nav-item" data-tool="collaboration-hub"><span>👥</span> Real-Time Collaboration</li>
-                <li class="nav-item" data-tool="security-audit"><span>🛡️</span> Security & Sandbox Model</li>
+                <li class="nav-item" data-tool="version-history">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Version History &amp; Manifests</span>
+                </li>
+                <li class="nav-item" data-tool="collaboration-hub">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Real-Time Collaboration</span>
+                </li>
+                <li class="nav-item" data-tool="security-audit">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>Security &amp; Sandbox Model</span>
+                </li>
             </ul>
 
-            <div class="sidebar-category">Forms & Export</div>
+            <div class="sidebar-category">Forms &amp; Export</div>
             <ul class="sidebar-nav">
-                <li class="nav-item highlight-export" data-tool="export-hub"><span>⬇️</span> Export & Download Hub</li>
-                <li class="nav-item" data-tool="forms"><span>📋</span> AcroForms & Fields</li>
-                <li class="nav-item" data-tool="pdf-to-images"><span>🖼️</span> PDF to Images (ZIP)</li>
-                <li class="nav-item" data-tool="images-to-pdf"><span>📷</span> Images to PDF</li>
-                <li class="nav-item" data-tool="pdf-to-markdown"><span>📝</span> PDF to Markdown</li>
-                <li class="nav-item" data-tool="inspect"><span>🔍</span> Deep Document Inspector</li>
+                <li class="nav-item highlight-export" data-tool="export-hub">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Export &amp; Download Hub</span>
+                </li>
+                <li class="nav-item" data-tool="forms">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <span>AcroForms &amp; Fields</span>
+                </li>
+                <li class="nav-item" data-tool="pdf-to-docx">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+                    <span>PDF to Word (.docx)</span>
+                </li>
+                <li class="nav-item" data-tool="pdf-to-images">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <span>PDF to Images (ZIP)</span>
+                </li>
+                <li class="nav-item" data-tool="images-to-pdf">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                    <span>Images to PDF</span>
+                </li>
+                <li class="nav-item" data-tool="pdf-to-markdown">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                    <span>PDF to Markdown</span>
+                </li>
+                <li class="nav-item" data-tool="inspect">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <span>Deep Document Inspector</span>
+                </li>
             </ul>
         </aside>
 
@@ -177,7 +328,8 @@
         <main class="workspace">
             <div class="workspace-header">
                 <div class="workspace-title" id="currentToolTitle">
-                    <span>🌐</span> PDF to HTML Engine
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                    <span>PDF to HTML Engine</span>
                 </div>
                 <div class="workspace-actions" id="workspaceActions">
                     <!-- Dynamic action buttons -->
@@ -196,7 +348,7 @@
                         <div class="thumbnail-strip-title"><span class="thumb-rail-label">Pages Rail</span></div>
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <span class="thumbnail-badge" id="thumbStripCount">0</span>
-                            <span class="thumb-collapse-icon" id="thumbCollapseIcon" title="Collapse Pages rail">◀</span>
+                            <span class="thumb-collapse-icon" id="thumbCollapseIcon" title="Collapse Pages rail"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></span>
                         </div>
                     </div>
                     <div class="thumbnail-strip-scroll" id="thumbnailStripItems">
@@ -209,7 +361,7 @@
                     <div class="preview-toolbar">
                         <div class="preview-tabs" id="previewTabs">
                             <button type="button" class="preview-tab preview-toggle-pages active" id="btnTogglePages" title="Toggle Pages thumbnail strip (Hide / Show)" style="display: none; cursor: pointer; align-items: center; gap: 5px;">
-                                <span class="pages-toggle-dot">●</span> <span>Pages</span> <span class="thumbnail-badge" id="previewTabPagesCount">0</span>
+                                <span class="pages-toggle-icon" id="pagesToggleIcon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></span> <span>Pages</span> <span class="thumbnail-badge" id="previewTabPagesCount">0</span>
                             </button>
                             <button type="button" class="preview-tab active" data-tab="preview" id="btnTogglePreview" title="Toggle Document Preview Canvas (Hide / Show)" style="cursor: pointer;">Preview</button>
                             <button type="button" class="preview-tab" data-tab="code" id="codeTabBtn" style="display: none; cursor: pointer;">HTML Code</button>
@@ -218,34 +370,39 @@
 
                         <!-- Central Active Document Title in Red Circle Area -->
                         <div class="preview-doc-title-wrap" id="previewDocTitleWrap" style="display: none;">
-                            <span class="preview-doc-icon">📄</span>
+                            <span class="preview-doc-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg></span>
                             <span class="preview-doc-name" id="previewDocName" title="Active Document"></span>
                             <span class="preview-doc-edits" id="previewDocEdits" style="display: none;"></span>
                         </div>
 
                         <div class="preview-toolbar-actions">
                             <button type="button" class="btn-preview-tool" id="btnToolbarUndo" style="display: none;" disabled title="Undo last action (Ctrl+Z / Cmd+Z)">
-                                ↩️ Undo
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
+                                <span>Undo</span>
                             </button>
                             <button type="button" class="btn-preview-tool" id="btnToolbarRedo" style="display: none;" disabled title="Redo action (Ctrl+Y / Cmd+Shift+Z)">
-                                ↪️ Redo
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></svg>
+                                <span>Redo</span>
                             </button>
                             <div class="zoom-controls-group" id="zoomControlsGroup" style="display: none; align-items: center; gap: 4px;">
                                 <button type="button" class="btn-preview-tool btn-tool-sm" id="btnZoomOut" title="Zoom Out (Cmd/Ctrl + Minus)">−</button>
                                 <span id="zoomLevelBadge" class="zoom-level-badge">115%</span>
                                 <button type="button" class="btn-preview-tool btn-tool-sm" id="btnZoomIn" title="Zoom In (Cmd/Ctrl + Plus)">+</button>
-                                <button type="button" class="btn-preview-tool" id="btnFitWidth" title="Fit to Screen Width (Cmd/Ctrl + 0)">↔️ Fit</button>
+                                <button type="button" class="btn-preview-tool" id="btnFitWidth" title="Fit to Screen Width (Cmd/Ctrl + 0)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></svg><span>Fit</span></button>
                                 <button type="button" class="btn-preview-tool" id="btnActualSize" title="100% Actual Size">100%</button>
                             </div>
                             <button type="button" class="btn-preview-tool" id="btnToggleWordFind" style="display: none;" title="Word-Style Find & Replace (Cmd/Ctrl+F)">
-                                🔍 Find
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+                                <span>Find</span>
                             </button>
                             <button type="button" class="btn-preview-tool" id="btnToggleWordEdit" style="display: none;" title="Enable Direct Word-Style Inline Editing">
-                                📝 Edit
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                                <span>Edit</span>
                             </button>
                             <div class="preview-status" id="previewStatus">No active document</div>
                             <button type="button" class="btn-preview-export" id="btnPreviewExport" style="display: none;" title="Export current document as PDF">
-                                <span>⬇️</span> Export PDF
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                                <span>Export PDF</span>
                             </button>
                         </div>
                     </div>
@@ -258,21 +415,21 @@
                         <div id="wordFindBar" class="word-find-bar" style="display: none;">
                             <div class="wfb-row">
                                 <div class="wfb-input-wrap">
-                                    <span class="wfb-icon">🔍</span>
+                                    <span class="wfb-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg></span>
                                     <input type="text" id="wfbSearchInput" placeholder="Find in document..." />
                                     <span id="wfbMatchBadge" class="wfb-badge">0 / 0</span>
                                 </div>
                                 <div class="wfb-btn-group">
-                                    <button type="button" class="wfb-nav-btn" id="wfbPrevBtn" title="Previous match (Shift+Enter)">▲</button>
-                                    <button type="button" class="wfb-nav-btn" id="wfbNextBtn" title="Next match (Enter)">▼</button>
+                                    <button type="button" class="wfb-nav-btn" id="wfbPrevBtn" title="Previous match (Shift+Enter)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg></button>
+                                    <button type="button" class="wfb-nav-btn" id="wfbNextBtn" title="Next match (Enter)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
                                 </div>
-                                <button type="button" class="wfb-close-btn" id="wfbCloseBtn" title="Close Find Bar">&times;</button>
+                                <button type="button" class="wfb-close-btn" id="wfbCloseBtn" title="Close Find Bar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
                             </div>
                             <div class="wfb-row" id="wfbReplaceRow">
                                 <div class="wfb-input-wrap">
-                                    <span class="wfb-icon">✏️</span>
+                                    <span class="wfb-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4c0-1.1.9-2 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z"/><path d="m3 7 3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h4"/><path d="M2 17c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/><path d="m15 17 3-3 3 3"/><path d="M18 14v5a2 2 0 0 1-2 2h-4"/></svg></span>
                                     <input type="text" id="wfbReplaceInput" placeholder="Replace with..." />
-                                    <span class="wfb-style-pill" id="wfbStylePill" title="Automatically matches original font family, bold/italic style, font size, color, and typographical baseline">🎨 Auto Font &amp; Color</span>
+                                    <span class="wfb-style-pill" id="wfbStylePill" title="Automatically matches original font family, bold/italic style, font size, color, and typographical baseline"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg> <span>Auto Font &amp; Color</span></span>
                                 </div>
                                 <div class="wfb-btn-group">
                                     <button type="button" class="btn-sm btn-primary" id="wfbBtnReplace">Replace</button>
@@ -281,16 +438,25 @@
                             </div>
                         </div>
 
-                        <div class="empty-state" id="emptyState">
-                            <div class="empty-state-icon">📄</div>
-                            <h3 class="empty-state-title">No Active Document</h3>
-                            <p class="empty-state-desc">Drag and drop a PDF file here or upload from the left tool panel to start converting, editing, or inspecting.</p>
+                        <div class="empty-state drop-zone-center" id="emptyState" tabindex="0" role="button" aria-label="Drop PDF file here or click to browse">
+                            <input type="file" id="centerEmptyFileInput" accept=".pdf,application/pdf" style="display: none;" />
+                            <div class="empty-state-icon-wrap">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                            </div>
+                            <h3 class="empty-state-title">Drop PDF here to begin</h3>
+                            <p class="empty-state-desc">or click to browse from your device (standard PDF up to 30 MB)</p>
                             <div class="quick-samples-container">
                                 <button type="button" class="btn-sample-doc" id="btnSampleInvoice" title="Load synthetic single-page invoice">
-                                    <span>🧾</span> Load Sample Invoice (1 Page)
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                    <span>Sample Invoice (1 Page)</span>
                                 </button>
                                 <button type="button" class="btn-sample-doc" id="btnSampleReport" title="Load synthetic 3-page report">
-                                    <span>📑</span> Load Sample Report (3 Pages)
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="12" x2="12" y1="18" y2="12"/><line x1="8" x2="8" y1="18" y2="15"/><line x1="16" x2="16" y1="18" y2="9"/></svg>
+                                    <span>Sample Report (3 Pages)</span>
                                 </button>
                             </div>
                         </div>
@@ -300,11 +466,11 @@
                         <div id="inspectorView" style="display: none; flex: 1; overflow-y: auto;"></div>
                         <div id="previewHiddenPlaceholder" class="preview-hidden-placeholder" style="display: none;">
                             <div class="php-card">
-                                <span class="php-icon">👁️‍🗨️</span>
+                                <span class="php-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg></span>
                                 <h3 class="php-title">Document Preview is Hidden</h3>
                                 <p class="php-desc">The visual document canvas is currently hidden. Click <strong>Preview</strong> in the toolbar above or the button below to display it.</p>
                                 <button type="button" class="btn-primary" id="btnRestorePreviewDirect" style="margin-top: 10px; padding: 6px 16px; font-size: 13px; cursor: pointer;">
-                                    <span>👁️</span> Show Document Preview
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> <span>Show Document Preview</span>
                                 </button>
                             </div>
                         </div>
@@ -321,9 +487,9 @@
     <aside class="app-drawer" id="drawerVersionHistory" style="display: none;">
         <div class="drawer-header">
             <div class="drawer-title">
-                <span>📜</span> Document Revisions & Manifests
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> <span>Document Revisions &amp; Manifests</span>
             </div>
-            <button type="button" class="btn-drawer-close" id="btnCloseVersionHistory" title="Close drawer">&times;</button>
+            <button type="button" class="btn-drawer-close" id="btnCloseVersionHistory" title="Close drawer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         </div>
         <div class="drawer-body" id="versionHistoryDrawerBody">
             <div class="drawer-summary-box">
@@ -333,7 +499,7 @@
             <div class="version-timeline" id="versionTimelineList"></div>
             <div style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 6px;">
                 <button type="button" class="btn-primary" id="btnVerifyAllIntegrity" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                    <span>🛡️</span> Run Full Tamper & Manifest Verification
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> <span>Run Full Tamper &amp; Manifest Verification</span>
                 </button>
             </div>
         </div>
@@ -343,9 +509,9 @@
     <aside class="app-drawer" id="drawerCollaboration" style="display: none;">
         <div class="drawer-header">
             <div class="drawer-title">
-                <span>💬</span> Live Collaboration & Comments
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> <span>Live Collaboration &amp; Comments</span>
             </div>
-            <button type="button" class="btn-drawer-close" id="btnCloseCollaboration" title="Close drawer">&times;</button>
+            <button type="button" class="btn-drawer-close" id="btnCloseCollaboration" title="Close drawer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         </div>
         <div class="drawer-body" id="collaborationDrawerBody">
             <div class="drawer-summary-box">
@@ -366,7 +532,7 @@
                     </div>
                     <textarea id="commentInputText" class="input-textarea" rows="2" placeholder="Write a comment or annotation note..."></textarea>
                     <button type="button" class="btn-primary" id="btnPostComment" style="width: 100%; margin-top: 6px; font-size: 12px; padding: 6px;">
-                        <span>💬</span> Post Comment
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> <span>Post Comment</span>
                     </button>
                 </div>
             </div>
@@ -377,9 +543,9 @@
     <aside class="app-drawer" id="drawerSecurity" style="display: none;">
         <div class="drawer-header">
             <div class="drawer-title">
-                <span>🛡️</span> Security & Sandbox Model
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> <span>Security &amp; Sandbox Model</span>
             </div>
-            <button type="button" class="btn-drawer-close" id="btnCloseSecurity" title="Close drawer">&times;</button>
+            <button type="button" class="btn-drawer-close" id="btnCloseSecurity" title="Close drawer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         </div>
         <div class="drawer-body" id="securityDrawerBody">
             <div class="drawer-summary-box">
@@ -432,6 +598,6 @@
     <script src="/vendor/pdf.min.js"></script>
     <script src="/vendor/pdf-lib.min.js"></script>
     <!-- Main JavaScript App -->
-    <script src="/js/app.js?v=4.0.0"></script>
+    <script src="/js/app.js?v=2.0.0"></script>
 </body>
 </html>

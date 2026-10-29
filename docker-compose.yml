@@ -10,7 +10,8 @@ services:
     environment:
       - PORT=8080
       - DATABASE_URL=postgresql://vellakshya:vellakshya_secret@db:5432/vellakshya_db
-      - REDIS_URL=redis://redis:6379/0
+      - VALKEY_URL=redis://valkey:6379/0
+      - REDIS_URL=redis://valkey:6379/0
       - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -22,7 +23,7 @@ services:
     restart: unless-stopped
 
   db:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg18
     environment:
       - POSTGRES_USER=vellakshya
       - POSTGRES_PASSWORD=vellakshya_secret
@@ -38,17 +39,19 @@ services:
       retries: 5
     restart: unless-stopped
 
-  redis:
-    image: redis:7-alpine
+  valkey:
+    image: valkey/valkey:9-alpine
+    container_name: vellakshya-valkey
     profiles:
       - optional
       - with-redis
+      - with-valkey
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - valkey_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "valkey-cli ping || redis-cli ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -56,4 +59,4 @@ services:
 
 volumes:
   pgvector_data:
-  redis_data:
+  valkey_data:

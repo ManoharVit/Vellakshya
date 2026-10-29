@@ -1,0 +1,81 @@
+{
+  "test_documents": [
+    {
+      "id": "pii_doc_01",
+      "text": "Employee Name: Rahul Sharma. PAN Card: ABCDE1234F. Email: rahul.sharma@example.com",
+      "expected_entities": [
+        {"type": "IN_PAN", "value": "ABCDE1234F"},
+        {"type": "EMAIL_ADDRESS", "value": "rahul.sharma@example.com"}
+      ]
+    },
+    {
+      "id": "pii_doc_02",
+      "text": "Aadhaar Number registered for KYC: 9876 5432 1098. Contact phone: +91 9876543210",
+      "expected_entities": [
+        {"type": "IN_AADHAAR", "value": "9876 5432 1098"},
+        {"type": "PHONE_NUMBER", "value": "9876543210"}
+      ]
+    },
+    {
+      "id": "pii_doc_03",
+      "text": "Passport Number: K12 34567. Voter ID assigned: WXY1234567. State: Karnataka",
+      "expected_entities": [
+        {"type": "IN_PASSPORT", "value": "K12 34567"},
+        {"type": "IN_VOTER", "value": "WXY1234567"}
+      ]
+    },
+    {
+      "id": "pii_doc_04",
+      "text": "Vehicle Registration Number: DL01AB1234. Owner contact: support@vellakshya.org",
+      "expected_entities": [
+        {"type": "IN_VEHICLE_REGISTRATION", "value": "DL01AB1234"},
+        {"type": "EMAIL_ADDRESS", "value": "support@vellakshya.org"}
+      ]
+    },
+    {
+      "id": "pii_doc_05",
+      "text": "Credit card on file for billing: 4111 2222 3333 4444. Phone: (555) 234-5678",
+      "expected_entities": [
+        {"type": "CREDIT_CARD", "value": "4111 2222 3333 4444"},
+        {"type": "PHONE_NUMBER", "value": "(555) 234-5678"}
+      ]
+    },
+    {
+      "id": "pii_doc_06",
+      "text": "US Taxpayer Identification SSN: 123-45-6789. Verified by audit compliance officer.",
+      "expected_entities": [
+        {"type": "US_SSN", "value": "123-45-6789"}
+      ]
+    },
+    {
+      "id": "pii_doc_07",
+      "text": "Direct inquiries to contact@corporate.in or call 800-555-0199 for verification.",
+      "expected_entities": [
+        {"type": "EMAIL_ADDRESS", "value": "contact@corporate.in"},
+        {"type": "PHONE_NUMBER", "value": "800-555-0199"}
+      ]
+    },
+    {
+      "id": "pii_doc_08",
+      "text": "PAN: BKZPK9876M and Aadhaar: 5544 3322 1100 confirmed during applicant background verification.",
+      "expected_entities": [
+        {"type": "IN_PAN", "value": "BKZPK9876M"},
+        {"type": "IN_AADHAAR", "value": "5544 3322 1100"}
+      ]
+    },
+    {
+      "id": "pii_doc_09",
+      "text": "Commercial fleet permit: MH12DE9876. Regional transport office approved.",
+      "expected_entities": [
+        {"type": "IN_VEHICLE_REGISTRATION", "value": "MH12DE9876"}
+      ]
+    },
+    {
+      "id": "pii_doc_10",
+      "text": "Voter EPIC Card ID: ABC9876543. Dispatch notification dispatched to user.",
+      "expected_entities": [
+        {"type": "IN_VOTER", "value": "ABC9876543"}
+      ]
+    }
+  ]
+}

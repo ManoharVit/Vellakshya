@@ -1,7 +1,79 @@
 /**
- * PDF Workbench Pro — Client-Side Controller.
- * Powers Adobe Acrobat Pro features and high-fidelity PDF-to-HTML conversion.
+ * Vellakshya PDF Workstation - Client-Side Controller.
+ * Author: Giri Manohar Vemula
+ * LinkedIn: https://www.linkedin.com/in/manoharv511
+ * GitHub: https://github.com/ManoharVit
  */
+
+// --- Platform & Lucide SVG Icons Configuration ---
+const isMac = typeof navigator !== "undefined" && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform || navigator.userAgent);
+const modKey = isMac ? "⌘" : "Ctrl";
+
+const LUCIDE_ICONS = {
+  "code-xml": `<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>`,
+  "file-text": `<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/>`,
+  "combine": `<path d="M10 18H5a3 3 0 0 1-3-3v-1"/><polyline points="7 21 10 18 7 15"/><rect width="8" height="8" x="14" y="14" rx="2"/><rect width="8" height="8" x="14" y="2" rx="2"/><path d="M14 6h-4a3 3 0 0 0-3 3v2"/>`,
+  "split": `<path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="m12 22 0-6"/><path d="M21 3 14 10"/><path d="m3 3 7 7"/><path d="M14 14l7 7"/><path d="M10 14l-7 7"/>`,
+  "rotate-cw": `<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><polyline points="21 3 21 8 16 8"/>`,
+  "trash-2": `<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>`,
+  "arrow-up-down": `<path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/>`,
+  "file-output": `<path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M4 7V4a2 2 0 0 1 2-2h8.5L20 7.5V20a2 2 0 0 1-2 2h-6"/><path d="M2 15h10"/><path d="m5 12-3 3 3 3"/>`,
+  "crop": `<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>`,
+  "replace": `<path d="M14 4c0-1.1.9-2 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z"/><path d="m3 7 3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h4"/><path d="M2 17c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/><path d="m15 17 3-3 3 3"/><path d="M18 14v5a2 2 0 0 1-2 2h-4"/>`,
+  "text-cursor-input": `<path d="M5 4h1a3 3 0 0 1 3 3 3 3 0 0 1 3-3h1"/><path d="M13 20h-1a3 3 0 0 1-3-3 3 3 0 0 1-3 3H5"/><path d="M5 16H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1"/><path d="M13 8h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-7"/><path d="M9 7v10"/>`,
+  "eraser": `<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>`,
+  "droplet": `<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>`,
+  "hash": `<line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/>`,
+  "panel-top": `<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/>`,
+  "highlighter": `<path d="m9 11-6 6v3h3l6-6"/><path d="m22 2-4.6 4.6a2.78 2.78 0 0 0-3.9 0l-.8.8 4.7 4.7.8-.8a2.78 2.78 0 0 0 0-3.9L22 2z"/>`,
+  "lock": `<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>`,
+  "lock-open": `<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>`,
+  "eye-off": `<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>`,
+  "eye": `<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>`,
+  "shield": `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>`,
+  "shield-alert": `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>`,
+  "shield-check": `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>`,
+  "history": `<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>`,
+  "users": `<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`,
+  "download": `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>`,
+  "check-square": `<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>`,
+  "image": `<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>`,
+  "images": `<path d="M18 22H4a2 2 0 0 1-2-2V6"/><rect width="14" height="14" x="8" y="2" rx="2"/><circle cx="14" cy="8" r="2"/><path d="m22 13-3-3a2 2 0 0 0-2.8 0L8 16"/>`,
+  "file-code": `<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="m10 13-2 2 2 2"/><path d="m14 17 2-2-2-2"/>`,
+  "file-search": `<path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v3"/><circle cx="8" cy="15" r="4"/><path d="m11 18 3 3"/>`,
+  "file-bar-chart": `<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="12" x2="12" y1="18" y2="12"/><line x1="8" x2="8" y1="18" y2="15"/><line x1="16" x2="16" y1="18" y2="9"/>`,
+  "circle-check": `<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>`,
+  "circle-alert": `<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>`,
+  "loader": `<path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/>`,
+  "check": `<polyline points="20 6 9 17 4 12"/>`,
+  "search": `<circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/>`,
+  "chevron-down": `<path d="m6 9 6 6 6-6"/>`,
+  "chevron-up": `<path d="m18 15-6-6-6 6"/>`,
+  "chevron-left": `<path d="m15 18-6-6 6-6"/>`,
+  "chevron-right": `<path d="m9 18 6-6-6-6"/>`,
+  "panel-left": `<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>`,
+  "x": `<path d="M18 6 6 18"/><path d="m6 6 12 12"/>`,
+  "plus": `<line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>`,
+  "save": `<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>`,
+  "info": `<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="16" y2="12"/><line x1="12" x2="12.01" y1="8" y2="8"/>`,
+  "sparkles": `<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>`,
+  "palette": `<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>`,
+  "message-square": `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>`,
+  "monitor": `<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>`,
+  "sun": `<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>`,
+  "moon": `<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>`,
+  "pen-tool": `<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>`,
+  "maximize-2": `<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/>`,
+  "link": `<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>`,
+  "map-pin": `<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>`
+};
+
+function getLucideSvg(name, size = 14, className = "") {
+  const path = LUCIDE_ICONS[name] || LUCIDE_ICONS["info"];
+  const cls = className ? ` class="${className}"` : "";
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${cls} aria-hidden="true">${path}</svg>`;
+}
+
 
 // Configure PDF.js Worker
 if (window.pdfjsLib) {
@@ -23,16 +95,16 @@ function showNotification(message, type = "info", duration = 4000) {
   }
 
   const icons = {
-    success: "✅",
-    error: "❌",
-    warning: "⚠️",
-    info: "ℹ️"
+    success: getLucideSvg("circle-check", 14),
+    error: getLucideSvg("circle-alert", 14),
+    warning: getLucideSvg("circle-alert", 14),
+    info: getLucideSvg("info", 14)
   };
 
   const toast = document.createElement("div");
   toast.className = `app-toast toast-${type}`;
   toast.innerHTML = `
-    <span>${icons[type] || "ℹ️"}</span>
+    <span>${icons[type] || getLucideSvg("info", 14)}</span>
     <span style="flex: 1; line-height: 1.4;">${message}</span>
     <button type="button" class="app-toast-close" title="Dismiss">&times;</button>
   `;
@@ -132,149 +204,157 @@ if (!pointerTooltip) {
 const toolsConfig = {
   "pdf-to-html": {
     title: "PDF to HTML Engine",
-    icon: "🌐",
+    icon: getLucideSvg("code-xml", 18),
     render: renderPdfToHtmlTool,
+  },
+  "pdf-to-docx": {
+    title: "PDF to Word (.docx)",
+    icon: getLucideSvg("file-text", 18),
+    render: renderPdfToDocxTool,
   },
   "merge-pdf": {
     title: "Merge Multiple PDFs",
-    icon: "📑",
+    icon: getLucideSvg("combine", 18),
     render: renderMergeTool,
   },
   "split-pdf": {
     title: "Split PDF by Page Ranges",
-    icon: "✂️",
+    icon: getLucideSvg("split", 18),
     render: renderSplitTool,
   },
   "rotate-pages": {
     title: "Rotate PDF Pages",
-    icon: "🔄",
+    icon: getLucideSvg("rotate-cw", 18),
     render: renderRotateTool,
   },
   "delete-pages": {
     title: "Delete Pages",
-    icon: "🗑️",
+    icon: getLucideSvg("trash-2", 18),
     render: renderDeleteTool,
   },
   "reorder-pages": {
     title: "Reorder Pages",
-    icon: "🔢",
+    icon: getLucideSvg("arrow-up-down", 18),
     render: renderReorderTool,
   },
   "extract-pages": {
     title: "Extract Pages",
-    icon: "📤",
+    icon: getLucideSvg("file-output", 18),
     render: renderExtractTool,
   },
   "crop-pages": {
     title: "Crop & Resize Margins",
-    icon: "📐",
+    icon: getLucideSvg("crop", 18),
     render: renderCropTool,
   },
   "replace-text": {
     title: "Find & Replace PDF Text",
-    icon: "✏️",
+    icon: getLucideSvg("replace", 18),
     render: renderReplaceTextTool,
   },
   "insert-text": {
     title: "Insert Text Box on Page",
-    icon: "✍️",
+    icon: getLucideSvg("text-cursor-input", 18),
     render: renderInsertTextTool,
   },
   "whiteout": {
     title: "Erase / Whiteout Area",
-    icon: "⬜",
+    icon: getLucideSvg("eraser", 18),
     render: renderWhiteoutTool,
   },
   "watermark": {
     title: "Add Watermark",
-    icon: "💧",
+    icon: getLucideSvg("droplet", 18),
     render: renderWatermarkTool,
   },
   "page-numbers": {
     title: "Page / Bates Numbering",
-    icon: "📄",
+    icon: getLucideSvg("hash", 18),
     render: renderPageNumbersTool,
   },
   "header-footer": {
     title: "Running Header & Footer",
-    icon: "🔝",
+    icon: getLucideSvg("panel-top", 18),
     render: renderHeaderFooterTool,
   },
   "highlight": {
     title: "Keyword Search & Highlight",
-    icon: "🖍️",
+    icon: getLucideSvg("highlighter", 18),
     render: renderHighlightTool,
   },
   "encrypt": {
     title: "Encrypt PDF (AES-256)",
-    icon: "🔒",
+    icon: getLucideSvg("lock", 18),
     render: renderEncryptTool,
   },
   "decrypt": {
     title: "Decrypt & Unlock PDF",
-    icon: "🔓",
+    icon: getLucideSvg("lock-open", 18),
     render: renderDecryptTool,
   },
   "redact": {
     title: "Permanent Text Redaction",
-    icon: "⬛",
+    icon: getLucideSvg("eye-off", 18),
     render: renderRedactTool,
   },
   "sanitize": {
     title: "Sanitize Document Metadata",
-    icon: "🧹",
+    icon: getLucideSvg("shield-alert", 18),
     render: renderSanitizeTool,
   },
   "export-hub": {
     title: "Export & Download Hub",
-    icon: "⬇️",
+    icon: getLucideSvg("download", 18),
     render: renderExportHubTool,
   },
   "forms": {
     title: "AcroForms & Field Inspection",
-    icon: "📋",
+    icon: getLucideSvg("check-square", 18),
     render: renderFormsTool,
   },
   "pdf-to-images": {
     title: "PDF to Images (ZIP)",
-    icon: "🖼️",
+    icon: getLucideSvg("image", 18),
     render: renderPdfToImagesTool,
   },
   "images-to-pdf": {
     title: "Images to PDF",
-    icon: "📷",
+    icon: getLucideSvg("images", 18),
     render: renderImagesToPdfTool,
   },
   "pdf-to-markdown": {
     title: "Extract Structured Markdown",
-    icon: "📝",
+    icon: getLucideSvg("file-code", 18),
     render: renderMarkdownTool,
   },
   "inspect": {
     title: "Deep Document Inspector",
-    icon: "🔍",
+    icon: getLucideSvg("file-search", 18),
     render: renderInspectTool,
   },
   "version-history": {
     title: "Version History & Manifests",
-    icon: "📜",
+    icon: getLucideSvg("history", 18),
     render: renderVersionHistoryTool,
   },
   "collaboration-hub": {
     title: "Real-Time Collaboration",
-    icon: "👥",
+    icon: getLucideSvg("users", 18),
     render: renderCollaborationTool,
   },
   "security-audit": {
     title: "Security & Sandbox Model",
-    icon: "🛡️",
+    icon: getLucideSvg("shield", 18),
     render: renderSecurityAuditTool,
   },
 };
 
 // Initialization
 document.addEventListener("DOMContentLoaded", () => {
+  setupThemeToggle();
   setupNavigation();
+  setupSidebarSearch();
+  setupCenterDropzone();
   setupTabs();
   setupWordFindBar();
   setupUndoRedo();
@@ -284,6 +364,209 @@ document.addEventListener("DOMContentLoaded", () => {
   setupDrawerControls();
   switchTool("pdf-to-html");
 });
+
+function setupThemeToggle() {
+  const btn = document.getElementById("btnThemeToggle");
+  const label = document.getElementById("themeToggleText");
+  const dropdown = document.getElementById("themeDropdownMenu");
+  const iconDark = document.querySelector(".icon-theme-dark");
+  const iconLight = document.querySelector(".icon-theme-light");
+  const iconSystem = document.querySelector(".icon-theme-system");
+  const checkDark = document.getElementById("checkThemeDark");
+  const checkLight = document.getElementById("checkThemeLight");
+  const checkSystem = document.getElementById("checkThemeSystem");
+  const savedTheme = localStorage.getItem("vellakshya_theme") || "dark";
+
+  const mql = window.matchMedia("(prefers-color-scheme: dark)");
+
+  function applyTheme(themeMode) {
+    let effective = themeMode;
+    if (themeMode === "system") {
+      effective = mql.matches ? "dark" : "light";
+    }
+
+    if (effective === "light") {
+      document.documentElement.setAttribute("data-theme", "light");
+      document.body.classList.add("theme-light");
+    } else {
+      document.documentElement.setAttribute("data-theme", "dark");
+      document.body.classList.remove("theme-light");
+    }
+
+    if (label) {
+      if (themeMode === "system") label.textContent = "Theme: System";
+      else if (themeMode === "light") label.textContent = "Theme: Light";
+      else label.textContent = "Theme: Dark";
+    }
+
+    if (btn) {
+      btn.setAttribute("title", `Theme: ${themeMode.charAt(0).toUpperCase() + themeMode.slice(1)} (Click to toggle, menu to change)`);
+    }
+
+    // Toggle icons
+    if (iconDark) iconDark.style.display = themeMode === "dark" ? "inline-block" : "none";
+    if (iconLight) iconLight.style.display = themeMode === "light" ? "inline-block" : "none";
+    if (iconSystem) iconSystem.style.display = themeMode === "system" ? "inline-block" : "none";
+
+    // Toggle checkmarks & active classes
+    if (checkDark) checkDark.style.display = themeMode === "dark" ? "inline-block" : "none";
+    if (checkLight) checkLight.style.display = themeMode === "light" ? "inline-block" : "none";
+    if (checkSystem) checkSystem.style.display = themeMode === "system" ? "inline-block" : "none";
+
+    document.querySelectorAll(".theme-dropdown-item").forEach((item) => {
+      const val = item.getAttribute("data-theme-val");
+      item.classList.toggle("active", val === themeMode);
+    });
+  }
+
+  mql.addEventListener("change", () => {
+    const currentMode = localStorage.getItem("vellakshya_theme") || "dark";
+    if (currentMode === "system") {
+      applyTheme("system");
+    }
+  });
+
+  applyTheme(savedTheme);
+
+  if (btn) {
+    btn.addEventListener("click", (e) => {
+      // If clicking the caret specifically, toggle the menu
+      if (e.target.closest(".theme-caret")) {
+        e.stopPropagation();
+        if (dropdown) {
+          const isOpen = dropdown.style.display !== "none";
+          dropdown.style.display = isOpen ? "none" : "flex";
+        }
+        return;
+      }
+
+      // Quick toggle between dark and light
+      const currentAttr = document.documentElement.getAttribute("data-theme") || "dark";
+      const nextTheme = currentAttr === "dark" ? "light" : "dark";
+      localStorage.setItem("vellakshya_theme", nextTheme);
+      applyTheme(nextTheme);
+      if (typeof showNotification === "function") {
+        showNotification(`Theme set to ${nextTheme === "light" ? "Light" : "Dark"} Mode`, "info", 1800);
+      }
+    });
+
+    btn.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      if (dropdown) {
+        dropdown.style.display = "flex";
+      }
+    });
+  }
+
+  // Handle dropdown menu selection
+  document.querySelectorAll(".theme-dropdown-item").forEach((item) => {
+    item.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const selected = item.getAttribute("data-theme-val");
+      if (selected) {
+        localStorage.setItem("vellakshya_theme", selected);
+        applyTheme(selected);
+        if (dropdown) dropdown.style.display = "none";
+        if (typeof showNotification === "function") {
+          showNotification(`Theme set to ${selected.charAt(0).toUpperCase() + selected.slice(1)}`, "info", 1800);
+        }
+      }
+    });
+  });
+
+  document.addEventListener("click", (e) => {
+    if (dropdown && !e.target.closest("#headerThemeWrap")) {
+      dropdown.style.display = "none";
+    }
+  });
+}
+
+function setupSidebarSearch() {
+  const searchInput = document.getElementById("sidebarToolSearch");
+  if (!searchInput) return;
+
+  searchInput.addEventListener("input", () => {
+    const query = searchInput.value.trim().toLowerCase();
+    const navItems = document.querySelectorAll(".sidebar-nav .nav-item");
+    const categories = document.querySelectorAll(".sidebar-category");
+
+    navItems.forEach((item) => {
+      const text = item.textContent.toLowerCase();
+      const matches = !query || text.includes(query);
+      item.style.display = matches ? "flex" : "none";
+    });
+
+    categories.forEach((cat) => {
+      let nextUl = cat.nextElementSibling;
+      while (nextUl && !nextUl.classList.contains("sidebar-nav")) {
+        nextUl = nextUl.nextElementSibling;
+      }
+      if (nextUl && nextUl.classList.contains("sidebar-nav")) {
+        const visibleItems = nextUl.querySelectorAll('.nav-item:not([style*="display: none"])');
+        cat.style.display = visibleItems.length > 0 ? "block" : "none";
+      }
+    });
+  });
+
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      searchInput.value = "";
+      searchInput.dispatchEvent(new Event("input"));
+    }
+  });
+}
+
+function setupCenterDropzone() {
+  const emptyState = document.getElementById("emptyState");
+  const fileInput = document.getElementById("centerEmptyFileInput");
+  if (!emptyState || !fileInput) return;
+
+  emptyState.addEventListener("click", (e) => {
+    if (e.target.closest(".btn-sample-doc")) return;
+    fileInput.click();
+  });
+
+  emptyState.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      if (e.target.closest(".btn-sample-doc")) return;
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
+
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setActivePdf(e.target.files[0]);
+    }
+  });
+
+  ["dragenter", "dragover"].forEach((eventName) => {
+    emptyState.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      emptyState.classList.add("dragover");
+    });
+  });
+
+  ["dragleave", "drop"].forEach((eventName) => {
+    emptyState.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      emptyState.classList.remove("dragover");
+    });
+  });
+
+  emptyState.addEventListener("drop", (e) => {
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.name.toLowerCase().endsWith(".pdf") || file.type.includes("pdf")) {
+        setActivePdf(file);
+      } else {
+        showAppToast("Please drop a valid PDF document.", "error");
+      }
+    }
+  });
+}
 
 function setupQuickStartSamples() {
   const btnInvoice = document.getElementById("btnSampleInvoice");
@@ -306,10 +589,7 @@ async function loadSampleDocument(type) {
     const filename = type === "report" ? "Sample_Enterprise_Report.pdf" : "Sample_Invoice.pdf";
     const file = new File([blob], filename, { type: "application/pdf" });
 
-    state.currentPdfFile = file;
-    state.originalPdfFile = file;
-    setPreviewContent(file, "application/pdf", filename);
-    updateViewerDocTitle(filename, 0);
+    setActivePdf(file);
 
     if (state.activeTool) {
       switchTool(state.activeTool);
@@ -322,10 +602,43 @@ async function loadSampleDocument(type) {
 }
 
 function setupNavigation() {
+  // Collapsible category accordions
+  document.querySelectorAll(".sidebar-category").forEach((cat) => {
+    cat.tabIndex = 0;
+    cat.setAttribute("role", "button");
+    cat.setAttribute("aria-expanded", "true");
+    const toggleCat = () => {
+      cat.classList.toggle("collapsed");
+      const isCollapsed = cat.classList.contains("collapsed");
+      cat.setAttribute("aria-expanded", (!isCollapsed).toString());
+      const navList = cat.nextElementSibling;
+      if (navList && navList.classList.contains("sidebar-nav")) {
+        navList.classList.toggle("collapsed", isCollapsed);
+      }
+    };
+    cat.addEventListener("click", toggleCat);
+    cat.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggleCat();
+      }
+    });
+  });
+
   document.querySelectorAll(".nav-item").forEach((item) => {
     item.addEventListener("click", () => {
       document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
       item.classList.add("active");
+      // Ensure current category is expanded
+      const parentNav = item.closest(".sidebar-nav");
+      if (parentNav && parentNav.classList.contains("collapsed")) {
+        parentNav.classList.remove("collapsed");
+        const prevCat = parentNav.previousElementSibling;
+        if (prevCat && prevCat.classList.contains("sidebar-category")) {
+          prevCat.classList.remove("collapsed");
+          prevCat.setAttribute("aria-expanded", "true");
+        }
+      }
       const toolKey = item.getAttribute("data-tool");
       switchTool(toolKey);
     });
@@ -356,10 +669,10 @@ function togglePagesVisibility() {
       btnPagesTab.classList.add("active");
       btnPagesTab.classList.remove("preview-tab-muted");
       const dot = btnPagesTab.querySelector(".pages-toggle-dot");
-      if (dot) dot.textContent = "●";
+      if (dot) dot.innerHTML = getLucideSvg("panel-left", 12);
       btnPagesTab.title = "Pages rail is visible. Click to Hide Pages.";
     }
-    if (collapseIcon) collapseIcon.textContent = "◀";
+    if (collapseIcon) collapseIcon.innerHTML = getLucideSvg("chevron-left", 14);
     showNotification("Pages thumbnail rail shown.", "success", 2000);
   }
 }
@@ -485,7 +798,21 @@ function switchTool(toolKey) {
   const tool = toolsConfig[toolKey];
   if (!tool) return;
 
-  currentToolTitle.innerHTML = `<span>${tool.icon}</span> ${tool.title}`;
+  // Auto-expand the category if collapsed
+  const activeNavItem = document.querySelector(`.nav-item[data-tool="${toolKey}"]`);
+  if (activeNavItem) {
+    const parentNav = activeNavItem.closest(".sidebar-nav");
+    if (parentNav && parentNav.classList.contains("collapsed")) {
+      parentNav.classList.remove("collapsed");
+      const prevCat = parentNav.previousElementSibling;
+      if (prevCat && prevCat.classList.contains("sidebar-category")) {
+        prevCat.classList.remove("collapsed");
+        prevCat.setAttribute("aria-expanded", "true");
+      }
+    }
+  }
+
+  currentToolTitle.innerHTML = `<span class="tool-title-icon" aria-hidden="true">${tool.icon}</span> <span class="tool-title-text">${tool.title}</span>`;
   updateWorkspaceActions();
 
   // Update crosshair pointer mode and pointer events on interaction layers
@@ -566,10 +893,15 @@ function buildDropZone(accept = ".pdf", multiple = false, onFileSelected) {
   dropZone.setAttribute("role", "button");
   dropZone.setAttribute("aria-label", "Upload PDF file drop zone");
   dropZone.innerHTML = `
-    <div class="drop-zone-icon" aria-hidden="true">📥</div>
-    <div class="drop-zone-text">Click or drag file here</div>
-    <button type="button" class="btn-tool-primary" style="margin: 8px 0; padding: 6px 14px; font-size: 13px;" aria-label="Upload PDF">Upload PDF</button>
-    <div class="drop-zone-hint">Accepts ${accept}</div>
+    <div class="drop-zone-icon" aria-hidden="true">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-light);">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <div class="drop-zone-text"><strong>Choose Source PDF</strong></div>
+    <div class="drop-zone-hint">Click to browse or drop in center preview</div>
   `;
 
   dropZone.addEventListener("keydown", (e) => {
@@ -591,7 +923,7 @@ function buildDropZone(accept = ".pdf", multiple = false, onFileSelected) {
     existingCard.title = realFilename;
     existingCard.innerHTML = `
       <div class="chip-main">
-        <span class="chip-icon">📄</span>
+        <svg class="chip-icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-light); flex-shrink: 0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         <span class="active-card-filename chip-filename" title="${escapeHtml(realFilename)}">${escapeHtml(realFilename)}</span>
         <span class="chip-filesize">${(file.size / 1024).toFixed(1)} KB</span>
       </div>
@@ -817,7 +1149,7 @@ async function renderInteractivePdfViewer(blob, filename = "document") {
   if (btnToggleWordFind) btnToggleWordFind.style.display = "inline-flex";
 
   interactivePdfViewer.innerHTML = `
-    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:50px; color:#94a3b8; gap:12px;">
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:50px; color: var(--text-muted); gap:12px;">
       <span class="spinner" style="width:28px; height:28px; border-width:3px;"></span>
       <span style="font-size:13px; font-weight:500;">Rendering high-resolution interactive pages...</span>
     </div>
@@ -847,7 +1179,7 @@ async function renderInteractivePdfViewer(blob, filename = "document") {
     if (thumbStrip && thumbItems) {
       state.isPagesHidden = false;
       thumbStrip.style.display = "flex";
-      if (collapseIcon) collapseIcon.textContent = "◀";
+      if (collapseIcon) collapseIcon.innerHTML = getLucideSvg("chevron-left", 14);
       thumbItems.innerHTML = "";
       if (thumbCount) thumbCount.textContent = numPages;
       if (previewTabPagesCount) previewTabPagesCount.textContent = numPages;
@@ -856,7 +1188,7 @@ async function renderInteractivePdfViewer(blob, filename = "document") {
         btnTogglePages.classList.add("active");
         btnTogglePages.classList.remove("preview-tab-muted");
         const dot = btnTogglePages.querySelector(".pages-toggle-dot");
-        if (dot) dot.textContent = "●";
+        if (dot) dot.innerHTML = getLucideSvg("panel-left", 12);
         btnTogglePages.title = "Pages rail is visible. Click to Hide Pages.";
       }
       if (btnToggleThumb) btnToggleThumb.style.display = "inline-flex";
@@ -911,7 +1243,7 @@ async function renderInteractivePdfViewer(blob, filename = "document") {
           </div>
           <div class="thumb-footer">
             <span class="thumb-label">Page ${pageNum}</span>
-            <button type="button" class="btn-thumb-rotate" data-rotate-page="${pageNum}" title="Rotate Page ${pageNum} 90° Clockwise">🔄</button>
+            <button type="button" class="btn-thumb-rotate" data-rotate-page="${pageNum}" title="Rotate Page ${pageNum} 90° Clockwise">${getLucideSvg("rotate-cw", 12)}</button>
           </div>
         `;
 
@@ -976,8 +1308,8 @@ async function renderInteractivePdfViewer(blob, filename = "document") {
       pageHeader.innerHTML = `
         <span class="page-num-badge">Page ${pageNum} of ${numPages}</span>
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span class="page-dim-badge">${Math.round(unscaledViewport.width)} × ${Math.round(unscaledViewport.height)} pt</span>
-          <button type="button" class="btn-delete-page-direct" style="display: ${showDelBtn ? 'inline-flex' : 'none'};" title="Delete Page ${pageNum}" data-del-page="${pageNum}">🗑️ Delete</button>
+          <span class="page-dim-badge">${Math.round(unscaledViewport.width)} &times; ${Math.round(unscaledViewport.height)} pt</span>
+          <button type="button" class="btn-delete-page-direct" style="display: ${showDelBtn ? 'inline-flex' : 'none'};" title="Delete Page ${pageNum}" data-del-page="${pageNum}">${getLucideSvg("trash-2", 12)} Delete</button>
         </div>
       `;
       const delBtn = pageHeader.querySelector(".btn-delete-page-direct");
@@ -1154,20 +1486,20 @@ function attachPageInteractionHandlers(pageNum, interactionLayer, textLayer, sca
 
     let hint = "";
     if (state.activeTool === "insert-text") {
-      hint = ` &bull; <span style="color:#38bdf8;">Click to lock insert position</span>`;
+      hint = ` &bull; <span style="color: var(--accent-sky);">Click to lock insert position</span>`;
     } else if (state.activeTool === "whiteout") {
       hint = isDraggingWhiteout
-        ? ` &bull; <span style="color:#ef4444;">Release to lock erase area</span>`
-        : ` &bull; <span style="color:#ef4444;">Drag to select erase area</span>`;
+        ? ` &bull; <span style="color: var(--status-danger);">Release to lock erase area</span>`
+        : ` &bull; <span style="color: var(--status-danger);">Drag to select erase area</span>`;
     } else if (state.activeTool === "crop-pages") {
       hint = isDraggingCrop
         ? ` &bull; <span style="color:#0284c7;">Release to lock crop window</span>`
         : ` &bull; <span style="color:#0284c7;">Drag box to select crop window</span>`;
     } else {
-      hint = ` &bull; <span style="color:#94a3b8;">Click to lock coordinates</span>`;
+      hint = ` &bull; <span style="color: var(--text-muted);">Click to lock coordinates</span>`;
     }
 
-    pointerTooltip.innerHTML = `📍 Page <strong>${pageNum}</strong> &bull; X: <strong>${pdfX}</strong> pt, Y: <strong>${pdfY}</strong> pt${hint}`;
+    pointerTooltip.innerHTML = `${getLucideSvg("map-pin", 12)} Page <strong>${pageNum}</strong> &bull; X: <strong>${pdfX}</strong> pt, Y: <strong>${pdfY}</strong> pt${hint}`;
     pointerTooltip.style.left = `${e.clientX}px`;
     pointerTooltip.style.top = `${e.clientY}px`;
     pointerTooltip.style.display = "flex";
@@ -1315,7 +1647,7 @@ function attachPageInteractionHandlers(pageNum, interactionLayer, textLayer, sca
         lockedMarker.style.height = `${maxY - minY}px`;
         lockedMarker.innerHTML = `
           <span class="marker-label">Erase Area Locked</span>
-          <span>[${x0}, ${y0}] to [${x1}, ${y1}] pt (${x1 - x0} × ${y1 - y0} pt)</span>
+          <span>[${x0}, ${y0}] to [${x1}, ${y1}] pt (${x1 - x0} &times; ${y1 - y0} pt)</span>
         `;
         interactionLayer.appendChild(lockedMarker);
       }
@@ -1512,6 +1844,23 @@ function setupWordFindBar() {
 
   wfbBtnReplace.addEventListener("click", () => executeWordReplace());
   wfbBtnReplaceAll.addEventListener("click", () => executeWordReplaceAll());
+
+  const wfbBtnMatchCase = document.getElementById("wfbBtnMatchCase");
+  if (wfbBtnMatchCase) {
+    wfbBtnMatchCase.addEventListener("click", () => {
+      state.wordFindMatchCase = !state.wordFindMatchCase;
+      wfbBtnMatchCase.classList.toggle("active", state.wordFindMatchCase);
+      executeWordFind(wfbSearchInput.value.trim());
+    });
+  }
+
+  const wfbBtnCoverBox = document.getElementById("wfbBtnCoverBox");
+  if (wfbBtnCoverBox) {
+    wfbBtnCoverBox.addEventListener("click", () => {
+      state.wordFindCoverBox = !state.wordFindCoverBox;
+      wfbBtnCoverBox.classList.toggle("active", state.wordFindCoverBox);
+    });
+  }
 }
 
 function openWordFindBar(initialQuery = "") {
@@ -1558,11 +1907,14 @@ function executeWordFind(query) {
     state.activeMatchIndex = -1;
     wfbMatchBadge.textContent = "0 / 0";
     wfbMatchBadge.classList.remove("not-found");
+    if (wfbBtnReplace) wfbBtnReplace.disabled = true;
+    if (wfbBtnReplaceAll) wfbBtnReplaceAll.disabled = true;
     return;
   }
 
   const allMatches = [];
-  const regex = new RegExp(escapeRegex(query), "gi");
+  const isMatchCase = Boolean(state.wordFindMatchCase);
+  const regex = new RegExp(escapeRegex(query), isMatchCase ? "g" : "gi");
 
   state.renderedPages.forEach((p) => {
     let pageMatchIdx = 0;
@@ -1619,8 +1971,11 @@ function executeWordFind(query) {
   });
 
   state.wordFindMatches = allMatches;
+  const hasMatches = allMatches.length > 0;
+  if (wfbBtnReplace) wfbBtnReplace.disabled = !hasMatches;
+  if (wfbBtnReplaceAll) wfbBtnReplaceAll.disabled = !hasMatches;
 
-  if (allMatches.length > 0) {
+  if (hasMatches) {
     wfbMatchBadge.classList.remove("not-found");
     const targetIdx = (state.activeMatchIndex >= 0 && state.activeMatchIndex < allMatches.length)
       ? state.activeMatchIndex
@@ -1861,20 +2216,36 @@ async function clientReplaceText(file, rules) {
             font = fontItalic;
           }
 
-          const fSize = rule.font_size && Number(rule.font_size) > 0 ? Number(rule.font_size) : occ.fontSize;
+          let fSize = rule.font_size && Number(rule.font_size) > 0 ? Number(rule.font_size) : occ.fontSize;
 
-          // 3. Draw opaque white rectangle cleanly over original text glyphs
-          const boxBottom = occ.y - fSize * 0.28;
-          const boxHeight = fSize * 1.25;
-          page.drawRectangle({
-            x: Math.max(0, occ.x - 1.5),
-            y: Math.max(0, boxBottom),
-            width: occ.width + 3.0,
-            height: boxHeight,
-            color: PDFLib.rgb(1, 1, 1),
-            borderColor: PDFLib.rgb(1, 1, 1),
-            borderWidth: 0,
-          });
+          // Measure width and scale font if replacement overflows box (Strategy 2)
+          if (replacementText) {
+            try {
+              const canvas = document.createElement("canvas");
+              const ctx = canvas.getContext("2d");
+              ctx.font = `${fSize}px sans-serif`;
+              const wNew = ctx.measureText(replacementText).width;
+              if (wNew > occ.width && occ.width > 0) {
+                const scale = Math.max(0.85, occ.width / wNew);
+                fSize = Math.round(fSize * scale * 10) / 10;
+              }
+            } catch (_) {}
+          }
+
+          // 3. Optional Cover Box: Draw rectangle ONLY when cover_box is explicitly requested
+          if (rule.cover_box) {
+            const boxBottom = occ.y - fSize * 0.28;
+            const boxHeight = fSize * 1.25;
+            page.drawRectangle({
+              x: Math.max(0, occ.x - 1.5),
+              y: Math.max(0, boxBottom),
+              width: occ.width + 3.0,
+              height: boxHeight,
+              color: PDFLib.rgb(1, 1, 1),
+              borderColor: PDFLib.rgb(1, 1, 1),
+              borderWidth: 0,
+            });
+          }
 
           // 4. Draw replacement text at exact typographic baseline
           if (replacementText) {
@@ -1894,18 +2265,31 @@ async function clientReplaceText(file, rules) {
         const h = Math.max(8, y1 - y0);
         const pdfY = pageH - y1;
 
-        page.drawRectangle({
-          x: Math.max(0, x0 - 1),
-          y: Math.max(0, pdfY - 1),
-          width: w + 2,
-          height: h + 2,
-          color: PDFLib.rgb(1, 1, 1),
-          borderColor: PDFLib.rgb(1, 1, 1),
-          borderWidth: 0,
-        });
+        if (rule.cover_box) {
+          page.drawRectangle({
+            x: Math.max(0, x0 - 1),
+            y: Math.max(0, pdfY - 1),
+            width: w + 2,
+            height: h + 2,
+            color: PDFLib.rgb(1, 1, 1),
+            borderColor: PDFLib.rgb(1, 1, 1),
+            borderWidth: 0,
+          });
+        }
 
         if (replacementText) {
-          const fontSize = Math.max(8, Math.min(32, h * 0.85));
+          let fontSize = Math.max(8, Math.min(32, h * 0.85));
+          try {
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            ctx.font = `${fontSize}px sans-serif`;
+            const wNew = ctx.measureText(replacementText).width;
+            if (wNew > w && w > 0) {
+              const scale = Math.max(0.85, w / wNew);
+              fontSize = Math.round(fontSize * scale * 10) / 10;
+            }
+          } catch (_) {}
+
           page.drawText(replacementText, {
             x: x0,
             y: pdfY + h * 0.18,
@@ -2200,6 +2584,8 @@ async function executeWordReplace() {
       occurrence: match.occurrenceOnPage !== undefined ? match.occurrenceOnPage : 0,
       page_num: match.pageNum,
       preserve_style: true,
+      cover_box: Boolean(state.wordFindCoverBox),
+      match_case: Boolean(state.wordFindMatchCase),
     };
     if (pdfRect) {
       rule.rect = pdfRect;
@@ -2216,6 +2602,8 @@ async function executeWordReplace() {
         formData.append("pages", String(match.pageNum));
         formData.append("single", "true");
         formData.append("preserve_style", "true");
+        formData.append("cover_box", state.wordFindCoverBox ? "true" : "false");
+        formData.append("match_case", state.wordFindMatchCase ? "true" : "false");
         if (match.occurrenceOnPage !== undefined) {
           formData.append("occurrence", String(match.occurrenceOnPage));
         }
@@ -2227,6 +2615,15 @@ async function executeWordReplace() {
         const res = await fetch("/api/edit/replace-text", { method: "POST", body: formData });
         if (res.ok) {
           blob = await res.blob();
+          const warnH = res.headers.get("X-Collision-Warnings");
+          if (warnH) {
+            try {
+              const warns = JSON.parse(warnH);
+              if (warns && warns.length > 0) {
+                showNotification(`${warns[0]}`, "warning", 5000);
+              }
+            } catch (_) {}
+          }
         }
       } catch (_) {}
     }
@@ -2286,16 +2683,29 @@ async function executeWordReplaceAll() {
               replacement_text: replaceText,
               single: false,
               preserve_style: true,
+              cover_box: Boolean(state.wordFindCoverBox),
+              match_case: Boolean(state.wordFindMatchCase),
             },
           ])
         );
         formData.append("single", "false");
         formData.append("preserve_style", "true");
+        formData.append("cover_box", state.wordFindCoverBox ? "true" : "false");
+        formData.append("match_case", state.wordFindMatchCase ? "true" : "false");
 
         const res = await fetch("/api/edit/replace-text", { method: "POST", body: formData });
         if (res.ok) {
           count = res.headers.get("X-Replacement-Count") || "all";
           blob = await res.blob();
+          const warnH = res.headers.get("X-Collision-Warnings");
+          if (warnH) {
+            try {
+              const warns = JSON.parse(warnH);
+              if (warns && warns.length > 0) {
+                showNotification(`${warns[0]}`, "warning", 5000);
+              }
+            } catch (_) {}
+          }
         }
       } catch (_) {}
     }
@@ -2334,6 +2744,7 @@ async function executeWordReplaceAll() {
 
     setTimeout(() => {
       executeWordFind(query);
+      showNotification(`${count} replaced`, "success");
       showAppToast(`Word Replace Complete: ${count} occurrence(s) replaced! Saved into active document.`, "success");
     }, 250);
   } catch (err) {
@@ -2579,6 +2990,11 @@ function setupGlobalExportHandlers() {
       exportToHtml("fixed");
     });
 
+    document.getElementById("menuExportDocx")?.addEventListener("click", () => {
+      exportDropdownMenu.style.display = "none";
+      convertAndDownloadDocx(state.currentPdfFile, "flow");
+    });
+
     document.getElementById("menuExportMarkdown")?.addEventListener("click", () => {
       exportDropdownMenu.style.display = "none";
       exportToMarkdown();
@@ -2612,7 +3028,7 @@ function escapeHtml(str) {
 let toastTimer = null;
 function showHistoryToast(msg) {
   if (!historyToast) return;
-  historyToast.innerHTML = `<span>⚡</span> <span>${escapeHtml(msg)}</span>`;
+  historyToast.innerHTML = `<span>${getLucideSvg("history", 13)}</span> <span>${escapeHtml(msg)}</span>`;
   historyToast.classList.add("show");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
@@ -2640,18 +3056,18 @@ function showAppToast(msg, type = "info", durationMs = 3500) {
   }
 
   const icons = {
-    success: "✓",
-    error: "⚠️",
-    warning: "⚡",
-    info: "ℹ️",
+    success: getLucideSvg("circle-check", 14),
+    error: getLucideSvg("circle-alert", 14),
+    warning: getLucideSvg("circle-alert", 14),
+    info: getLucideSvg("info", 14),
   };
 
   const toast = document.createElement("div");
   toast.className = `app-toast toast-${type}`;
   toast.innerHTML = `
-    <span class="app-toast-icon">${icons[type] || "ℹ️"}</span>
+    <span class="app-toast-icon">${icons[type] || getLucideSvg("info", 14)}</span>
     <span class="app-toast-msg" style="flex:1;">${escapeHtml(msg)}</span>
-    <button type="button" class="app-toast-close" aria-label="Dismiss">&times;</button>
+    <button type="button" class="app-toast-close" aria-label="Dismiss">${getLucideSvg("x", 12)}</button>
   `;
 
   const closeBtn = toast.querySelector(".app-toast-close");
@@ -2688,7 +3104,7 @@ function renderErrorSummary(parentContainer, errors) {
   summary.setAttribute("tabindex", "-1");
   summary.innerHTML = `
     <div class="app-error-summary__header">
-      <span class="app-error-summary__icon">⚠️</span>
+      <span class="app-error-summary__icon">${getLucideSvg("circle-alert", 14)}</span>
       <h3 class="app-error-summary__title">There is a problem</h3>
     </div>
     <ul class="app-error-summary__list">
@@ -2735,7 +3151,7 @@ function renderWorkflowStepper(parentContainer, steps, activeIndex = 0) {
         ariaCurrent = ' aria-current="step"';
       } else if (idx < activeIndex) {
         stateClass = "step-complete";
-        icon = "✓";
+        icon = getLucideSvg("check", 11);
       }
       const divider = idx < steps.length - 1 ? '<div class="workflow-step-divider" aria-hidden="true"></div>' : "";
       return `
@@ -2926,6 +3342,34 @@ function setActivePdf(file) {
   updateUndoRedoUI();
   setPreviewContent(file, "application/pdf", file.name);
   updateWorkspaceActions();
+
+  // Enable Convert button and hide disabled hint
+  const btnConvert = document.getElementById("btnRunConvertHtml");
+  if (btnConvert) {
+    btnConvert.removeAttribute("disabled");
+    btnConvert.title = "Convert PDF to HTML";
+  }
+  const hint = document.getElementById("convertDisabledHint");
+  if (hint) hint.style.display = "none";
+
+  // Enable Header Export button and update tooltip
+  const btnExport = document.getElementById("btnHeaderExport");
+  if (btnExport) {
+    btnExport.removeAttribute("disabled");
+    btnExport.title = "Export document in multiple formats";
+  }
+
+  // Update left governance pill
+  const statusMenuLabel = document.getElementById("statusMenuLabel");
+  if (statusMenuLabel) {
+    statusMenuLabel.textContent = "v2.0 • Verified";
+  }
+
+  // Update stepper to step 2 (Layout) if on pdf-to-html tool
+  const toolConfigPanel = document.getElementById("toolConfigPanel");
+  if (toolConfigPanel && state.activeTool === "pdf-to-html") {
+    renderWorkflowStepper(toolConfigPanel, ["Upload", "Layout", "Converted"], 1);
+  }
 }
 
 function updateActivePdfFromBlob(blob, actionDesc = "edit") {
@@ -2956,7 +3400,7 @@ function renderDocStatusBadge(containerId, onRevertCallback = null) {
   container.innerHTML = `
     <div class="doc-state-banner">
       <div style="display:flex; align-items:center; gap:8px;">
-        <span class="badge-saved">✓ ${state.editCount} edit${state.editCount > 1 ? 's' : ''} saved in memory</span>
+        <span class="badge-saved">${getLucideSvg("check", 11)} ${state.editCount} edit${state.editCount > 1 ? 's' : ''} saved in memory</span>
       </div>
       <button type="button" class="btn-revert" id="btnRevertDoc">↺ Revert</button>
     </div>
@@ -2988,18 +3432,19 @@ function renderDocStatusBadge(containerId, onRevertCallback = null) {
 // 1. PDF TO HTML ENGINE TOOL
 // -------------------------------------------------------------
 function renderPdfToHtmlTool() {
+  const hasFile = !!state.currentPdfFile;
   toolConfigPanel.innerHTML = `
     <div class="panel-section">
       <div class="section-label">1. Upload Source PDF</div>
       <div id="htmlUploadArea"></div>
     </div>
     <div class="panel-section">
-      <div class="section-label">2. Conversion Mode</div>
+      <div class="section-label">2. Layout Strategy</div>
       <div class="form-group">
         <label class="form-label" for="htmlMode">Layout Strategy</label>
         <select class="form-select" id="htmlMode" aria-label="Layout Strategy">
-          <option value="fixed" selected>Absolute Coordinates</option>
-          <option value="semantic">Flow Layout (Semantic)</option>
+          <option value="fixed" selected>Exact Coordinates (Pixel-Perfect)</option>
+          <option value="semantic">Responsive Flow (Article/Text)</option>
         </select>
         <div class="layout-mode-hint" id="htmlModeHint">
           Preserves exact document geometry and pixel-perfect placement.
@@ -3007,15 +3452,18 @@ function renderPdfToHtmlTool() {
       </div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary btn-blue" id="btnRunConvertHtml">
-        ⚡ Convert PDF to HTML
+      <button class="btn-primary" id="btnRunConvertHtml" ${hasFile ? "" : 'disabled="disabled"'} title="${hasFile ? "Convert PDF to HTML" : "Upload a PDF document first to enable conversion"}">
+        Convert PDF to HTML
       </button>
+      <div class="btn-disabled-hint" id="convertDisabledHint" style="font-size: 11px; color: var(--text-secondary); margin-top: 6px; text-align: center; ${hasFile ? "display: none;" : ""}">
+        Upload a PDF to enable conversion
+      </div>
     </div>
     <div class="panel-section" id="htmlStep3Section" style="display: none; flex-direction: column; gap: 8px;">
       <div class="section-label">3. Converted Output</div>
       <div class="html-output-card">
         <div class="html-output-header">
-          <span class="html-output-badge">✓ HTML5 Ready</span>
+          <span class="html-output-badge">${getLucideSvg("check", 11)} HTML5 Ready</span>
           <span class="html-output-size" id="htmlOutputSize"></span>
         </div>
         <div class="html-output-preview-box">
@@ -3023,7 +3471,7 @@ function renderPdfToHtmlTool() {
         </div>
         <div class="html-output-actions">
           <button type="button" class="btn-primary btn-sm" id="btnDownloadConvertedHtml" style="width: 100%; justify-content: center; gap: 6px;">
-            <span>⬇️</span> Download HTML
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download HTML
           </button>
         </div>
       </div>
@@ -3031,12 +3479,19 @@ function renderPdfToHtmlTool() {
   `;
 
   const uploadArea = document.getElementById("htmlUploadArea");
-  renderWorkflowStepper(toolConfigPanel, ["Upload PDF", "Choose Layout", "Converted HTML"], state.currentPdfFile ? 1 : 0);
+  renderWorkflowStepper(toolConfigPanel, ["Upload", "Layout", "Converted"], state.currentPdfFile ? 1 : 0);
 
   uploadArea.appendChild(
     buildDropZone(".pdf", false, (file) => {
       setActivePdf(file);
-      renderWorkflowStepper(toolConfigPanel, ["Upload PDF", "Choose Layout", "Converted HTML"], 1);
+      renderWorkflowStepper(toolConfigPanel, ["Upload", "Layout", "Converted"], 1);
+      const btn = document.getElementById("btnRunConvertHtml");
+      if (btn) {
+        btn.removeAttribute("disabled");
+        btn.title = "Convert PDF to HTML";
+      }
+      const hint = document.getElementById("convertDisabledHint");
+      if (hint) hint.style.display = "none";
     })
   );
 
@@ -3077,7 +3532,7 @@ function renderPdfToHtmlTool() {
       setHtmlPreview(htmlText, baseName);
       headerStatus.textContent = "Conversion Complete";
       showAppToast("PDF to HTML conversion completed successfully!", "success");
-      renderWorkflowStepper(toolConfigPanel, ["Upload PDF", "Choose Layout", "Converted HTML"], 2);
+      renderWorkflowStepper(toolConfigPanel, ["Upload", "Layout", "Converted"], 2);
 
       // Reveal Step 3 Output Preview
       const step3 = document.getElementById("htmlStep3Section");
@@ -3100,7 +3555,176 @@ function renderPdfToHtmlTool() {
     } catch (err) {
       renderErrorSummary(toolConfigPanel, "Conversion failed: " + err.message);
     } finally {
-      btn.innerHTML = `⚡ Convert PDF to HTML`;
+      btn.innerHTML = `Convert PDF to HTML`;
+      btn.disabled = false;
+    }
+  });
+}
+
+// -------------------------------------------------------------
+// 1b. PDF TO WORD (.DOCX) CONVERTER
+// -------------------------------------------------------------
+async function convertAndDownloadDocx(file, layoutMode = "flow", pagesStr = "") {
+  if (!file) {
+    showNotification("No PDF file loaded to convert.", "warning");
+    return;
+  }
+
+  showNotification("Converting PDF to Word (.docx)...", "info", 4000);
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("mode", layoutMode || "flow");
+    if (pagesStr && pagesStr.trim()) {
+      formData.append("pages", pagesStr.trim());
+    }
+
+    const res = await fetch("/api/convert/docx", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      let errMsg = "Conversion failed";
+      try {
+        const errJson = await res.json();
+        errMsg = errJson.detail || errMsg;
+      } catch (_) {
+        errMsg = await res.text();
+      }
+
+      if (errMsg.toLowerCase().includes("password") || errMsg.toLowerCase().includes("encrypted")) {
+        showNotification("This PDF is encrypted. Please unlock it using 'Decrypt / Unlock' first.", "error", 6000);
+        throw new Error("This PDF is password-protected or encrypted. Please unlock it using the Decrypt / Unlock tool first.");
+      }
+      if (errMsg.toLowerCase().includes("scanned") || errMsg.toLowerCase().includes("no selectable text")) {
+        showNotification("This PDF contains scanned images with no selectable text. OCR conversion is not available.", "warning", 6000);
+        throw new Error("This PDF appears to be a scanned document with no selectable text. OCR is not supported.");
+      }
+      throw new Error(errMsg);
+    }
+
+    const docxBlob = await res.blob();
+    const baseName = getCleanBaseName(file.name);
+    const dlName = `${baseName}.docx`;
+    downloadBlob(docxBlob, dlName);
+    showAppToast(`Word document "${dlName}" downloaded successfully!`, "success", 4000);
+    return { blob: docxBlob, filename: dlName };
+  } catch (err) {
+    showNotification(err.message, "error", 6000);
+    throw err;
+  }
+}
+
+function renderPdfToDocxTool() {
+  toolConfigPanel.innerHTML = `
+    <div class="panel-section">
+      <div class="section-label">1. Upload Source PDF</div>
+      <div id="docxUploadArea"></div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">2. Word Document Settings</div>
+      <div class="form-group">
+        <label for="docxLayoutMode" style="font-size:12px; font-weight:600; color:var(--text-primary); margin-bottom:4px; display:block;">
+          Layout Strategy
+        </label>
+        <select id="docxLayoutMode" class="form-control" style="width:100%; padding:8px 10px; font-size:13px; background:var(--bg-surface); color:var(--text-primary); border:1px solid var(--border-subtle); border-radius:6px;">
+          <option value="flow" selected>Easy to edit (Reflows into standard editable Word paragraphs)</option>
+          <option value="exact">Keep original layout (Pixel-perfect geometry with text boxes)</option>
+        </select>
+        <div id="docxLayoutHint" class="layout-hint-box" style="margin-top:6px; font-size:12px; color:var(--text-muted); line-height:1.4;">
+          Reflows text naturally into standard Word paragraphs. Recommended for resumes, articles, and editable reports.
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:12px;">
+        <label for="docxPagesInput" style="font-size:12px; font-weight:600; color:var(--text-primary); margin-bottom:4px; display:block;">
+          Pages to Convert
+        </label>
+        <input type="text" id="docxPagesInput" class="form-control" placeholder="All pages (or e.g. 1-3, 5)" style="width:100%; padding:8px 10px; font-size:13px; background:var(--bg-surface); color:var(--text-primary); border:1px solid var(--border-subtle); border-radius:6px;" />
+        <span style="font-size:11px; color:var(--text-muted); margin-top:3px; display:block;">Leave blank to convert all pages in the document.</span>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <button class="btn-primary" id="btnRunConvertDocx" style="width:100%; justify-content:center;" ${!state.currentPdfFile ? 'disabled title="Please load or upload a PDF first"' : 'title="Convert active PDF to Word (.docx)"'}>
+        ${getLucideSvg("file-text", 14)} Convert to Word (.docx)
+      </button>
+    </div>
+
+    <div class="panel-section" id="docxStep3Section" style="display:none; flex-direction:column; gap:10px;">
+      <div class="section-label">3. Converted Word Document</div>
+      <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:13px; font-weight:600; color:var(--text-primary);" id="docxOutputFilename">document.docx</span>
+          <span style="font-size:12px; color:var(--text-muted);" id="docxOutputSize">-- KB</span>
+        </div>
+        <button type="button" class="btn-primary btn-sm" id="btnDownloadConvertedDocx" style="width:100%; justify-content:center; gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download Word (.docx) Again
+        </button>
+      </div>
+    </div>
+  `;
+
+  const uploadArea = document.getElementById("docxUploadArea");
+  renderWorkflowStepper(toolConfigPanel, ["Upload PDF", "Layout Options", "Word Document"], state.currentPdfFile ? 1 : 0);
+
+  uploadArea.appendChild(
+    buildDropZone(".pdf", false, (file) => {
+      setActivePdf(file);
+      renderWorkflowStepper(toolConfigPanel, ["Upload PDF", "Layout Options", "Word Document"], 1);
+      const btn = document.getElementById("btnRunConvertDocx");
+      if (btn) {
+        btn.removeAttribute("disabled");
+        btn.title = "Convert active PDF to Word (.docx)";
+      }
+    })
+  );
+
+  const docxLayout = document.getElementById("docxLayoutMode");
+  const docxHint = document.getElementById("docxLayoutHint");
+  docxLayout?.addEventListener("change", () => {
+    if (docxLayout.value === "flow") {
+      docxHint.textContent = "Reflows text naturally into standard Word paragraphs. Recommended for resumes, articles, and editable reports.";
+    } else {
+      docxHint.textContent = "Preserves exact document geometry with text boxes. Recommended for complex forms and desktop publishing.";
+    }
+  });
+
+  document.getElementById("btnRunConvertDocx").addEventListener("click", async () => {
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload or open a PDF file before starting conversion.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
+
+    const mode = document.getElementById("docxLayoutMode").value;
+    const pages = document.getElementById("docxPagesInput").value;
+    const btn = document.getElementById("btnRunConvertDocx");
+    btn.innerHTML = `<span class="spinner"></span> Converting to Word...`;
+    btn.disabled = true;
+
+    try {
+      const result = await convertAndDownloadDocx(state.currentPdfFile, mode, pages);
+      if (result && result.blob) {
+        renderWorkflowStepper(toolConfigPanel, ["Upload PDF", "Layout Options", "Word Document"], 2);
+        const step3 = document.getElementById("docxStep3Section");
+        const filenameEl = document.getElementById("docxOutputFilename");
+        const sizeEl = document.getElementById("docxOutputSize");
+        const dlBtn = document.getElementById("btnDownloadConvertedDocx");
+
+        if (step3) step3.style.display = "flex";
+        if (filenameEl) filenameEl.textContent = result.filename;
+        if (sizeEl) sizeEl.textContent = `${(result.blob.size / 1024).toFixed(1)} KB`;
+        if (dlBtn) {
+          dlBtn.onclick = () => downloadBlob(result.blob, result.filename);
+        }
+      }
+    } catch (err) {
+      renderErrorSummary(toolConfigPanel, err.message);
+    } finally {
+      btn.innerHTML = `${getLucideSvg("file-text", 14)} Convert to Word (.docx)`;
       btn.disabled = false;
     }
   });
@@ -3117,7 +3741,7 @@ function renderMergeTool() {
       <div id="mergeFileList" style="display:flex; flex-direction:column; gap:6px; margin-top:8px;"></div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunMerge">📑 Merge into Unified PDF</button>
+      <button class="btn-primary" id="btnRunMerge">${getLucideSvg("combine", 14)} Merge into Unified PDF</button>
     </div>
   `;
 
@@ -3141,7 +3765,7 @@ function renderMergeTool() {
         (f, i) => `
         <div class="file-pill">
           <span>${i + 1}. ${f.name}</span>
-          <button style="background:none; border:none; color:#f87171; cursor:pointer;" onclick="removeMergeFile(${i})">✕</button>
+          <button type="button" style="background:none; border:none; color: var(--status-danger-light); cursor:pointer; display:inline-flex; align-items:center;" onclick="removeMergeFile(${i})" aria-label="Remove file" title="Remove file">${getLucideSvg("x", 12)}</button>
         </div>
       `
       )
@@ -3198,11 +3822,11 @@ function renderSplitTool() {
       <div class="form-group">
         <label class="form-label">Page Ranges</label>
         <input type="text" class="form-input" id="splitRanges" value="1-2, 3" placeholder="e.g. 1-3, 4, 5-8" />
-        <span style="font-size:11px; color:#9ca3af;">Comma-separated page numbers and ranges.</span>
+        <span style="font-size:11px; color: var(--text-muted);">Comma-separated page numbers and ranges.</span>
       </div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunSplit">✂️ Split PDF</button>
+      <button class="btn-primary" id="btnRunSplit">${getLucideSvg("split", 14)} Split PDF</button>
     </div>
   `;
 
@@ -3388,7 +4012,7 @@ function updateLiveRotatePreview() {
     pagesInput.classList.add("range-input-invalid");
     if (feedbackEl) {
       feedbackEl.className = "range-validation-feedback is-invalid";
-      feedbackEl.innerHTML = `⚠️ ${escapeHtml(parsed.error)}`;
+      feedbackEl.innerHTML = `${getLucideSvg("circle-alert", 12)} ${escapeHtml(parsed.error)}`;
     }
     clearLiveRotatePreview();
     return;
@@ -3397,7 +4021,7 @@ function updateLiveRotatePreview() {
   pagesInput.classList.remove("range-input-invalid");
   if (feedbackEl) {
     feedbackEl.className = "range-validation-feedback is-valid";
-    feedbackEl.innerHTML = `✓ ${escapeHtml(parsed.summary)} will rotate <strong>${angle}°</strong>`;
+    feedbackEl.innerHTML = `${getLucideSvg("check", 12)} ${escapeHtml(parsed.summary)} will rotate <strong>${angle}°</strong>`;
   }
 
   const targetPages = new Set(parsed.pages);
@@ -3482,7 +4106,7 @@ function renderRotateTool() {
       </div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunRotate">🔄 Apply Rotation</button>
+      <button class="btn-primary" id="btnRunRotate">${getLucideSvg("rotate-cw", 14)} Apply Rotation</button>
     </div>
   `;
 
@@ -3633,7 +4257,7 @@ function renderDeleteTool() {
   if (numPages === 1) {
     singlePageWarning = `
       <div class="del-single-page-warn">
-        <span>⚠️</span>
+        <span>${getLucideSvg("circle-alert", 14)}</span>
         <div>This document has only <strong>1 page</strong>. A PDF document must retain at least one page, so pages cannot be deleted.</div>
       </div>
     `;
@@ -3655,7 +4279,7 @@ function renderDeleteTool() {
     </div>
     <div class="panel-section">
       <button class="btn-primary" id="btnRunDelete" ${numPages === 1 ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
-        🗑️ Remove Selected Pages
+        ${getLucideSvg("trash-2", 14)} Remove Selected Pages
       </button>
     </div>
   `;
@@ -3774,11 +4398,11 @@ function renderReorderTool() {
       <div class="form-group">
         <label class="form-label">New Page Sequence</label>
         <input type="text" class="form-input" id="reorderSequence" placeholder="e.g. 3, 1, 2" />
-        <span style="font-size:11px; color:#9ca3af;">Specify full sequence of 1-indexed page numbers.</span>
+        <span style="font-size:11px; color: var(--text-muted);">Specify full sequence of 1-indexed page numbers.</span>
       </div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunReorder">🔢 Reorder Pages</button>
+      <button class="btn-primary" id="btnRunReorder">${getLucideSvg("arrow-up-down", 14)} Reorder Pages</button>
     </div>
   `;
 
@@ -3842,7 +4466,7 @@ function renderExtractTool() {
       </div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunExtract">📤 Extract Pages</button>
+      <button class="btn-primary" id="btnRunExtract">${getLucideSvg("file-output", 14)} Extract Pages</button>
     </div>
   `;
 
@@ -3952,7 +4576,7 @@ function updateVisualCropPreview() {
   marker.style.height = `${heightPx}px`;
   marker.innerHTML = `
     <span class="marker-label">Crop Box</span>
-    <span>[${Math.round(x0)}, ${Math.round(y0)}] to [${Math.round(x1)}, ${Math.round(y1)}] pt (${Math.round(x1 - x0)} × ${Math.round(y1 - y0)} pt)</span>
+    <span>[${Math.round(x0)}, ${Math.round(y0)}] to [${Math.round(x1)}, ${Math.round(y1)}] pt (${Math.round(x1 - x0)} &times; ${Math.round(y1 - y0)} pt)</span>
   `;
   interactionLayer.appendChild(marker);
 }
@@ -3960,7 +4584,7 @@ function updateVisualCropPreview() {
 function renderCropTool() {
   toolConfigPanel.innerHTML = `
     <div class="panel-section">
-      <div class="tool-hint-line">💡 <span>Click &amp; drag box across preview to select crop window</span></div>
+      <div class="tool-hint-line">${getLucideSvg("info", 13)} <span>Click &amp; drag box across preview to select crop window</span></div>
       <div class="section-label">Active Document</div>
       <div id="cropUploadArea"></div>
       <div id="cropFileInfo"></div>
@@ -4045,7 +4669,7 @@ function renderCropTool() {
     </div>
     <div class="panel-section">
       <button class="btn-primary" id="btnRunCrop">
-        📐 Crop Document Pages
+        ${getLucideSvg("crop", 14)} Crop Document Pages
       </button>
     </div>
   `;
@@ -4185,7 +4809,7 @@ function renderCropTool() {
     } catch (err) {
       renderErrorSummary(toolConfigPanel, "Cropping failed: " + err.message);
     } finally {
-      btn.innerHTML = `📐 Crop Document Pages`;
+      btn.innerHTML = `${getLucideSvg("crop", 14)} Crop Document Pages`;
       btn.disabled = false;
     }
   });
@@ -4197,7 +4821,7 @@ function renderCropTool() {
 function renderReplaceTextTool() {
   toolConfigPanel.innerHTML = `
     <div class="panel-section">
-      <div class="tool-hint-line">💡 <span>Press <kbd class="inline-kbd">⌘F</kbd> / <kbd class="inline-kbd">Ctrl+F</kbd> to find &amp; replace directly on page</span></div>
+      <div class="tool-hint-line">${getLucideSvg("info", 13)} <span>Press <kbd class="inline-kbd">${modKey}+F</kbd> to find &amp; replace directly on page</span></div>
       <div class="section-label">Active Document</div>
       <div id="repUploadArea"></div>
       <div id="repFileInfo"></div>
@@ -4206,7 +4830,7 @@ function renderReplaceTextTool() {
       <div class="section-label" style="display:flex; justify-content:space-between; align-items:center;">
         <span>Find & Replace Rules</span>
         <button type="button" class="btn-secondary" id="btnAddRule" style="font-size:11px; padding:3px 8px; cursor:pointer;">
-          ➕ Add Another Pair
+          ${getLucideSvg("plus", 12)} Add Another Pair
         </button>
       </div>
       <div id="rulesList" style="margin-top:8px;"></div>
@@ -4214,14 +4838,30 @@ function renderReplaceTextTool() {
     <div class="panel-section">
       <div class="form-group" style="margin-bottom:12px;">
         <label class="form-checkbox-label" style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-          <input type="checkbox" id="repPreserveStyle" checked style="width:16px; height:16px; accent-color: #38bdf8;" />
-          <span style="font-weight:600; font-size:13px; color:#f8fafc;">Preserve original font, style & color</span>
+          <input type="checkbox" id="repPreserveStyle" checked style="width:16px; height:16px; accent-color: var(--accent-sky);" />
+          <span style="font-weight:600; font-size:13px; color: var(--text-main);">Preserve original font, style & color</span>
         </label>
-        <span style="font-size:11px; color:#94a3b8; display:block; margin-left:24px; margin-top:2px;">
+        <span style="font-size:11px; color: var(--text-muted); display:block; margin-left:24px; margin-top:2px;">
           Automatically matches original font family, bold/italic weight, font size, text color, and typographical baseline.
         </span>
+
+        <label class="form-checkbox-label" style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:8px;">
+          <input type="checkbox" id="repCoverBox" style="width:16px; height:16px; accent-color: var(--accent-sky);" />
+          <span style="font-weight:600; font-size:13px; color: var(--text-main);">Cover original text with a box</span>
+        </label>
+        <span style="font-size:11px; color: var(--text-muted); display:block; margin-left:24px; margin-top:2px;">
+          Unchecked (default): permanently deletes glyphs without visual background artifacts. Checked: samples the underlying background pixel color.
+        </span>
+
+        <label class="form-checkbox-label" style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:8px;">
+          <input type="checkbox" id="repMatchCase" style="width:16px; height:16px; accent-color: var(--accent-sky);" />
+          <span style="font-weight:600; font-size:13px; color: var(--text-main);">Match case</span>
+        </label>
+        <span style="font-size:11px; color: var(--text-muted); display:block; margin-left:24px; margin-top:2px;">
+          When checked, replaces exact case matches only (e.g. "storage" will not match "Storage").
+        </span>
       </div>
-      <div id="repCustomStyleOptions" style="display:none; padding:10px; background:rgba(15,23,42,0.6); border:1px solid #334155; border-radius:6px; margin-bottom:12px;">
+      <div id="repCustomStyleOptions" style="display:none; padding:10px; background:rgba(15,23,42,0.6); border: 1px solid var(--border-color); border-radius:6px; margin-bottom:12px;">
         <div class="form-group" style="margin-bottom:8px;">
           <label class="form-label">Custom Font Size (leave blank to auto-fit)</label>
           <input type="number" class="form-input" id="repFontSize" placeholder="Auto-match original line height" />
@@ -4238,7 +4878,7 @@ function renderReplaceTextTool() {
     </div>
     <div class="panel-section">
       <button class="btn-primary" id="btnRunReplace">
-        ✏️ Find & Replace Text
+        ${getLucideSvg("replace", 14)} Find & Replace Text
       </button>
     </div>
   `;
@@ -4313,6 +4953,8 @@ function renderReplaceTextTool() {
     const findInputs = rulesList.querySelectorAll(".rule-find");
     const replaceInputs = rulesList.querySelectorAll(".rule-replace");
     const isPreserve = document.getElementById("repPreserveStyle")?.checked ?? true;
+    const isCoverBox = document.getElementById("repCoverBox")?.checked ?? false;
+    const isMatchCase = document.getElementById("repMatchCase")?.checked ?? false;
     const rules = [];
 
     for (let i = 0; i < findInputs.length; i++) {
@@ -4323,6 +4965,8 @@ function renderReplaceTextTool() {
           search_text: search,
           replacement_text: replace,
           preserve_style: isPreserve,
+          cover_box: isCoverBox,
+          match_case: isMatchCase,
         });
       }
     }
@@ -4342,6 +4986,8 @@ function renderReplaceTextTool() {
       formData.append("file", state.currentPdfFile);
       formData.append("rules", JSON.stringify(rules));
       formData.append("preserve_style", isPreserve ? "true" : "false");
+      formData.append("cover_box", isCoverBox ? "true" : "false");
+      formData.append("match_case", isMatchCase ? "true" : "false");
 
       if (!isPreserve) {
         const fs = document.getElementById("repFontSize")?.value;
@@ -4367,6 +5013,15 @@ function renderReplaceTextTool() {
           if (res.ok) {
             count = res.headers.get("X-Replacement-Count") || String(rules.length);
             blob = await res.blob();
+            const warnHeader = res.headers.get("X-Collision-Warnings");
+            if (warnHeader) {
+              try {
+                const warns = JSON.parse(warnHeader);
+                if (warns && warns.length > 0) {
+                  showNotification(`Notice: ${warns[0]}`, "warning", 6000);
+                }
+              } catch (_) {}
+            }
           }
         } catch (_) {}
       }
@@ -4388,7 +5043,7 @@ function renderReplaceTextTool() {
     } catch (err) {
       renderErrorSummary(toolConfigPanel, "Text replacement failed: " + err.message);
     } finally {
-      btn.innerHTML = `✏️ Find & Replace Text`;
+      btn.innerHTML = `${getLucideSvg("replace", 14)} Find & Replace Text`;
       btn.disabled = false;
     }
   });
@@ -4400,7 +5055,7 @@ function renderReplaceTextTool() {
 function renderInsertTextTool() {
   toolConfigPanel.innerHTML = `
     <div class="panel-section">
-      <div class="tool-hint-line">💡 <span>Click anywhere on preview to lock (X, Y) coordinates</span></div>
+      <div class="tool-hint-line">${getLucideSvg("info", 13)} <span>Click anywhere on preview to lock (X, Y) coordinates</span></div>
       <div class="section-label">Active Document</div>
       <div id="insUploadArea"></div>
       <div id="insFileInfo"></div>
@@ -4453,7 +5108,7 @@ function renderInsertTextTool() {
     </div>
     <div class="panel-section">
       <button class="btn-primary" id="btnRunInsertText">
-        ✍️ Insert Text Box
+        ${getLucideSvg("text-cursor-input", 14)} Insert Text Box
       </button>
     </div>
   `;
@@ -4543,7 +5198,7 @@ function renderInsertTextTool() {
     } catch (err) {
       renderErrorSummary(toolConfigPanel, "Inserting text failed: " + err.message);
     } finally {
-      btn.innerHTML = `✍️ Insert Text Box`;
+      btn.innerHTML = `${getLucideSvg("text-cursor-input", 14)} Insert Text Box`;
       btn.disabled = false;
     }
   });
@@ -4555,7 +5210,7 @@ function renderInsertTextTool() {
 function renderWhiteoutTool() {
   toolConfigPanel.innerHTML = `
     <div class="panel-section">
-      <div class="tool-hint-line">💡 <span>Click &amp; drag box on preview to measure whiteout area</span></div>
+      <div class="tool-hint-line">${getLucideSvg("info", 13)} <span>Click &amp; drag box on preview to measure whiteout area</span></div>
       <div class="section-label">Active Document</div>
       <div id="woUploadArea"></div>
       <div id="woFileInfo"></div>
@@ -4676,7 +5331,7 @@ function renderWatermarkTool() {
       </div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunWm">💧 Apply Watermark</button>
+      <button class="btn-primary" id="btnRunWm">${getLucideSvg("droplet", 14)} Apply Watermark</button>
     </div>
   `;
 
@@ -4757,7 +5412,7 @@ function renderPageNumbersTool() {
       </div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunPn">📄 Add Page Numbers</button>
+      <button class="btn-primary" id="btnRunPn">${getLucideSvg("hash", 14)} Add Page Numbers</button>
     </div>
   `;
 
@@ -4827,11 +5482,11 @@ function renderHeaderFooterTool() {
       </div>
       <div class="form-group">
         <label class="form-label">Footer Text</label>
-        <input type="text" class="form-input" id="hfFooter" placeholder="e.g. Internal Use Only — 2026" />
+        <input type="text" class="form-input" id="hfFooter" placeholder="e.g. Internal Use Only - 2026" />
       </div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunHf">🔝 Apply Header & Footer</button>
+      <button class="btn-primary" id="btnRunHf">${getLucideSvg("panel-top", 14)} Apply Header & Footer</button>
     </div>
   `;
 
@@ -4897,11 +5552,11 @@ function renderHighlightTool() {
       <div class="form-group">
         <label class="form-label">Keywords to Highlight</label>
         <input type="text" class="form-input" id="hlTerms" placeholder="e.g. agreement, clause, payment" />
-        <span style="font-size:11px; color:#9ca3af;">Comma-separated keywords.</span>
+        <span style="font-size:11px; color: var(--text-muted);">Comma-separated keywords.</span>
       </div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunHl">🖍️ Highlight Terms</button>
+      <button class="btn-primary" id="btnRunHl">${getLucideSvg("highlighter", 14)} Highlight Terms</button>
     </div>
   `;
 
@@ -4969,7 +5624,7 @@ function renderEncryptTool() {
       </div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunEnc">🔒 Encrypt with AES-256</button>
+      <button class="btn-primary" id="btnRunEnc">${getLucideSvg("lock", 14)} Encrypt with AES-256</button>
     </div>
   `;
 
@@ -5026,7 +5681,7 @@ function renderDecryptTool() {
       </div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunDec">🔓 Decrypt & Remove Restrictions</button>
+      <button class="btn-primary" id="btnRunDec">${getLucideSvg("lock-open", 14)} Decrypt & Remove Restrictions</button>
     </div>
   `;
 
@@ -5081,7 +5736,7 @@ function renderRedactTool() {
       <div class="form-group">
         <label class="form-label">Sensitive Terms to Redact</label>
         <textarea class="form-textarea" rows="4" id="redactTerms" placeholder="e.g. John Doe, 123-45-6789, confidential@corp.com"></textarea>
-        <span style="font-size:11px; color:#f87171;">⚠️ Warning: This permanently wipes glyphs and vectors from the PDF binary. Cannot be undone.</span>
+        <span style="font-size:11px; color: var(--status-danger-light);">${getLucideSvg("circle-alert", 12)} Warning: This permanently wipes glyphs and vectors from the PDF binary. Cannot be undone.</span>
       </div>
     </div>
     <div class="panel-section">
@@ -5140,7 +5795,7 @@ function renderSanitizeTool() {
       </p>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunSan">🧹 Sanitize PDF</button>
+      <button class="btn-primary" id="btnRunSan">${getLucideSvg("shield-alert", 14)} Sanitize PDF</button>
     </div>
   `;
 
@@ -5208,7 +5863,7 @@ function renderFormsTool() {
       container.style.display = "block";
 
       if (currentFields.length === 0) {
-        list.innerHTML = `<p style="font-size:12px; color:#9ca3af;">No AcroForm interactive fields detected in this document.</p>`;
+        list.innerHTML = `<p style="font-size:12px; color: var(--text-muted);">No AcroForm interactive fields detected in this document.</p>`;
       } else {
         list.innerHTML = currentFields
           .map(
@@ -5277,7 +5932,7 @@ function renderPdfToImagesTool() {
       </div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunImages">🖼️ Export Page Images (ZIP)</button>
+      <button class="btn-primary" id="btnRunImages">${getLucideSvg("image", 14)} Export Page Images (ZIP)</button>
     </div>
   `;
 
@@ -5318,7 +5973,7 @@ function renderImagesToPdfTool() {
       <div id="i2pList" style="display:flex; flex-direction:column; gap:6px; margin-top:8px;"></div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunI2p">📷 Combine Images into PDF</button>
+      <button class="btn-primary" id="btnRunI2p">${getLucideSvg("images", 14)} Combine Images into PDF</button>
     </div>
   `;
 
@@ -5365,7 +6020,7 @@ function renderMarkdownTool() {
       <div id="mdUploadArea"></div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunMd">📝 Extract Markdown</button>
+      <button class="btn-primary" id="btnRunMd">${getLucideSvg("file-code", 14)} Extract Markdown</button>
     </div>
   `;
 
@@ -5414,20 +6069,20 @@ function renderInspectTool() {
       <div id="inspFileInfo"></div>
     </div>
     <div class="panel-section">
-      <button class="btn-primary" id="btnRunInspect">🔍 Deep Inspection</button>
+      <button class="btn-primary" id="btnRunInspect">${getLucideSvg("file-search", 14)} Deep Inspection</button>
     </div>
     <div class="panel-section" id="metaActionSection" style="display:none;">
       <div class="section-label">Inspector Quick Actions</div>
       <button class="btn-secondary" style="width:100%; font-size:12px; margin-bottom:8px; cursor:pointer;" id="btnSideEditMeta">
-        ✏️ Edit Metadata
+        ${getLucideSvg("replace", 12)} Edit Metadata
       </button>
-      <button class="btn-secondary" style="color:#ef4444; border-color:rgba(239, 68, 68, 0.4); width:100%; font-size:12px; margin-bottom:8px; cursor:pointer;" id="btnSideDeleteAllMeta">
-        🗑️ Delete All Metadata
+      <button class="btn-secondary" style="color: var(--status-danger); border-color:rgba(239, 68, 68, 0.4); width:100%; font-size:12px; margin-bottom:8px; cursor:pointer;" id="btnSideDeleteAllMeta">
+        ${getLucideSvg("trash-2", 12)} Delete All Metadata
       </button>
-      <button class="btn-secondary" style="color:#38bdf8; border-color:rgba(56, 189, 248, 0.4); width:100%; font-size:12px; margin-bottom:8px; cursor:pointer;" id="btnSideExportReport">
-        📥 Export Report (JSON)
+      <button class="btn-secondary" style="color: var(--accent-sky); border-color:rgba(56, 189, 248, 0.4); width:100%; font-size:12px; margin-bottom:8px; cursor:pointer;" id="btnSideExportReport">
+        ${getLucideSvg("download", 12)} Export JSON
       </button>
-      <p style="font-size:11px; color:#94a3b8; line-height:1.4; margin-top:6px;">
+      <p style="font-size:11px; color: var(--text-muted); line-height:1.4; margin-top:6px;">
         Comprehensive preflight inspection: security flags, permissions, fonts, images, word/character stats, bookmarks, and page dimensions.
       </p>
     </div>
@@ -5561,7 +6216,7 @@ function renderInspectTool() {
             <span class="inspect-card-title">Format Version</span>
           </div>
           <div class="inspect-card">
-            <span class="inspect-card-val" style="color:${data.is_encrypted ? "#f87171" : "#34d399"}">${data.is_encrypted ? "🔒 Encrypted" : "🔓 Decrypted"}</span>
+            <span class="inspect-card-val" style="color:${data.is_encrypted ? "#f87171" : "#34d399"}; display:inline-flex; align-items:center; gap:4px;">${data.is_encrypted ? getLucideSvg("lock", 12) + " Encrypted" : getLucideSvg("lock-open", 12) + " Decrypted"}</span>
             <span class="inspect-card-title">Security State</span>
           </div>
           <div class="inspect-card">
@@ -5586,10 +6241,10 @@ function renderInspectTool() {
           <!-- Preflight Security & Permissions Audit -->
           <div class="inspect-audit-box">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <h3 style="margin:0; font-size:14px; color:#f8fafc; display:flex; align-items:center; gap:6px;">
-                🛡️ Security & Permissions Audit
+              <h3 style="margin:0; font-size:14px; color: var(--text-main); display:flex; align-items:center; gap:6px;">
+                ${getLucideSvg("shield", 13)} Security & Permissions Audit
               </h3>
-              <span style="font-size:11px; color:#94a3b8; font-family:monospace;">Code: ${data.permissions_code !== undefined ? data.permissions_code : "N/A"}</span>
+              <span style="font-size:11px; color: var(--text-muted); font-family:monospace;">Code: ${data.permissions_code !== undefined ? data.permissions_code : "N/A"}</span>
             </div>
             <div class="inspect-perm-grid">
               <div class="inspect-perm-item">
@@ -5614,11 +6269,11 @@ function renderInspectTool() {
               </div>
               <div class="inspect-perm-item">
                 <span>Digital Signatures</span>
-                <span class="perm-pill ${data.has_signatures ? "perm-pill-yes" : "perm-pill-no"}" style="${!data.has_signatures ? 'background:rgba(100,116,139,0.2); color:#94a3b8; border-color:#475569;' : ''}">${data.has_signatures ? "Present" : "None"}</span>
+                <span class="perm-pill ${data.has_signatures ? "perm-pill-yes" : "perm-pill-no"}" style="${!data.has_signatures ? 'background:rgba(100,116,139,0.2); color: var(--text-muted); border-color:#475569;' : ''}">${data.has_signatures ? "Present" : "None"}</span>
               </div>
               <div class="inspect-perm-item">
                 <span>Structural Layers (OCG)</span>
-                <span class="perm-pill ${data.has_layers ? "perm-pill-yes" : "perm-pill-no"}" style="${!data.has_layers ? 'background:rgba(100,116,139,0.2); color:#94a3b8; border-color:#475569;' : ''}">${data.has_layers ? "Yes" : "None"}</span>
+                <span class="perm-pill ${data.has_layers ? "perm-pill-yes" : "perm-pill-no"}" style="${!data.has_layers ? 'background:rgba(100,116,139,0.2); color: var(--text-muted); border-color:#475569;' : ''}">${data.has_layers ? "Yes" : "None"}</span>
               </div>
               <div class="inspect-perm-item">
                 <span>Structural Integrity</span>
@@ -5630,33 +6285,33 @@ function renderInspectTool() {
           <!-- Document Metadata Management -->
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; flex-wrap:wrap; gap:8px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <h3 style="margin:0; font-size:15px; color:#f8fafc;">Document Metadata</h3>
+              <h3 style="margin:0; font-size:15px; color: var(--text-main);">Document Metadata</h3>
               ${
                 hasAnyMeta
-                  ? `<span class="badge-saved" style="background:rgba(239,68,68,0.15); color:#f87171; border-color:rgba(239,68,68,0.3);">Contains Metadata</span>`
-                  : `<span class="badge-saved" style="background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);">Metadata Clean</span>`
+                  ? `<span class="badge-saved" style="background:rgba(239,68,68,0.15); color: var(--status-danger-light); border-color:rgba(239,68,68,0.3);">Contains Metadata</span>`
+                  : `<span class="badge-saved" style="background:rgba(59,130,246,0.15); color: var(--accent-light); border-color:rgba(59,130,246,0.3);">Metadata Clean</span>`
               }
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
               <button type="button" class="btn-secondary" id="btnToggleEditMetaDrawer" style="font-size:11px; padding:4px 10px; cursor:pointer;">
-                ✏️ Edit Metadata
+                ${getLucideSvg("replace", 12)} Edit Metadata
               </button>
               <button type="button" class="btn-secondary" id="btnDeleteSelectedMeta" style="font-size:11px; padding:4px 10px; cursor:pointer;" ${hasAnyMeta ? "" : "disabled"}>
-                🗑️ Delete Selected
+                ${getLucideSvg("trash-2", 12)} Delete Selected
               </button>
-              <button type="button" class="btn-secondary" id="btnTableDeleteAllMeta" style="color:#ef4444; border-color:rgba(239,68,68,0.4); font-size:11px; padding:4px 10px; cursor:pointer;" ${hasAnyMeta ? "" : "disabled"}>
-                🗑️ Delete All Metadata
+              <button type="button" class="btn-secondary" id="btnTableDeleteAllMeta" style="color: var(--status-danger); border-color:rgba(239,68,68,0.4); font-size:11px; padding:4px 10px; cursor:pointer;" ${hasAnyMeta ? "" : "disabled"}>
+                ${getLucideSvg("trash-2", 12)} Delete All Metadata
               </button>
-              <button type="button" class="btn-secondary" id="btnTableExportJson" style="color:#38bdf8; border-color:rgba(56, 189, 248, 0.4); font-size:11px; padding:4px 10px; cursor:pointer;">
-                📥 Export JSON
+              <button type="button" class="btn-secondary" id="btnTableExportJson" style="color: var(--accent-sky); border-color:rgba(56, 189, 248, 0.4); font-size:11px; padding:4px 10px; cursor:pointer;">
+                ${getLucideSvg("download", 12)} Export JSON
               </button>
             </div>
           </div>
 
           <!-- Inline Edit Metadata Drawer -->
           <div id="editMetaDrawer" class="meta-edit-drawer" style="display:none;">
-            <h4 style="margin:0 0 12px 0; font-size:13px; color:#38bdf8; display:flex; align-items:center; gap:6px;">
-              ✏️ Edit Document Metadata
+            <h4 style="margin:0 0 12px 0; font-size:13px; color: var(--accent-sky); display:flex; align-items:center; gap:6px;">
+              ${getLucideSvg("replace", 12)} Edit Document Metadata
             </h4>
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px; margin-bottom:12px;">
               <div class="form-group">
@@ -5686,13 +6341,13 @@ function renderInspectTool() {
             </div>
             <div style="display:flex; justify-content:flex-end; gap:8px;">
               <button type="button" class="btn-secondary" id="btnCancelEditMeta" style="font-size:12px; padding:4px 12px; cursor:pointer;">Cancel</button>
-              <button type="button" class="btn-primary" id="btnSaveMeta" style="font-size:12px; padding:4px 14px; cursor:pointer;">💾 Save Metadata Changes</button>
+              <button type="button" class="btn-primary" id="btnSaveMeta" style="font-size:12px; padding:4px 14px; cursor:pointer;">${getLucideSvg("save", 12)} Save Metadata Changes</button>
             </div>
           </div>
 
-          <table style="width:100%; border-collapse:collapse; font-size:12px; background:rgba(15,23,42,0.4); border-radius:6px; overflow:hidden; border:1px solid #334155;">
+          <table style="width:100%; border-collapse:collapse; font-size:12px; background:rgba(15,23,42,0.4); border-radius:6px; overflow:hidden; border: 1px solid var(--border-color);">
             <thead>
-              <tr style="background:rgba(30,41,59,0.8); border-bottom:1px solid #334155; color:#94a3b8; text-align:left;">
+              <tr style="background:rgba(30,41,59,0.8); border-bottom:1px solid #334155; color: var(--text-muted); text-align:left;">
                 <th style="padding:8px 12px; width:36px; text-align:center;">
                   <input type="checkbox" id="chkSelectAllMeta" title="Select all fields with values" ${hasAnyMeta ? "" : "disabled"} />
                 </th>
@@ -5709,12 +6364,12 @@ function renderInspectTool() {
                   <td style="padding:8px 12px; text-align:center;">
                     <input type="checkbox" class="meta-field-chk" value="${k}" ${v ? "" : "disabled"} />
                   </td>
-                  <td style="padding:8px; font-weight:600; color:#94a3b8;">${k}</td>
-                  <td style="padding:8px; color:#f8fafc; word-break:break-all;">${v ? escapeHtml(v) : '<span style="color:#64748b; font-style:italic;">— (none)</span>'}</td>
+                  <td style="padding:8px; font-weight:600; color: var(--text-muted);">${k}</td>
+                  <td style="padding:8px; color: var(--text-main); word-break:break-all;">${v ? escapeHtml(v) : '<span style="color: var(--text-muted); font-style:italic;">&mdash; (none)</span>'}</td>
                   <td style="padding:8px 12px; text-align:right;">
                     ${
                       v
-                        ? `<button type="button" class="btn-clear-single" data-key="${k}" style="background:none; border:none; color:#f87171; cursor:pointer; font-size:11px; padding:2px 6px; border-radius:4px; text-decoration:underline;">Delete</button>`
+                        ? `<button type="button" class="btn-clear-single" data-key="${k}" style="background:none; border:none; color: var(--status-danger-light); cursor:pointer; font-size:11px; padding:2px 6px; border-radius:4px; text-decoration:underline;">Delete</button>`
                         : ""
                     }
                   </td>
@@ -5726,37 +6381,37 @@ function renderInspectTool() {
           </table>
 
           <!-- Table of Contents / Bookmarks Section -->
-          <h3 style="margin: 28px 0 12px 0; font-size:15px; color:#f8fafc; display:flex; align-items:center; gap:6px;">
-            📑 Table of Contents & Bookmarks (${(data.table_of_contents || []).length})
+          <h3 style="margin: 28px 0 12px 0; font-size:15px; color: var(--text-main); display:flex; align-items:center; gap:6px;">
+            ${getLucideSvg("file-text", 13)} Table of Contents & Bookmarks (${(data.table_of_contents || []).length})
           </h3>
           ${
             data.table_of_contents && data.table_of_contents.length
               ? `
-            <div style="background:rgba(15,23,42,0.4); border:1px solid #334155; border-radius:6px; padding:12px; max-height:240px; overflow-y:auto;">
+            <div style="background:rgba(15,23,42,0.4); border: 1px solid var(--border-color); border-radius:6px; padding:12px; max-height:240px; overflow-y:auto;">
               ${data.table_of_contents
                 .map(
                   (item) => `
                 <div style="padding:4px 0 4px ${(item.level - 1) * 20}px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(51,65,85,0.4); font-size:12px;">
                   <span style="color:#e2e8f0;">${item.level > 1 ? "↳ " : ""}${escapeHtml(item.title)}</span>
-                  <span style="color:#38bdf8; font-size:11px; font-weight:600; cursor:pointer;" class="toc-jump-link" data-page="${item.page}">Page ${item.page}</span>
+                  <span style="color: var(--accent-sky); font-size:11px; font-weight:600; cursor:pointer;" class="toc-jump-link" data-page="${item.page}">Page ${item.page}</span>
                 </div>
               `
                 )
                 .join("")}
             </div>
           `
-              : `<p style="font-size:12px; color:#64748b; font-style:italic; margin:0 0 16px 0;">No bookmarks / outline defined in this document.</p>`
+              : `<p style="font-size:12px; color: var(--text-muted); font-style:italic; margin:0 0 16px 0;">No bookmarks / outline defined in this document.</p>`
           }
 
           <!-- Page Dimensions & Layout Audit -->
-          <h3 style="margin: 28px 0 12px 0; font-size:15px; color:#f8fafc;">Page Dimensions & Layout</h3>
-          <table style="width:100%; border-collapse:collapse; font-size:12px; background:rgba(15,23,42,0.4); border-radius:6px; overflow:hidden; border:1px solid #334155;">
+          <h3 style="margin: 28px 0 12px 0; font-size:15px; color: var(--text-main);">Page Dimensions & Layout</h3>
+          <table style="width:100%; border-collapse:collapse; font-size:12px; background:rgba(15,23,42,0.4); border-radius:6px; overflow:hidden; border: 1px solid var(--border-color);">
             <thead>
-              <tr style="background:rgba(30,41,59,0.8); border-bottom: 1px solid #334155; color:#94a3b8; text-align:left;">
+              <tr style="background:rgba(30,41,59,0.8); border-bottom: 1px solid #334155; color: var(--text-muted); text-align:left;">
                 <th style="padding:8px 12px;">Page</th>
                 <th style="padding:8px;">Format</th>
-                <th style="padding:8px;">Width × Height (pt)</th>
-                <th style="padding:8px;">Width × Height (mm)</th>
+                <th style="padding:8px;">Width &times; Height (pt)</th>
+                <th style="padding:8px;">Width &times; Height (mm)</th>
                 <th style="padding:8px;">Orientation</th>
                 <th style="padding:8px;">Rotation</th>
                 <th style="padding:8px 12px;">Images</th>
@@ -5770,9 +6425,9 @@ function renderInspectTool() {
                   (p) => `
                 <tr style="border-bottom: 1px solid #1e293b;">
                   <td style="padding:8px 12px; font-weight:600;">Page ${p.page_number}</td>
-                  <td style="padding:8px;"><span style="background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); padding:2px 6px; border-radius:4px; font-size:11px;">${p.format || "Custom"}</span></td>
-                  <td style="padding:8px;">${p.width_pt} × ${p.height_pt} pt</td>
-                  <td style="padding:8px;">${p.width_mm} × ${p.height_mm} mm</td>
+                  <td style="padding:8px;"><span style="background:rgba(56,189,248,0.12); color: var(--accent-sky); border:1px solid rgba(56,189,248,0.3); padding:2px 6px; border-radius:4px; font-size:11px;">${p.format || "Custom"}</span></td>
+                  <td style="padding:8px;">${p.width_pt} &times; ${p.height_pt} pt</td>
+                  <td style="padding:8px;">${p.width_mm} &times; ${p.height_mm} mm</td>
                   <td style="padding:8px;">${p.orientation || "Portrait"}</td>
                   <td style="padding:8px;">${p.rotation}°</td>
                   <td style="padding:8px 12px;">${p.images_count}</td>
@@ -5789,9 +6444,9 @@ function renderInspectTool() {
           ${
             data.fonts && data.fonts.length
               ? `
-            <h3 style="margin: 28px 0 12px 0; font-size:15px; color:#f8fafc;">Embedded Font Resources (${data.fonts.length})</h3>
+            <h3 style="margin: 28px 0 12px 0; font-size:15px; color: var(--text-main);">Embedded Font Resources (${data.fonts.length})</h3>
             <div style="display:flex; flex-wrap:wrap; gap:6px;">
-              ${data.fonts.map((f) => `<span style="background:rgba(30,41,59,0.9); border:1px solid #334155; padding:4px 8px; border-radius:4px; font-size:11px; font-family:monospace; color:#38bdf8;">${escapeHtml(f)}</span>`).join("")}
+              ${data.fonts.map((f) => `<span style="background:rgba(30,41,59,0.9); border: 1px solid var(--border-color); padding:4px 8px; border-radius:4px; font-size:11px; font-family:monospace; color: var(--accent-sky);">${escapeHtml(f)}</span>`).join("")}
             </div>
           `
               : ""
@@ -5801,9 +6456,9 @@ function renderInspectTool() {
           ${
             data.embedded_files && data.embedded_files.length
               ? `
-            <h3 style="margin: 28px 0 12px 0; font-size:15px; color:#f8fafc;">Embedded File Attachments (${data.embedded_files.length})</h3>
+            <h3 style="margin: 28px 0 12px 0; font-size:15px; color: var(--text-main);">Embedded File Attachments (${data.embedded_files.length})</h3>
             <div style="display:flex; flex-wrap:wrap; gap:6px;">
-              ${data.embedded_files.map((f) => `<span style="background:rgba(30,41,59,0.9); border:1px solid #334155; padding:4px 8px; border-radius:4px; font-size:11px; font-family:monospace; color:#a78bfa;">📎 ${escapeHtml(f)}</span>`).join("")}
+              ${data.embedded_files.map((f) => `<span style="background:rgba(30,41,59,0.9); border: 1px solid var(--border-color); padding:4px 8px; border-radius:4px; font-size:11px; font-family:monospace; color:#a78bfa; display:inline-flex; align-items:center; gap:4px;">${getLucideSvg("link", 12)} ${escapeHtml(f)}</span>`).join("")}
             </div>
           `
               : ""
@@ -5848,7 +6503,7 @@ function renderInspectTool() {
             await executeSaveMetadata(updates);
           } finally {
             saveBtn.disabled = false;
-            saveBtn.innerHTML = `💾 Save Metadata Changes`;
+            saveBtn.innerHTML = `${getLucideSvg("save", 12)} Save Metadata Changes`;
           }
         };
       }
@@ -5906,7 +6561,7 @@ function renderInspectTool() {
     } catch (err) {
       showNotification("Inspection failed: " + err.message, "error");
     } finally {
-      if (btn) btn.innerHTML = `🔍 Deep Inspection`;
+      if (btn) btn.innerHTML = `${getLucideSvg("file-search", 14)} Deep Inspection`;
     }
   }
 
@@ -5936,7 +6591,7 @@ function renderExportHubTool() {
         <!-- PDF Export Card -->
         <div class="export-hub-card">
           <div class="export-hub-info">
-            <span class="export-hub-icon">📄</span>
+            <span class="export-hub-icon">${getLucideSvg("file-text", 18)}</span>
             <div>
               <div class="export-hub-title">Download Current PDF</div>
               <div class="export-hub-desc">Export the active document with all edits, rotations, annotations, and metadata changes preserved.</div>
@@ -5948,7 +6603,7 @@ function renderExportHubTool() {
         <!-- HTML Export Card -->
         <div class="export-hub-card">
           <div class="export-hub-info">
-            <span class="export-hub-icon">🌐</span>
+            <span class="export-hub-icon">${getLucideSvg("code-xml", 18)}</span>
             <div>
               <div class="export-hub-title">Web HTML Document</div>
               <div class="export-hub-desc">Convert to high-fidelity responsive HTML with selectable text, fonts, and inline styles.</div>
@@ -5959,26 +6614,44 @@ function renderExportHubTool() {
               <option value="fixed">Fixed Layout</option>
               <option value="semantic">Semantic Flow</option>
             </select>
-            <button type="button" class="btn-secondary" id="btnHubExportHtml" style="white-space:nowrap;">🌐 Export HTML</button>
+            <button type="button" class="btn-secondary" id="btnHubExportHtml" style="white-space:nowrap;">${getLucideSvg("code-xml", 13)} Export HTML</button>
+          </div>
+        </div>
+
+        <!-- Word DOCX Export Card -->
+        <div class="export-hub-card">
+          <div class="export-hub-info">
+            <span class="export-hub-icon">${getLucideSvg("file-text", 18)}</span>
+            <div>
+              <div class="export-hub-title">Microsoft Word Document (.docx)</div>
+              <div class="export-hub-desc">Convert to fully editable Word document with reflowed paragraphs or exact geometry.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <select class="form-select" id="hubDocxMode" style="flex:1;">
+              <option value="flow" selected>Flow (Standard Paragraphs)</option>
+              <option value="exact">Exact (Text Boxes)</option>
+            </select>
+            <button type="button" class="btn-secondary" id="btnHubExportDocx" style="white-space:nowrap;">${getLucideSvg("file-text", 13)} Export Word (.docx)</button>
           </div>
         </div>
 
         <!-- Markdown Export Card -->
         <div class="export-hub-card">
           <div class="export-hub-info">
-            <span class="export-hub-icon">📝</span>
+            <span class="export-hub-icon">${getLucideSvg("file-code", 18)}</span>
             <div>
               <div class="export-hub-title">Markdown / Plain Text</div>
               <div class="export-hub-desc">Extract readable Markdown with headers, tables, bullet points, and code formatting.</div>
             </div>
           </div>
-          <button type="button" class="btn-secondary" id="btnHubExportMd">📝 Export Markdown (.md)</button>
+          <button type="button" class="btn-secondary" id="btnHubExportMd">${getLucideSvg("file-code", 13)} Export Markdown (.md)</button>
         </div>
 
         <!-- Images ZIP Export Card -->
         <div class="export-hub-card">
           <div class="export-hub-info">
-            <span class="export-hub-icon">🖼️</span>
+            <span class="export-hub-icon">${getLucideSvg("image", 18)}</span>
             <div>
               <div class="export-hub-title">Rendered PNG Pages (ZIP)</div>
               <div class="export-hub-desc">Export each page as high-resolution PNG image bundled in a downloadable ZIP archive.</div>
@@ -5990,20 +6663,20 @@ function renderExportHubTool() {
               <option value="300">300 DPI</option>
               <option value="72">72 DPI</option>
             </select>
-            <button type="button" class="btn-secondary" id="btnHubExportImages" style="flex:1;">🖼️ Export Images ZIP</button>
+            <button type="button" class="btn-secondary" id="btnHubExportImages" style="flex:1;">${getLucideSvg("image", 13)} Export Images ZIP</button>
           </div>
         </div>
 
         <!-- Inspection JSON Export Card -->
         <div class="export-hub-card">
           <div class="export-hub-info">
-            <span class="export-hub-icon">🔍</span>
+            <span class="export-hub-icon">${getLucideSvg("file-search", 18)}</span>
             <div>
               <div class="export-hub-title">Deep Inspection Report (JSON)</div>
               <div class="export-hub-desc">Export security permissions, embedded fonts, image catalogue, and document metadata audit.</div>
             </div>
           </div>
-          <button type="button" class="btn-secondary" id="btnHubExportAudit">📥 Export Inspection JSON</button>
+          <button type="button" class="btn-secondary" id="btnHubExportAudit">${getLucideSvg("download", 13)} Export Inspection JSON</button>
         </div>
       </div>
     </div>
@@ -6022,6 +6695,14 @@ function renderExportHubTool() {
   document.getElementById("btnHubExportHtml").addEventListener("click", () => {
     const mode = document.getElementById("hubHtmlMode").value;
     exportToHtml(mode);
+  });
+  document.getElementById("btnHubExportDocx").addEventListener("click", () => {
+    if (!state.currentPdfFile) {
+      showNotification("Please upload or open a PDF document first.", "warning");
+      return;
+    }
+    const mode = document.getElementById("hubDocxMode").value;
+    convertAndDownloadDocx(state.currentPdfFile, mode);
   });
   document.getElementById("btnHubExportMd").addEventListener("click", exportToMarkdown);
   document.getElementById("btnHubExportImages").addEventListener("click", () => {
@@ -6258,7 +6939,7 @@ function setupDrawerControls() {
     btnVerifyAll.addEventListener("click", () => {
       showNotification("Verified Ed25519 signature & SHA-256 digest: 0-bit corruption detected.", "success", 4000);
       const integrityLabel = document.getElementById("integrityLabel");
-      if (integrityLabel) integrityLabel.textContent = "Verified ✓";
+      if (integrityLabel) integrityLabel.textContent = "Verified";
     });
   }
 
@@ -6295,7 +6976,7 @@ function updateHeaderStatusMenu() {
   if (!dot || !label) return;
   if (state.currentPdfFile || state.currentPdfBlob) {
     dot.classList.add("active");
-    label.textContent = "v1.0 • Verified ✓";
+    label.textContent = "v2.0 • Verified";
   } else {
     dot.classList.remove("active");
     label.textContent = "Ready";
@@ -6371,11 +7052,11 @@ function updateVersionDrawerUI() {
     <div class="version-card">
       <div class="version-card-head">
         <span class="version-badge">Version ${v.version}.0</span>
-        <span style="font-size: 11px; color: #34d399; font-weight: 600;">Signed (Ed25519) ✓</span>
+        <span style="font-size: 11px; color: var(--status-success-light); font-weight: 600; display:inline-flex; align-items:center; gap:4px;">${getLucideSvg("shield-check", 11)} Signed (Ed25519)</span>
       </div>
-      <div style="font-size: 12px; font-weight: 600; color: #f1f5f9;">${v.action}</div>
+      <div style="font-size: 12px; font-weight: 600; color: var(--text-main);">${v.action}</div>
       <div class="version-hash">SHA-256: ${v.sha256}</div>
-      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: #64748b; margin-top: 2px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 2px;">
         <span>Actor: Giri Manohar Vemula</span>
         <span>${v.timestamp}</span>
       </div>
@@ -6413,24 +7094,24 @@ function renderCollabDrawerUI() {
     peerList.innerHTML = `
       <div class="collab-peer-card">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
-          <span style="font-size: 12px; font-weight: 600; color: #f1f5f9;">Giri Manohar Vemula (You)</span>
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--status-success);"></span>
+          <span style="font-size: 12px; font-weight: 600; color: var(--text-main);">Giri Manohar Vemula (You)</span>
         </div>
-        <span style="font-size: 10px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; padding: 2px 6px; border-radius: 4px; font-weight: 600;">Owner</span>
+        <span style="font-size: 10px; background: rgba(59, 130, 246, 0.15); color: var(--accent-light); padding: 2px 6px; border-radius: 4px; font-weight: 600;">Owner</span>
       </div>
       <div class="collab-peer-card">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
-          <span style="font-size: 12px; color: #cbd5e1;">Sarah Chen (Reviewer)</span>
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--status-success);"></span>
+          <span style="font-size: 12px; color: var(--text-secondary);">Sarah Chen (Reviewer)</span>
         </div>
-        <span style="font-size: 10px; color: #94a3b8;">Page 1</span>
+        <span style="font-size: 10px; color: var(--text-muted);">Page 1</span>
       </div>
       <div class="collab-peer-card">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
-          <span style="font-size: 12px; color: #cbd5e1;">Alex Rivera (Compliance)</span>
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--status-success);"></span>
+          <span style="font-size: 12px; color: var(--text-secondary);">Alex Rivera (Compliance)</span>
         </div>
-        <span style="font-size: 10px; color: #94a3b8;">Page 2</span>
+        <span style="font-size: 10px; color: var(--text-muted);">Page 2</span>
       </div>
     `;
   }
@@ -6453,11 +7134,11 @@ function renderCommentsList() {
         <span class="comment-card-author">${c.author}</span>
         <div style="display: flex; align-items: center; gap: 6px;">
           <span class="comment-card-page">Page ${c.page}</span>
-          <button type="button" class="btn-resolve-comment" data-id="${c.id}" style="background: none; border: none; font-size: 11px; cursor: pointer; color: #10b981;" title="Resolve comment">✓</button>
+          <button type="button" class="btn-resolve-comment" data-id="${c.id}" style="background: none; border: none; font-size: 11px; cursor: pointer; color: var(--status-success); display:inline-flex; align-items:center;" title="Resolve comment" aria-label="Resolve comment">${getLucideSvg("check", 12)}</button>
         </div>
       </div>
       <div class="comment-card-text">${c.text}</div>
-      <div style="font-size: 9px; color: #64748b; margin-top: 2px;">${c.time}</div>
+      <div style="font-size: 9px; color: var(--text-muted); margin-top: 2px;">${c.time}</div>
     </div>
   `
     )
@@ -6539,26 +7220,26 @@ function renderVersionHistoryTool() {
       <div class="inspect-audit-box" style="margin-bottom: 10px;">
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <span style="font-size: 11px; color: var(--text-muted);">Active Revision:</span>
-          <span class="version-badge" id="verActiveBadge" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-weight: 700;">Version ${currentVer}.0 (Signed)</span>
+          <span class="version-badge" id="verActiveBadge" style="background: rgba(59, 130, 246, 0.2); color: var(--accent-light); font-weight: 700;">Version ${currentVer}.0 (Signed)</span>
         </div>
-        <div style="font-size: 11px; color: #34d399; font-weight: 600; margin-top: 6px; display: flex; align-items: center; gap: 6px;">
-          <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981;"></span>
-          <span id="verManifestStatusLabel">Ed25519 Verified ✓ (0-Bit Mutation Detected)</span>
+        <div style="font-size: 11px; color: var(--status-success-light); font-weight: 600; margin-top: 6px; display: flex; align-items: center; gap: 6px;">
+          <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--status-success);"></span>
+          <span id="verManifestStatusLabel">Ed25519 Verified (0-Bit Mutation Detected)</span>
         </div>
-        <div class="version-hash" id="verCurrentHash" style="margin-top: 6px; font-size: 10px; word-break: break-all; background: #0c0e14; padding: 6px; border-radius: 4px; border: 1px solid #1e2433; color: #94a3b8;">
+        <div class="version-hash" id="verCurrentHash" style="margin-top: 6px; font-size: 10px; word-break: break-all; background: #0c0e14; padding: 6px; border-radius: 4px; border: 1px solid #1e2433; color: var(--text-muted);">
           SHA-256: ${latestRev.sha256}
         </div>
       </div>
       <div style="display: flex; flex-direction: column; gap: 6px;">
         <button type="button" class="btn-primary" id="btnSideVerifyIntegrity" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
-          <span>🛡️</span> Verify Cryptographic Manifest
+          ${getLucideSvg("shield", 13)} Verify Cryptographic Manifest
         </button>
         <div style="display: flex; gap: 6px;">
           <button type="button" class="btn-secondary" id="btnExportManifestJson" style="flex: 1; font-size: 11px; padding: 6px 8px; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer;">
-            <span>📥</span> Export JSON
+            ${getLucideSvg("download", 13)} Export JSON
           </button>
           <button type="button" class="btn-secondary" id="btnCreateCheckpoint" style="flex: 1; font-size: 11px; padding: 6px 8px; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer;">
-            <span>➕</span> Checkpoint
+            ${getLucideSvg("plus", 13)} Checkpoint
           </button>
         </div>
       </div>
@@ -6568,7 +7249,7 @@ function renderVersionHistoryTool() {
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
         <div class="section-label" style="margin-bottom: 0;">Revision Ledger (${versions.length})</div>
         <button type="button" class="btn-secondary" id="btnSideOpenRevisions" style="font-size: 10px; padding: 2px 8px; cursor: pointer;">
-          <span>📜</span> Slide Drawer
+          ${getLucideSvg("history", 13)} Version History Drawer
         </button>
       </div>
       <div class="version-timeline" id="verToolTimelineList" style="max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
@@ -6576,11 +7257,11 @@ function renderVersionHistoryTool() {
           <div class="version-card">
             <div class="version-card-head">
               <span class="version-badge">Version ${v.version}.0</span>
-              <span style="font-size: 10px; color: #34d399; font-weight: 600;">Signed ✓</span>
+              <span style="font-size: 10px; color: var(--status-success-light); font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">${getLucideSvg("shield-check", 11)} Signed</span>
             </div>
-            <div style="font-size: 12px; font-weight: 600; color: #f1f5f9;">${v.action}</div>
-            <div class="version-hash" style="font-size: 9px; padding: 4px; background: #0c0e14; border-radius: 4px; border: 1px solid #1e2433; color: #94a3b8; word-break: break-all;">SHA-256: ${v.sha256}</div>
-            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: #64748b; margin-top: 2px;">
+            <div style="font-size: 12px; font-weight: 600; color: var(--text-main);">${v.action}</div>
+            <div class="version-hash" style="font-size: 9px; padding: 4px; background: #0c0e14; border-radius: 4px; border: 1px solid #1e2433; color: var(--text-muted); word-break: break-all;">SHA-256: ${v.sha256}</div>
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 2px;">
               <span>Giri Manohar Vemula</span>
               <span>${v.timestamp}</span>
             </div>
@@ -6619,7 +7300,7 @@ function renderVersionHistoryTool() {
     btnVerify.onclick = () => {
       showNotification("Manifest verification succeeded: Stored SHA-256 matches computed file hash. Ed25519 signature valid.", "success", 4000);
       const integrityLabel = document.getElementById("integrityLabel");
-      if (integrityLabel) integrityLabel.textContent = "Verified ✓";
+      if (integrityLabel) integrityLabel.textContent = "Verified";
       updateHeaderStatusMenu();
     };
   }
@@ -6699,23 +7380,23 @@ function renderCollaborationTool() {
       <div class="inspect-audit-box" style="display: flex; flex-direction: column; gap: 6px;">
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <span style="font-size: 11px; color: var(--text-muted);">Sync Room:</span>
-          <span style="font-size: 11px; font-weight: 700; color: #38bdf8; font-family: monospace;">vellakshya-main</span>
+          <span style="font-size: 11px; font-weight: 700; color: var(--accent-sky); font-family: monospace;">vellakshya-main</span>
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <span style="font-size: 11px; color: var(--text-muted);">Connection:</span>
-          <span style="font-size: 11px; font-weight: 600; color: #34d399; display: flex; align-items: center; gap: 5px;">
-            <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981;"></span>
+          <span style="font-size: 11px; font-weight: 600; color: var(--status-success-light); display: flex; align-items: center; gap: 5px;">
+            <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--status-success);"></span>
             <span>Connected (WebSocket)</span>
           </span>
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <span style="font-size: 11px; color: var(--text-muted);">Sync Engine:</span>
-          <span style="font-size: 11px; color: #94a3b8;">12 ms • CRDT State Machine</span>
+          <span style="font-size: 11px; color: var(--text-muted);">12 ms • CRDT State Machine</span>
         </div>
       </div>
       <div style="margin-top: 8px;">
-        <label style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: #cbd5e1; cursor: pointer;">
-          <input type="checkbox" id="chkCollabCursorSync" checked style="accent-color: #3b82f6;">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-secondary); cursor: pointer;">
+          <input type="checkbox" id="chkCollabCursorSync" checked style="accent-color: var(--accent-blue);">
           <span>Broadcast live collaborator presence</span>
         </label>
       </div>
@@ -6725,30 +7406,30 @@ function renderCollaborationTool() {
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
         <div class="section-label" style="margin-bottom: 0;">Active Collaborators (3)</div>
         <button type="button" class="btn-secondary" id="btnSyncRoomPeers" style="font-size: 10px; padding: 2px 8px; cursor: pointer;">
-          <span>🔄</span> Sync
+          ${getLucideSvg("rotate-cw", 13)} Sync
         </button>
       </div>
       <div class="collab-peer-list" id="collabToolPeerList">
         <div class="collab-peer-card">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
-            <span style="font-size: 12px; font-weight: 600; color: #f1f5f9;">Giri Manohar Vemula (You)</span>
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--status-success);"></span>
+            <span style="font-size: 12px; font-weight: 600; color: var(--text-main);">Giri Manohar Vemula (You)</span>
           </div>
-          <span style="font-size: 10px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; padding: 2px 6px; border-radius: 4px; font-weight: 600;">Owner</span>
+          <span style="font-size: 10px; background: rgba(59, 130, 246, 0.15); color: var(--accent-light); padding: 2px 6px; border-radius: 4px; font-weight: 600;">Owner</span>
         </div>
         <div class="collab-peer-card">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
-            <span style="font-size: 12px; color: #cbd5e1;">Sarah Chen (Reviewer)</span>
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--status-success);"></span>
+            <span style="font-size: 12px; color: var(--text-secondary);">Sarah Chen (Reviewer)</span>
           </div>
-          <span style="font-size: 10px; color: #94a3b8;">Page 1</span>
+          <span style="font-size: 10px; color: var(--text-muted);">Page 1</span>
         </div>
         <div class="collab-peer-card">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
-            <span style="font-size: 12px; color: #cbd5e1;">Alex Rivera (Compliance)</span>
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--status-success);"></span>
+            <span style="font-size: 12px; color: var(--text-secondary);">Alex Rivera (Compliance)</span>
           </div>
-          <span style="font-size: 10px; color: #94a3b8;">Page 2</span>
+          <span style="font-size: 10px; color: var(--text-muted);">Page 2</span>
         </div>
       </div>
     </div>
@@ -6757,17 +7438,17 @@ function renderCollaborationTool() {
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
         <div class="section-label" style="margin-bottom: 0;">Threaded Comments (${comments.length})</div>
         <button type="button" class="btn-secondary" id="btnSideOpenCollabDrawer" style="font-size: 10px; padding: 2px 8px; cursor: pointer;">
-          <span>💬</span> Drawer
+          ${getLucideSvg("message-square", 13)} Collaboration Drawer
         </button>
       </div>
-      <div class="comment-compose-box" style="margin-bottom: 10px; background: #141822; padding: 8px; border-radius: 6px; border: 1px solid #232738;">
+      <div class="comment-compose-box" style="margin-bottom: 10px; background: var(--bg-card); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
           <span style="font-size: 11px; color: var(--text-muted);">Anchor to page:</span>
           <select id="collabToolPageSelect" class="form-select" style="padding: 2px 8px; font-size: 11px; width: auto; height: 26px;"></select>
         </div>
-        <textarea id="collabToolCommentInput" class="form-control" rows="2" placeholder="Write a comment or annotation note..." style="width: 100%; resize: vertical; font-size: 12px; padding: 6px; background: #0c0e14; border: 1px solid #232738; color: #f1f5f9; border-radius: 4px; box-sizing: border-box;"></textarea>
+        <textarea id="collabToolCommentInput" class="form-control" rows="2" placeholder="Write a comment or annotation note..." style="width: 100%; resize: vertical; font-size: 12px; padding: 6px; background: #0c0e14; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 4px; box-sizing: border-box;"></textarea>
         <button type="button" class="btn-primary" id="btnToolPostComment" style="width: 100%; margin-top: 6px; font-size: 11px; padding: 6px; cursor: pointer;">
-          <span>💬</span> Post Comment
+          ${getLucideSvg("message-square", 13)} Post Comment
         </button>
       </div>
       <div class="comments-thread-list" id="collabToolCommentsList" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
@@ -6777,17 +7458,17 @@ function renderCollaborationTool() {
               <span class="comment-card-author">${c.author}</span>
               <div style="display: flex; align-items: center; gap: 6px;">
                 <span class="comment-card-page">Page ${c.page}</span>
-                <button type="button" class="btn-tool-resolve-comment" data-id="${c.id}" style="background: none; border: none; font-size: 11px; cursor: pointer; color: #10b981;" title="Resolve comment">✓</button>
+                <button type="button" class="btn-tool-resolve-comment" data-id="${c.id}" style="background: none; border: none; font-size: 11px; cursor: pointer; color: var(--status-success); display:inline-flex; align-items:center;" title="Resolve comment" aria-label="Resolve comment">${getLucideSvg("check", 12)}</button>
               </div>
             </div>
             <div class="comment-card-text">${c.text}</div>
-            <div style="font-size: 9px; color: #64748b; margin-top: 2px;">${c.time}</div>
+            <div style="font-size: 9px; color: var(--text-muted); margin-top: 2px;">${c.time}</div>
           </div>
         `).join("")}
       </div>
       <div style="margin-top: 10px;">
         <button type="button" class="btn-secondary" id="btnExportCommentsJson" style="width: 100%; font-size: 11px; padding: 6px 8px; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
-          <span>📥</span> Export Comments (JSON)
+          ${getLucideSvg("download", 13)} Export Comments (JSON)
         </button>
       </div>
     </div>
@@ -6909,7 +7590,7 @@ function renderSecurityAuditTool() {
       <div class="security-metrics-grid" style="margin-top: 6px;">
         <div class="security-metric-card">
           <div class="smc-label">Subprocess Sandbox</div>
-          <div class="smc-value" style="color: #34d399;">Active</div>
+          <div class="smc-value" style="color: var(--status-success-light);">Active</div>
           <div class="smc-sub">PID isolated (non-root)</div>
         </div>
         <div class="security-metric-card">
@@ -6924,7 +7605,7 @@ function renderSecurityAuditTool() {
         </div>
         <div class="security-metric-card">
           <div class="smc-label">HTML CSP Policy</div>
-          <div class="smc-value" style="color: #38bdf8;">script-src 'none'</div>
+          <div class="smc-value" style="color: var(--accent-sky);">script-src 'none'</div>
           <div class="smc-sub">Zero inline scripts</div>
         </div>
       </div>
@@ -6933,43 +7614,43 @@ function renderSecurityAuditTool() {
     <div class="panel-section">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
         <div class="section-label" style="margin-bottom: 0;">Live Sandbox Security Scan</div>
-        <span class="version-badge" id="secScanRatingBadge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; font-weight: 700;">Score: A+</span>
+        <span class="version-badge" id="secScanRatingBadge" style="background: rgba(16, 185, 129, 0.15); color: var(--status-success-light); font-weight: 700;">Score: A+</span>
       </div>
       <button type="button" class="btn-primary" id="btnRunSecurityScan" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 10px; cursor: pointer;">
-        <span>🛡️</span> Run Security Sandbox Scan
+        ${getLucideSvg("shield", 13)} Run Security Sandbox Scan
       </button>
       <div class="inspect-audit-box" id="secScanResultsBox" style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
         <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="color: #94a3b8;">JavaScript / OpenAction:</span>
-          <span style="color: #34d399; font-weight: 600;">CLEAN (0 exploit vectors)</span>
+          <span style="color: var(--text-muted);">JavaScript / OpenAction:</span>
+          <span style="color: var(--status-success-light); font-weight: 600;">CLEAN (0 exploit vectors)</span>
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="color: #94a3b8;">Launch / URI Action Hooks:</span>
-          <span style="color: #34d399; font-weight: 600;">SANITIZED / NONE</span>
+          <span style="color: var(--text-muted);">Launch / URI Action Hooks:</span>
+          <span style="color: var(--status-success-light); font-weight: 600;">SANITIZED / NONE</span>
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="color: #94a3b8;">Embedded Binary Payloads:</span>
-          <span style="color: #34d399; font-weight: 600;">0 FOUND (Polyglot Safe)</span>
+          <span style="color: var(--text-muted);">Embedded Binary Payloads:</span>
+          <span style="color: var(--status-success-light); font-weight: 600;">0 FOUND (Polyglot Safe)</span>
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="color: #94a3b8;">Entropy Analysis:</span>
-          <span style="color: #38bdf8; font-weight: 600;">4.81 / 8.0 (Normal stream)</span>
+          <span style="color: var(--text-muted);">Entropy Analysis:</span>
+          <span style="color: var(--accent-sky); font-weight: 600;">4.81 / 8.0 (Normal stream)</span>
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="color: #94a3b8;">ISO 32000-1 Compliance:</span>
-          <span style="color: #34d399; font-weight: 600;">VALID (Conformance Pass)</span>
+          <span style="color: var(--text-muted);">ISO 32000-1 Compliance:</span>
+          <span style="color: var(--status-success-light); font-weight: 600;">VALID (Conformance Pass)</span>
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="color: #94a3b8;">Peak Sandbox Memory:</span>
-          <span style="color: #f1f5f9; font-weight: 600;">18.4 MB / 512 MB ceiling</span>
+          <span style="color: var(--text-muted);">Peak Sandbox Memory:</span>
+          <span style="color: var(--text-main); font-weight: 600;">18.4 MB / 512 MB ceiling</span>
         </div>
       </div>
       <div style="display: flex; gap: 6px; margin-top: 10px;">
         <button type="button" class="btn-secondary" id="btnExportSecurityCert" style="flex: 1; font-size: 11px; padding: 6px 8px; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer;">
-          <span>📥</span> Export Audit JSON
+          ${getLucideSvg("download", 13)} Export Audit JSON
         </button>
         <button type="button" class="btn-secondary" id="btnSideOpenSecurity" style="flex: 1; font-size: 11px; padding: 6px 8px; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer;">
-          <span>🛡️</span> Security Drawer
+          ${getLucideSvg("shield", 13)} Security Drawer
         </button>
       </div>
     </div>
@@ -6994,10 +7675,10 @@ function renderSecurityAuditTool() {
   if (btnScan) {
     btnScan.onclick = () => {
       btnScan.disabled = true;
-      btnScan.innerHTML = `<span>⏳</span> Analyzing Document in Sandbox...`;
+      btnScan.innerHTML = `${getLucideSvg("loader", 14, "icon-spin")} Analyzing Document in Sandbox...`;
       setTimeout(() => {
         btnScan.disabled = false;
-        btnScan.innerHTML = `<span>🛡️</span> Run Security Sandbox Scan`;
+        btnScan.innerHTML = `${getLucideSvg("shield", 13)} Run Security Sandbox Scan`;
         showNotification("Security sandbox audit passed: 0 malicious vectors found. Conforms to ISO 32000-1.", "success", 4000);
       }, 600);
     };

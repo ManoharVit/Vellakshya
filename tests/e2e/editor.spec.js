@@ -34,7 +34,7 @@ test.describe('Vellakshya Web End-to-End User Experience', () => {
     await page.locator('[data-tool="pdf-to-html"]').click();
 
     // Set file directly via hidden file input
-    const fileInput = page.locator('input[type="file"]');
+    const fileInput = page.locator('input[type="file"]').first();
     await fileInput.setInputFiles(SAMPLE_PDF_PATH);
 
     // Verify preview status reflects uploaded document

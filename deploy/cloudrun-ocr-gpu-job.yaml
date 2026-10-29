@@ -1,0 +1,26 @@
+apiVersion: run.googleapis.com/v2
+kind: Job
+metadata:
+  name: vellakshya-ocr-gpu-job
+  annotations:
+    run.googleapis.com/launch-stage: GA
+spec:
+  template:
+    template:
+      containers:
+        - name: ocr-runner
+          image: gcr.io/vellakshya-gcp/vellakshya-ocr:latest
+          resources:
+            limits:
+              cpu: "4"
+              memory: "16Gi"
+              nvidia.com/gpu: "1"
+          nodeSelector:
+            run.googleapis.com/accelerator: nvidia-rtx-pro-6000
+          env:
+            - name: OCR_ENGINE
+              value: "paddleocr-vl"
+            - name: ENVIRONMENT
+              value: "production"
+      maxRetries: 3
+      timeout: 600s

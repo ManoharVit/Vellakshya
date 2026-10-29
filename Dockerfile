@@ -1,5 +1,5 @@
 # Production Container Image for Vellakshya PDF Workstation
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # Minimal system dependencies (fonts and curl for healthcheck)
 # build-essential and libmupdf-dev are excluded because PyMuPDF binary wheels bundle MuPDF

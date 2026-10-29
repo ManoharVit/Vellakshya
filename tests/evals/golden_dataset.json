@@ -1,0 +1,181 @@
+{
+  "benchmark_name": "Vellakshya Grounded RAG Evaluation Suite",
+  "version": "1.0",
+  "questions": [
+    {
+      "id": "q01",
+      "question": "What is the primary role of the FastAPI application in Vellakshya?",
+      "expected_page": 1,
+      "expected_keywords": ["fastapi", "backend", "pdf", "workstation"],
+      "reference_answer": "FastAPI acts as the backend server providing document processing, APIs, and real-time collaboration."
+    },
+    {
+      "id": "q02",
+      "question": "What coordinate system does PyMuPDF use for extracted text blocks?",
+      "expected_page": 1,
+      "expected_keywords": ["unrotated", "coordinates", "page"],
+      "reference_answer": "PyMuPDF returns bounding box coordinates in unrotated page space."
+    },
+    {
+      "id": "q03",
+      "question": "Why is PII redaction performed locally by default?",
+      "expected_page": 1,
+      "expected_keywords": ["privacy", "local", "cloud", "redaction"],
+      "reference_answer": "Local detection prevents uploading unredacted sensitive document text to external cloud providers."
+    },
+    {
+      "id": "q04",
+      "question": "What algorithm merges vector distance and keyword search?",
+      "expected_page": 1,
+      "expected_keywords": ["reciprocal", "rank", "fusion", "rrf"],
+      "reference_answer": "Reciprocal Rank Fusion (RRF) merges keyword and vector candidate lists."
+    },
+    {
+      "id": "q05",
+      "question": "How are citations validated on the server?",
+      "expected_page": 1,
+      "expected_keywords": ["server", "database", "chunk", "coordinates"],
+      "reference_answer": "The server matches reported chunk IDs against the database index and looks up exact page rectangles."
+    },
+    {
+      "id": "q06",
+      "question": "What happens if an LLM returns a chunk ID that was not retrieved?",
+      "expected_page": 1,
+      "expected_keywords": ["dropped", "validated", "retrieved"],
+      "reference_answer": "Any chunk ID not present in the retrieved candidate set is dropped by the server."
+    },
+    {
+      "id": "q07",
+      "question": "What vector index type is created in pgvector for chunk embeddings?",
+      "expected_page": 2,
+      "expected_keywords": ["hnsw", "vector_cosine_ops", "index"],
+      "reference_answer": "An HNSW index with vector_cosine_ops is built on the embedding column."
+    },
+    {
+      "id": "q08",
+      "question": "What index is used for PostgreSQL full-text keyword search?",
+      "expected_page": 2,
+      "expected_keywords": ["gin", "tsvector"],
+      "reference_answer": "A GIN index on the generated tsvector column."
+    },
+    {
+      "id": "q09",
+      "question": "What is the maximum upload size limit configured for Vellakshya?",
+      "expected_page": 2,
+      "expected_keywords": ["30", "mib", "limit"],
+      "reference_answer": "The upload limit is capped at 30 MiB to remain within HTTP/1 payload thresholds."
+    },
+    {
+      "id": "q10",
+      "question": "Why is PyMuPDF executed in a separate process pool?",
+      "expected_page": 2,
+      "expected_keywords": ["thread", "process", "multiprocessing", "crash"],
+      "reference_answer": "PyMuPDF is not thread-safe, so multiprocessing is required to prevent event loop crashes."
+    },
+    {
+      "id": "q11",
+      "question": "What statutory Indian identifiers are recognized by the PII scanner?",
+      "expected_page": 2,
+      "expected_keywords": ["pan", "aadhaar", "passport", "voter"],
+      "reference_answer": "The scanner recognizes Indian PAN, Aadhaar, Passport, Voter ID, and Vehicle Registrations."
+    },
+    {
+      "id": "q12",
+      "question": "What is the purpose of doc.scrub() in PyMuPDF?",
+      "expected_page": 2,
+      "expected_keywords": ["metadata", "scrub", "embedded", "clean"],
+      "reference_answer": "doc.scrub() removes metadata, XML streams, hidden annotations, and embedded attachments."
+    },
+    {
+      "id": "q13",
+      "question": "What parameters are used when saving a scrubbed PDF?",
+      "expected_page": 2,
+      "expected_keywords": ["garbage=4", "deflate=true"],
+      "reference_answer": "The document is saved with garbage=4 to eliminate unreferenced objects and deflate=True."
+    },
+    {
+      "id": "q14",
+      "question": "How are prompt injection attacks mitigated in document retrieval?",
+      "expected_page": 3,
+      "expected_keywords": ["delimiters", "untrusted", "directives", "data"],
+      "reference_answer": "Document passages are wrapped in XML tags and treated strictly as untrusted data."
+    },
+    {
+      "id": "q15",
+      "question": "What is the default embedding model pinned in configuration?",
+      "expected_page": 3,
+      "expected_keywords": ["text-embedding-004", "embedding"],
+      "reference_answer": "The default pinned embedding model is text-embedding-004."
+    },
+    {
+      "id": "q16",
+      "question": "What fallback providers are supported for text generation?",
+      "expected_page": 3,
+      "expected_keywords": ["gemini", "openai", "fallback"],
+      "reference_answer": "Google Gemini 1.5 Flash is primary, falling back to OpenAI GPT-4o-mini and local deterministic models."
+    },
+    {
+      "id": "q17",
+      "question": "How are cache keys scoped in Redis for question answering?",
+      "expected_page": 3,
+      "expected_keywords": ["owner_id", "document_id", "prompt_version"],
+      "reference_answer": "Keys are partitioned by owner_id, document_id, prompt version, and query hash."
+    },
+    {
+      "id": "q18",
+      "question": "What happens if Redis goes offline during operation?",
+      "expected_page": 3,
+      "expected_keywords": ["graceful", "bypass", "cache"],
+      "reference_answer": "Calls degrade gracefully and bypass the cache without terminating request execution."
+    },
+    {
+      "id": "q19",
+      "question": "How does the frontend highlight citations on the PDF canvas?",
+      "expected_page": 3,
+      "expected_keywords": ["viewport", "transform", "canvas", "rectangles"],
+      "reference_answer": "It applies viewport scaling and rotation transforms to the server-provided rectangle coordinates."
+    },
+    {
+      "id": "q20",
+      "question": "What is the purpose of the approval step in PII redaction?",
+      "expected_page": 3,
+      "expected_keywords": ["approval", "user", "toggle", "confirm"],
+      "reference_answer": "Users review and approve proposed bounding boxes before permanent physical redactions are applied."
+    },
+    {
+      "id": "q21",
+      "question": "How is rotation handled when extracting text from a rotated PDF page?",
+      "expected_page": 4,
+      "expected_keywords": ["rotation_matrix", "unrotated", "derotation"],
+      "reference_answer": "Raw coordinates are multiplied by rotation_matrix to determine visible coordinates."
+    },
+    {
+      "id": "q22",
+      "question": "What is the memory limit allocated to Cloud Run in the deployment spec?",
+      "expected_page": 4,
+      "expected_keywords": ["1", "gib", "memory"],
+      "reference_answer": "Cloud Run is configured with 1 GiB memory and scale-to-zero capability."
+    },
+    {
+      "id": "q23",
+      "question": "What happens when a document is deleted under the TTL policy?",
+      "expected_page": 4,
+      "expected_keywords": ["deleted", "transient", "ttl"],
+      "reference_answer": "Transient memory buffers and database chunk records are cleared."
+    },
+    {
+      "id": "q24",
+      "question": "How is decompressed raw byte search performed for redaction testing?",
+      "expected_page": 4,
+      "expected_keywords": ["expand=255", "bytes", "search"],
+      "reference_answer": "The PDF is saved with expand=255 to uncompress streams, enabling raw byte string searches."
+    },
+    {
+      "id": "q25",
+      "question": "Who is the lead architect and author of Vellakshya?",
+      "expected_page": 4,
+      "expected_keywords": ["giri", "manohar", "vemula"],
+      "reference_answer": "Giri Manohar Vemula is the developer and lead architect."
+    }
+  ]
+}

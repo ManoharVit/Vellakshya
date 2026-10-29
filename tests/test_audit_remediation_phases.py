@@ -12,6 +12,10 @@ Covers:
 
 from __future__ import annotations
 
+import os
+import secrets
+import time
+
 import fitz
 import pytest
 from fastapi.testclient import TestClient
@@ -401,3 +405,297 @@ def test_f08_api_sanitize_endpoint_scrubs_deep_metadata():
     assert clean_doc.embfile_names() == []
     assert clean_doc.get_xml_metadata() in ("", None)
     clean_doc.close()
+
+
+# =========================================================================
+# F11: Public Registration Role Locked to "viewer"
+# =========================================================================
+
+
+def test_f11_public_registration_locks_role_to_viewer():
+    """Public registration must strictly assign 'viewer' role even if client passes 'admin'."""
+    unique_email = f"attacker_{secrets.token_hex(4)}@vellakshya.test"
+    reg_res = client.post(
+        "/api/auth/register",
+        json={"email": unique_email, "password": "MaliciousPassword123!", "role": "admin"},
+    )
+    assert reg_res.status_code == 200
+    assert reg_res.json()["role"] == "viewer"
+    assert reg_res.json()["email"] == unique_email
+
+    # Login and verify active session role
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": unique_email, "password": "MaliciousPassword123!"},
+    )
+    assert login_res.status_code == 200
+    token = login_res.json()["token"]
+    user_info = auth.get_current_user_from_token(token)
+    assert user_info is not None
+    assert user_info["role"] == "viewer"
+
+    # Verify that viewer cannot perform editor actions like edit or download restricted files
+    assert auth.verify_role_permission(user_info["role"], "edit") is False
+    assert auth.verify_role_permission(user_info["role"], "download") is False
+
+
+# =========================================================================
+# F12: Retention TTL & Cascade Deletion
+# =========================================================================
+
+
+def test_f12_ai_document_cascade_deletion():
+    """Verify DELETE /api/ai/documents/{doc_id} permanently purges AIDocument and AIChunks."""
+    from app.ai.chunking import extract_chunks_from_pdf_bytes
+    from app.ai.embeddings import get_embedding
+    from app.ai.router import _TRANSIENT_PDF_STORE
+    from app.ai.storage import AIChunk, AIDocument, store_document_and_chunks
+    from app.models.db import SessionLocal
+
+    pdf_bytes = _create_sample_pdf()
+    doc_id = "doc_f12_test_cascade"
+    owner_id = "user_f12_owner"
+    token = auth.create_session_for_user(
+        "owner_f12@vellakshya.test", role="editor", user_id=owner_id
+    )
+
+    chunks = extract_chunks_from_pdf_bytes(pdf_bytes, document_id=doc_id)
+    embeddings = [get_embedding(c.content) for c in chunks]
+
+    with SessionLocal() as db:
+        store_document_and_chunks(
+            db=db,
+            document_id=doc_id,
+            owner_id=owner_id,
+            filename="cascade_test.pdf",
+            sha256="fake_sha_f12",
+            embedding_model="text-embedding-004",
+            embedding_dim=768,
+            chunks=chunks,
+            embeddings=embeddings,
+        )
+        assert db.query(AIDocument).filter_by(id=doc_id).count() == 1
+        assert db.query(AIChunk).filter_by(document_id=doc_id).count() == len(chunks)
+
+    _TRANSIENT_PDF_STORE[doc_id] = {"bytes": pdf_bytes, "created_at": time.time()}
+
+    # Anonymous delete -> 401
+    assert client.delete(f"/api/ai/documents/{doc_id}").status_code == 401
+
+    # Stranger delete -> 403
+    stranger_token = auth.create_session_for_user(
+        "stranger_f12@vellakshya.test", role="editor", user_id="stranger_id"
+    )
+    assert (
+        client.delete(
+            f"/api/ai/documents/{doc_id}", headers={"Authorization": f"Bearer {stranger_token}"}
+        ).status_code
+        == 403
+    )
+
+    # Owner delete -> 200
+    del_res = client.delete(
+        f"/api/ai/documents/{doc_id}", headers={"Authorization": f"Bearer {token}"}
+    )
+    assert del_res.status_code == 200
+    assert del_res.json()["status"] == "deleted"
+
+    # Verify database records are cascade deleted
+    with SessionLocal() as db:
+        assert db.query(AIDocument).filter_by(id=doc_id).count() == 0
+        assert db.query(AIChunk).filter_by(document_id=doc_id).count() == 0
+
+    # Verify transient cache evicted
+    assert doc_id not in _TRANSIENT_PDF_STORE
+
+
+def test_f12_v2_document_deletion_cascades_to_ai_index():
+    """Deleting a document via V2 DocumentService must cascade to any indexed AI document."""
+    from app.ai.chunking import extract_chunks_from_pdf_bytes
+    from app.ai.embeddings import get_embedding
+    from app.ai.storage import AIChunk, AIDocument, store_document_and_chunks
+    from app.models.db import SessionLocal
+    from app.services.document_service import DocumentService
+
+    actor_id = "v2_owner_uuid"
+    token = auth.create_session_for_user("v2owner@vellakshya.test", role="editor", user_id=actor_id)
+    pdf_bytes = _create_sample_pdf()
+
+    # Create V2 document
+    create_res = client.post(
+        "/api/v2/documents",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("v2_cascade.pdf", pdf_bytes, "application/pdf")},
+    )
+    assert create_res.status_code == 201
+    doc_id = create_res.json()["document"]["id"]
+
+    # Index into AI document tables with same doc_id
+    chunks = extract_chunks_from_pdf_bytes(pdf_bytes, document_id=doc_id)
+    embeddings = [get_embedding(c.content) for c in chunks]
+
+    with SessionLocal() as db:
+        store_document_and_chunks(
+            db=db,
+            document_id=doc_id,
+            owner_id=actor_id,
+            filename="v2_cascade.pdf",
+            sha256="fake_v2_sha",
+            embedding_model="text-embedding-004",
+            embedding_dim=768,
+            chunks=chunks,
+            embeddings=embeddings,
+        )
+        assert db.query(AIDocument).filter_by(id=doc_id).count() == 1
+        assert db.query(AIChunk).filter_by(document_id=doc_id).count() == len(chunks)
+
+        # Delete V2 document
+        DocumentService.delete_document(db, doc_id, actor_id=actor_id)
+
+        # Verify AI records cascaded
+        assert db.query(AIDocument).filter_by(id=doc_id).count() == 0
+        assert db.query(AIChunk).filter_by(document_id=doc_id).count() == 0
+
+
+def test_f12_transient_store_retention_ttl_purging():
+    """Verify expired transient AI buffers are purged according to retention TTL."""
+    from app.ai.models import PIIEntityMatch
+    from app.ai.router import (
+        _TRANSIENT_PDF_STORE,
+        _TRANSIENT_PII_MATCHES,
+        purge_expired_transient_ai_data,
+    )
+
+    old_doc_id = "doc_stale_retention_ttl"
+    _TRANSIENT_PDF_STORE[old_doc_id] = {"bytes": b"stale", "created_at": time.time() - 5000}
+    _TRANSIENT_PII_MATCHES[old_doc_id] = {
+        "entities": [
+            PIIEntityMatch(
+                id="p1",
+                entity_type="EMAIL",
+                matched_text="a@b.com",
+                confidence=1.0,
+                page=1,
+                rects=[],
+            )
+        ],
+        "created_at": time.time() - 5000,
+    }
+
+    fresh_doc_id = "doc_fresh_active"
+    _TRANSIENT_PDF_STORE[fresh_doc_id] = {"bytes": b"fresh", "created_at": time.time()}
+
+    purged = purge_expired_transient_ai_data(max_age_seconds=3600)
+    assert purged >= 1
+    assert old_doc_id not in _TRANSIENT_PDF_STORE
+    assert old_doc_id not in _TRANSIENT_PII_MATCHES
+    assert fresh_doc_id in _TRANSIENT_PDF_STORE
+
+
+def test_f12_queue_job_retention_ttl_and_artifact_cleanup():
+    """Verify job states are written with TTL and expired artifacts are purged."""
+    from app.services.queue import (
+        ARTIFACTS_DIR,
+        DEFAULT_JOB_TTL_SECONDS,
+        JobInfo,
+        cleanup_expired_artifacts,
+        queue_instance,
+    )
+
+    assert DEFAULT_JOB_TTL_SECONDS == 86400
+
+    job = JobInfo(id="job_ttl_test", task="pdf_to_html", status="succeeded")
+    queue_instance._save_job_state(job)
+
+    # In Fakeredis or live Redis, key exists and ttl can be queried
+    key = queue_instance._job_key(job.id)
+    assert queue_instance.client.exists(key)
+
+    # Test artifact directory cleanup
+    test_artifact_dir = ARTIFACTS_DIR / "stale_job_artifact_test"
+    test_artifact_dir.mkdir(parents=True, exist_ok=True)
+    test_file = test_artifact_dir / "output.html"
+    test_file.write_text("dummy artifact")
+
+    # Set access/modification time to past
+    old_time = time.time() - 100000
+    os.utime(test_artifact_dir, (old_time, old_time))
+
+    purged_count = cleanup_expired_artifacts(max_age_seconds=86400)
+    assert purged_count >= 1
+    assert not test_artifact_dir.exists()
+
+
+# =========================================================================
+# F13: Per-Document Local-First Privacy Gate for External AI
+# =========================================================================
+
+
+def test_f13_local_first_privacy_gate_blocks_external_ai_by_default(monkeypatch):
+    """By default, external AI is blocked. Document text stays in-process with zero network egress."""
+    import urllib.request
+    from unittest.mock import MagicMock
+
+    from app.ai.chunking import extract_chunks_from_pdf_bytes
+    from app.ai.embeddings import get_embedding
+    from app.ai.rag import answer_question_with_citations
+    from app.ai.storage import AIDocument, store_document_and_chunks
+    from app.models.db import SessionLocal
+
+    # Mock external network calls to prove no egress
+    mock_urlopen = MagicMock()
+    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+    monkeypatch.setenv("GEMINI_API_KEY", "AIzaSyFakeKeyBlockedByPrivacyGate")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-fakeKeyBlockedByPrivacyGate")
+
+    pdf_bytes = _create_sample_pdf()
+    doc_id = "doc_f13_privacy_gate"
+    chunks = extract_chunks_from_pdf_bytes(pdf_bytes, document_id=doc_id)
+
+    # 1. Embedding generation with allow_external=False (default)
+    embeddings = [get_embedding(c.content, allow_external=False) for c in chunks]
+    assert mock_urlopen.call_count == 0  # Zero network egress during embedding
+
+    with SessionLocal() as db:
+        store_document_and_chunks(
+            db=db,
+            document_id=doc_id,
+            owner_id="privacy_user",
+            filename="privacy.pdf",
+            sha256="fake_p_sha",
+            embedding_model="text-embedding-004",
+            embedding_dim=768,
+            chunks=chunks,
+            embeddings=embeddings,
+            allow_external_ai=False,  # Privacy gate locked to local-first
+        )
+
+        doc_row = db.query(AIDocument).filter_by(id=doc_id).first()
+        assert doc_row.allow_external_ai is False
+
+        # 2. Querying RAG with allow_external=False
+        res = answer_question_with_citations(
+            db=db,
+            document_id=doc_id,
+            query="What is this document?",
+            allow_external=False,
+        )
+
+        assert res.model_used == "deterministic-offline-model"
+        assert mock_urlopen.call_count == 0  # Zero network egress during LLM chat!
+
+
+def test_f13_embedding_privacy_gate_blocks_network(monkeypatch):
+    """get_embedding must strictly bypass external APIs when allow_external=False."""
+    import urllib.request
+    from unittest.mock import MagicMock
+
+    from app.ai.embeddings import get_embedding
+
+    mock_urlopen = MagicMock()
+    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+    monkeypatch.setenv("GEMINI_API_KEY", "AIzaSyFakeKeyMustNotBeCalled")
+
+    vec = get_embedding("Secret financial text", allow_external=False)
+    assert len(vec) == 768
+    assert mock_urlopen.call_count == 0

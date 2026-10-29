@@ -11,6 +11,7 @@ import math
 from typing import Optional
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     Float,
@@ -35,6 +36,7 @@ class AIDocument(Base):
     sha256 = Column(String(64), nullable=False)
     embedding_model = Column(String(64), nullable=False)
     embedding_dim = Column(Integer, nullable=False)
+    allow_external_ai = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
 
 
@@ -72,6 +74,13 @@ def init_ai_tables(db: Session) -> None:
 
     Base.metadata.create_all(bind=bind)
 
+    # Safe additive schema migration for allow_external_ai flag if table pre-existed
+    try:
+        db.execute(text("ALTER TABLE ai_documents ADD COLUMN allow_external_ai BOOLEAN DEFAULT 0;"))
+        db.commit()
+    except Exception:
+        db.rollback()
+
 
 def store_document_and_chunks(
     db: Session,
@@ -83,6 +92,7 @@ def store_document_and_chunks(
     embedding_dim: int,
     chunks: list[DocumentChunk],
     embeddings: list[list[float]],
+    allow_external_ai: bool = False,
 ) -> None:
     """Persists document header and all associated spatial text chunks."""
     init_ai_tables(db)
@@ -97,10 +107,12 @@ def store_document_and_chunks(
             sha256=sha256,
             embedding_model=embedding_model,
             embedding_dim=embedding_dim,
+            allow_external_ai=allow_external_ai,
         )
         db.add(doc)
         db.flush()
     else:
+        existing_doc.allow_external_ai = allow_external_ai  # type: ignore[assignment]
         # Delete old chunks for clean replacement
         db.query(AIChunk).filter(AIChunk.document_id == document_id).delete()
         db.flush()
@@ -248,3 +260,26 @@ def query_vector_chunks(
         )
         for s, c in scored[:limit]
     ]
+
+
+def delete_ai_document(db: Session, document_id: str) -> bool:
+    """
+    Cascades deletion of an AI document and all its indexed chunks from the database (F12).
+    Also notifies router to purge transient in-memory stores.
+    """
+    doc = db.query(AIDocument).filter(AIDocument.id == document_id).first()
+    if not doc:
+        return False
+
+    db.query(AIChunk).filter(AIChunk.document_id == document_id).delete()
+    db.delete(doc)
+    db.commit()
+
+    try:
+        from app.ai.router import purge_transient_document_cache
+
+        purge_transient_document_cache(document_id)
+    except Exception:
+        pass
+
+    return True

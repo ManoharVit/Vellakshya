@@ -1499,7 +1499,8 @@ def _resolve_user(
 @app.post("/api/auth/register")
 async def auth_register(request: Request):
     """
-    Registers a new user account with role.
+    Registers a new user account with role locked to 'viewer'.
+    Public self-registration strictly assigns 'viewer' to prevent privilege escalation (F11).
     """
     try:
         data = await request.json()
@@ -1509,7 +1510,8 @@ async def auth_register(request: Request):
 
     email = str(data.get("email", "")).strip()
     password = str(data.get("password", "")).strip()
-    role = str(data.get("role", "editor")).strip()
+    # F11: Public self-registration is locked to 'viewer'; caller-requested roles are ignored
+    role = "viewer"
 
     if not email or not password:
         raise HTTPException(status_code=400, detail="Email and password are required.")
@@ -1664,6 +1666,17 @@ async def delete_managed_document(
             )
 
     auth.delete_document(doc_id)
+
+    # Cascade to purge indexed AI document, chunks, and transient caches (F12)
+    try:
+        from app.ai.storage import delete_ai_document
+        from app.models.db import SessionLocal
+
+        with SessionLocal() as db_session:
+            delete_ai_document(db_session, doc_id)
+    except Exception:
+        pass
+
     return {"success": True, "detail": "Document successfully deleted."}
 
 

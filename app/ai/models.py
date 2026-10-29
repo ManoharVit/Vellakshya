@@ -72,6 +72,10 @@ class RAGQueryRequest(BaseModel):
     document_id: str
     query: str
     top_k: int = Field(default=5, ge=1, le=20)
+    allow_external_ai: bool = Field(
+        default=False,
+        description="Local-first privacy gate for external AI (F13). When False, processing strictly stays offline.",
+    )
 
 
 class RAGResponse(BaseModel):

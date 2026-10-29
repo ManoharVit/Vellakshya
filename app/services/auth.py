@@ -30,9 +30,9 @@ def _hash_password(password: str, salt: Optional[str] = None) -> tuple[str, str]
     return hashed, salt
 
 
-def register_user(email: str, password: str, role: str = "editor") -> dict[str, Any]:
+def register_user(email: str, password: str, role: str = "viewer") -> dict[str, Any]:
     """
-    Registers a new user with hashed password and role.
+    Registers a new user with hashed password and role (defaults to viewer).
     """
     email_clean = email.lower().strip()
     if email_clean in _USERS_DB:
@@ -138,15 +138,15 @@ def verify_role_permission(role: str, action: str) -> bool:
     """
     Enforces Role-Based Access Control (RBAC):
     - Admin: All actions permitted.
-    - Editor: View, upload, edit, annotate, convert, sign.
-    - Viewer: View and render only (cannot edit, annotate, or download restricted content).
+    - Editor: View, upload, edit, annotate, convert, sign, download.
+    - Viewer: View, render, and upload (cannot edit, annotate, sign, or download restricted content).
     """
     if role == "admin":
         return True
     if role == "editor":
         return action in ("view", "upload", "edit", "annotate", "convert", "sign", "download")
     if role == "viewer":
-        return action in ("view", "render")
+        return action in ("view", "render", "upload")
     return False
 
 

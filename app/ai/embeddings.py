@@ -48,29 +48,35 @@ def get_embedding(
     text: str,
     model_name: str = DEFAULT_EMBEDDING_MODEL,
     dim: int = DEFAULT_EMBEDDING_DIM,
+    allow_external: bool = False,
 ) -> list[float]:
     """
     Computes embedding vector for input text.
-    Uses Gemini API if GEMINI_API_KEY is present; otherwise computes deterministic local vector.
+    Local-first privacy gate (F13): If allow_external is False (default),
+    bypasses external network APIs and computes deterministic local vector in-process.
+    Only queries external Gemini API when allow_external is True AND GEMINI_API_KEY is configured.
     """
-    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if api_key:
-        try:
-            # When google-genai / google-generativeai is available, query embedding endpoint
-            import json
-            import urllib.request
+    if allow_external:
+        api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+        if api_key:
+            try:
+                # When google-genai / google-generativeai is available, query embedding endpoint
+                import json
+                import urllib.request
 
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:embedContent?key={api_key}"
-            payload = json.dumps({"content": {"parts": [{"text": text[:2000]}]}}).encode("utf-8")
-            req = urllib.request.Request(
-                url, data=payload, headers={"Content-Type": "application/json"}
-            )
-            with urllib.request.urlopen(req, timeout=5) as response:
-                res_data = json.loads(response.read().decode("utf-8"))
-                values = res_data.get("embedding", {}).get("values", [])
-                if values and len(values) == dim:
-                    return [round(float(v), 6) for v in values]
-        except Exception:
-            pass  # Fall back to deterministic local embedding on network or auth failure
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:embedContent?key={api_key}"
+                payload = json.dumps({"content": {"parts": [{"text": text[:2000]}]}}).encode(
+                    "utf-8"
+                )
+                req = urllib.request.Request(
+                    url, data=payload, headers={"Content-Type": "application/json"}
+                )
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    res_data = json.loads(response.read().decode("utf-8"))
+                    values = res_data.get("embedding", {}).get("values", [])
+                    if values and len(values) == dim:
+                        return [round(float(v), 6) for v in values]
+            except Exception:
+                pass  # Fall back to deterministic local embedding on network or auth failure
 
     return generate_deterministic_embedding(text, dim=dim)

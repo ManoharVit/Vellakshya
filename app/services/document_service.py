@@ -546,3 +546,11 @@ class DocumentService:
         # 2. Delete database records
         db.delete(doc)
         db.commit()
+
+        # 3. Cascade to purge indexed AI document, chunks, and transient caches (F12)
+        try:
+            from app.ai.storage import delete_ai_document
+
+            delete_ai_document(db, doc_id)
+        except Exception:
+            pass

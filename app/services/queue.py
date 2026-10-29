@@ -32,6 +32,28 @@ logger = logging.getLogger("vellakshya.queue")
 ARTIFACTS_DIR = Path(__file__).resolve().parent.parent / "data" / "job_artifacts"
 ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
+DEFAULT_JOB_TTL_SECONDS = 86400  # 24 hours retention TTL (F12)
+
+
+def cleanup_expired_artifacts(max_age_seconds: int = DEFAULT_JOB_TTL_SECONDS) -> int:
+    """Purges worker job artifact directories older than max_age_seconds (F12)."""
+    now = time.time()
+    purged = 0
+    if not ARTIFACTS_DIR.exists():
+        return 0
+    for item in ARTIFACTS_DIR.iterdir():
+        if item.is_dir():
+            try:
+                mtime = item.stat().st_mtime
+                if (now - mtime) > max_age_seconds:
+                    import shutil
+
+                    shutil.rmtree(item, ignore_errors=True)
+                    purged += 1
+            except Exception:
+                pass
+    return purged
+
 
 def _sanitize_url(url: str) -> str:
     """Masks credentials from connection URLs to prevent secret leakage in logs."""
@@ -127,7 +149,7 @@ class JobQueue:
     def _save_job_state(self, job: JobInfo):
         key = self._job_key(job.id)
         raw_data = json.dumps(job.to_dict())
-        self.client.set(key, raw_data)
+        self.client.set(key, raw_data, ex=DEFAULT_JOB_TTL_SECONDS)
 
     def get_job(self, job_id: str) -> Optional[JobInfo]:
         key = self._job_key(job_id)

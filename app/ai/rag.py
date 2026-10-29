@@ -11,6 +11,7 @@ import json
 import os
 import re
 import time
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -60,84 +61,104 @@ TASK:
     return prompt
 
 
-def _call_llm_with_fallback(prompt: str) -> tuple[str, list[str], str, int, int]:
+def _call_llm_with_fallback(
+    prompt: str, allow_external: bool = False
+) -> tuple[str, list[str], str, int, int]:
     """
-    Calls configured LLM provider with fallback logic.
-    Returns: (answer_text, used_chunk_ids, model_name, prompt_tokens, completion_tokens)
+    Calls configured LLM provider respecting per-document local-first privacy gate (F13).
+    When allow_external is False (default), strictly executes offline deterministic synthesis with zero cloud egress.
+    When allow_external is True, consults LLM_PROVIDER setting (gemini, openai, or local).
     """
-    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if allow_external:
+        provider = os.environ.get("LLM_PROVIDER", "gemini").lower().strip()
+        gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+        openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
 
-    # 1. Primary: Google Gemini
-    if gemini_key:
-        try:
-            import urllib.request
+        # Helper for Gemini call
+        def _try_gemini() -> Optional[tuple[str, list[str], str, int, int]]:
+            if not gemini_key:
+                return None
+            try:
+                import urllib.request
 
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
-            payload = json.dumps(
-                {
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+                payload = json.dumps(
+                    {
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {
+                            "temperature": 0.0,
+                            "responseMimeType": "application/json",
+                        },
+                    }
+                ).encode("utf-8")
+                req = urllib.request.Request(
+                    url, data=payload, headers={"Content-Type": "application/json"}
+                )
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    res_data = json.loads(response.read().decode("utf-8"))
+                    raw_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+                    parsed = json.loads(raw_text)
+                    return (
+                        parsed.get("answer", ""),
+                        parsed.get("used_chunk_ids", []),
+                        "gemini-1.5-flash",
+                        res_data.get("usageMetadata", {}).get("promptTokenCount", 0),
+                        res_data.get("usageMetadata", {}).get("candidatesTokenCount", 0),
+                    )
+            except Exception:
+                return None
+
+        # Helper for OpenAI call
+        def _try_openai() -> Optional[tuple[str, list[str], str, int, int]]:
+            if not openai_key:
+                return None
+            try:
+                import urllib.request
+
+                url = "https://api.openai.com/v1/chat/completions"
+                payload = json.dumps(
+                    {
+                        "model": "gpt-4o-mini",
                         "temperature": 0.0,
-                        "responseMimeType": "application/json",
+                        "response_format": {"type": "json_object"},
+                        "messages": [{"role": "user", "content": prompt}],
+                    }
+                ).encode("utf-8")
+                req = urllib.request.Request(
+                    url,
+                    data=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {openai_key}",
                     },
-                }
-            ).encode("utf-8")
-            req = urllib.request.Request(
-                url, data=payload, headers={"Content-Type": "application/json"}
-            )
-            with urllib.request.urlopen(req, timeout=10) as response:
-                res_data = json.loads(response.read().decode("utf-8"))
-                raw_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
-                parsed = json.loads(raw_text)
-                return (
-                    parsed.get("answer", ""),
-                    parsed.get("used_chunk_ids", []),
-                    "gemini-1.5-flash",
-                    res_data.get("usageMetadata", {}).get("promptTokenCount", 0),
-                    res_data.get("usageMetadata", {}).get("candidatesTokenCount", 0),
                 )
-        except Exception:
-            pass  # Fall through to secondary provider
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    res_data = json.loads(response.read().decode("utf-8"))
+                    raw_text = res_data["choices"][0]["message"]["content"]
+                    parsed = json.loads(raw_text)
+                    return (
+                        parsed.get("answer", ""),
+                        parsed.get("used_chunk_ids", []),
+                        "gpt-4o-mini",
+                        res_data.get("usage", {}).get("prompt_tokens", 0),
+                        res_data.get("usage", {}).get("completion_tokens", 0),
+                    )
+            except Exception:
+                return None
 
-    # 2. Secondary: OpenAI
-    if openai_key:
-        try:
-            import urllib.request
+        # Execute according to configured provider preference
+        if provider == "openai":
+            res = _try_openai() or _try_gemini()
+            if res:
+                return res
+        elif provider == "gemini":
+            res = _try_gemini() or _try_openai()
+            if res:
+                return res
+        elif provider in ("local", "offline"):
+            pass  # Explicitly configured for local offline synthesis
 
-            url = "https://api.openai.com/v1/chat/completions"
-            payload = json.dumps(
-                {
-                    "model": "gpt-4o-mini",
-                    "temperature": 0.0,
-                    "response_format": {"type": "json_object"},
-                    "messages": [{"role": "user", "content": prompt}],
-                }
-            ).encode("utf-8")
-            req = urllib.request.Request(
-                url,
-                data=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {openai_key}",
-                },
-            )
-            with urllib.request.urlopen(req, timeout=10) as response:
-                res_data = json.loads(response.read().decode("utf-8"))
-                raw_text = res_data["choices"][0]["message"]["content"]
-                parsed = json.loads(raw_text)
-                return (
-                    parsed.get("answer", ""),
-                    parsed.get("used_chunk_ids", []),
-                    "gpt-4o-mini",
-                    res_data.get("usage", {}).get("prompt_tokens", 0),
-                    res_data.get("usage", {}).get("completion_tokens", 0),
-                )
-        except Exception:
-            pass
-
-    # 3. Offline / CI Deterministic Synthesis
-    # Extracts relevant sentences from top passages without external API keys
+    # Offline / Local-First Deterministic Synthesis (F13 Privacy Gate Default)
     match = re.search(
         r'<PASSAGE chunk_id="([^"]+)" page="(\d+)">\n(.*?)\n</PASSAGE>', prompt, re.DOTALL
     )
@@ -167,12 +188,13 @@ def answer_question_with_citations(
     query: str,
     top_k: int = 5,
     owner_id: str = "default_user",
+    allow_external: bool = False,
 ) -> RAGResponse:
     """
     Executes grounded RAG workflow:
     1. Hybrid retrieval (vector + keyword via RRF).
     2. Prompt injection defense wrapping.
-    3. LLM synthesis returning used chunk IDs only.
+    3. LLM synthesis returning used chunk IDs only, governed by allow_external privacy gate.
     4. Server-side database citation lookup.
     """
     t0 = time.perf_counter()
@@ -181,7 +203,7 @@ def answer_question_with_citations(
     import hashlib
 
     cache_key = hashlib.sha256(
-        f"{owner_id}:{document_id}:{PROMPT_VERSION}:{query.strip().lower()}".encode()
+        f"{owner_id}:{document_id}:{PROMPT_VERSION}:{query.strip().lower()}:{allow_external}".encode()
     ).hexdigest()
     cached_payload = get_cached_answer(cache_key)
     if cached_payload:
@@ -208,9 +230,9 @@ def answer_question_with_citations(
     # 2. Build prompt
     prompt = _build_injection_defended_prompt(query, retrieved_chunks)
 
-    # 3. Call LLM
+    # 3. Call LLM respecting allow_external privacy gate
     answer_text, reported_chunk_ids, model_name, p_tokens, c_tokens = _call_llm_with_fallback(
-        prompt
+        prompt, allow_external=allow_external
     )
 
     # 4. Strictly validate used_chunk_ids against retrieved set (drop fabricated IDs)

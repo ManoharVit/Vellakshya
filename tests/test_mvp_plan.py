@@ -52,14 +52,14 @@ def test_smoke_01_user_register_login_logout():
     unique_email = f"user_{secrets.token_hex(4)}@vellakshya.io"
     password = "SuperSecurePassword123!"
 
-    # 1. Register
+    # 1. Register (public registration locks role to 'viewer')
     reg_resp = client.post(
         "/api/auth/register", json={"email": unique_email, "password": password, "role": "editor"}
     )
     assert reg_resp.status_code == 200, reg_resp.text
     reg_data = reg_resp.json()
     assert reg_data["email"] == unique_email
-    assert reg_data["role"] == "editor"
+    assert reg_data["role"] == "viewer"
 
     # 2. Login
     login_resp = client.post("/api/auth/login", json={"email": unique_email, "password": password})

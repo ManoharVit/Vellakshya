@@ -90,6 +90,7 @@ def make_attachment_filename(source_filename: Optional[str], suffix: str, ext: s
     return f"{stem}_{suffix}.{ext}"
 
 
+@app.get("/health")
 @app.get("/api/health")
 async def health_check():
     """
@@ -102,6 +103,7 @@ async def health_check():
     }
 
 
+@app.get("/sample/{sample_type}")
 @app.get("/api/sample/{sample_type}")
 async def get_sample_document(sample_type: str = "invoice"):
     """
@@ -417,6 +419,8 @@ async def list_recent_jobs(limit: int = Query(20, ge=1, le=100)):
 # -------------------------------------------------------------
 
 
+@app.post("/convert")
+@app.post("/convert/html")
 @app.post("/api/convert/html")
 async def convert_pdf_to_html(
     file: UploadFile = File(...),
@@ -440,6 +444,8 @@ async def convert_pdf_to_html(
     return HTMLResponse(content=result_html, media_type="text/html")
 
 
+@app.post("/images")
+@app.post("/convert/images")
 @app.post("/api/convert/images")
 async def convert_pdf_to_images(
     file: UploadFile = File(...),
@@ -483,6 +489,8 @@ async def convert_images_to_pdf(
     )
 
 
+@app.post("/markdown")
+@app.post("/convert/markdown")
 @app.post("/api/convert/markdown")
 async def convert_pdf_to_markdown(
     file: UploadFile = File(...),
@@ -496,6 +504,8 @@ async def convert_pdf_to_markdown(
     return {"filename": file.filename, "markdown": md_content, "engine_used": engine}
 
 
+@app.post("/docx")
+@app.post("/convert/docx")
 @app.post("/api/convert/docx")
 async def convert_pdf_to_docx(
     file: UploadFile = File(...),

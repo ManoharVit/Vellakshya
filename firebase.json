@@ -1,0 +1,26 @@
+{
+  "hosting": {
+    "public": "app/static",
+    "cleanUrls": true,
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "vellakshya",
+          "region": "us-central1"
+        }
+      }
+    ],
+    "headers": [
+      {
+        "source": "/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      }
+    ]
+  }
+}

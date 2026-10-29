@@ -137,11 +137,6 @@ jobs:
       - name: Install Playwright Browsers (Chromium)
         run: npx playwright install chromium --with-deps
 
-      - name: Start Background FastAPI Server
-        run: |
-          PYTHONPATH=. uvicorn app.main:app --host 127.0.0.1 --port 8000 &
-          sleep 3
-
       - name: Run Playwright E2E, API & a11y Tests
         run: npx playwright test
 

@@ -38,9 +38,14 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'PYTHONPATH=. uvicorn app.main:app --host 127.0.0.1 --port 8000',
+    command: process.env.VIRTUAL_ENV
+      ? `${process.env.VIRTUAL_ENV}/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000`
+      : 'python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000',
+    env: {
+      PYTHONPATH: '.',
+    },
     url: 'http://127.0.0.1:8000',
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },
 });

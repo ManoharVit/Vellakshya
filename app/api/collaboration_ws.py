@@ -13,7 +13,9 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, WebSocket,
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.core.config import config
 from app.models.db import Document, get_db
+from app.services import auth
 from app.services.collaboration import (
     collaboration_manager,
     merge_concurrent_comments,
@@ -22,6 +24,15 @@ from app.services.collaboration import (
 from app.services.storage import storage_instance
 
 router = APIRouter(tags=["Real-Time Collaboration & WebSockets"])
+
+ALLOWED_WS_ORIGIN_PATTERNS = (
+    "localhost",
+    "127.0.0.1",
+    "testserver",
+    "vellakshya",
+    "web.app",
+    "run.app",
+)
 
 
 class OfflineSyncRequest(BaseModel):
@@ -41,20 +52,41 @@ class MergeCommentsRequest(BaseModel):
 async def websocket_document_collaboration(
     websocket: WebSocket,
     doc_id: str,
+    token: Optional[str] = Query(None),
     user_id: Optional[str] = Query(None),
     name: Optional[str] = Query(None),
     color: Optional[str] = Query(None),
 ):
     """
     Real-time bi-directional WebSocket gateway for collaborative document viewing.
-    Synchronizes:
-    - User presence (active page, cursor coordinates {x, y})
-    - Real-time page annotations and highlights
-    - Instant threaded comments and replies
-    - Join/leave notifications and room roster snapshots
+    Validates Origin header and authenticates participant session.
     """
+    # 1. Validate Origin header
+    origin = websocket.headers.get("origin")
+    if origin:
+        if not any(pat in origin.lower() for pat in ALLOWED_WS_ORIGIN_PATTERNS):
+            await websocket.close(code=4003, reason="Forbidden Origin")
+            return
+
+    # 2. Authenticate session
+    authenticated_actor = None
+    if token:
+        user_info = auth.get_current_user_from_token(token)
+        if user_info:
+            authenticated_actor = str(user_info.get("user_id") or user_info.get("email"))
+
+    if not authenticated_actor and user_id:
+        if config.is_prod:
+            await websocket.close(code=4001, reason="Authentication token required in production")
+            return
+        authenticated_actor = user_id
+
+    if not authenticated_actor and config.is_prod:
+        await websocket.close(code=4001, reason="Authentication required")
+        return
+
     await websocket.accept()
-    assigned_user_id = user_id or f"user_{secrets.token_hex(4)}"
+    assigned_user_id = authenticated_actor or user_id or f"user_{secrets.token_hex(4)}"
     assigned_name = name or f"Collaborator {assigned_user_id[-4:].upper()}"
 
     presence = await collaboration_manager.join_room(

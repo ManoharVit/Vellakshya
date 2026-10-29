@@ -7,9 +7,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import hmac
 import json
-import os
 from typing import Any
 
 import fitz  # PyMuPDF
@@ -168,12 +166,13 @@ def verify_pdf_signature(pdf_bytes: bytes) -> dict[str, Any]:
 
 
 # -------------------------------------------------------------
-# Canonical Integrity Manifest Signing & Verification (Ed25519 / HMAC-SHA256)
+# Canonical Integrity Manifest Signing & Verification (Ed25519)
 # -------------------------------------------------------------
 
-_MANIFEST_SIGNING_KEY = os.environ.get(
-    "MANIFEST_SIGNING_KEY", "vellakshya_canonical_manifest_secret_key_2026_ed25519_prod"
-).encode("utf-8")
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric import ed25519
+
+from app.core.config import config
 
 
 def _canonicalize_dict(data: dict[str, Any]) -> bytes:
@@ -181,22 +180,32 @@ def _canonicalize_dict(data: dict[str, Any]) -> bytes:
     return json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
+def _get_ed25519_private_key() -> ed25519.Ed25519PrivateKey:
+    raw_key = config.manifest_signing_key
+    if len(raw_key) < 32:
+        raw_key = raw_key.ljust(32, b"\x00")
+    else:
+        raw_key = raw_key[:32]
+    return ed25519.Ed25519PrivateKey.from_private_bytes(raw_key)
+
+
 def sign_manifest(manifest_data: dict[str, Any], key_id: str = "ed25519_key_v1") -> dict[str, Any]:
     """
-    Digitally signs a canonical integrity manifest.
-    Returns: {"manifest_hash": str, "signature": str, "key_id": str}
+    Digitally signs a canonical integrity manifest using genuine Ed25519 asymmetric cryptography.
+    Returns: {"manifest_hash": str, "signature": str, "key_id": str, "algorithm": "Ed25519"}
     """
     canonical_bytes = _canonicalize_dict(manifest_data)
     manifest_hash = hashlib.sha256(canonical_bytes).hexdigest()
 
-    # Compute cryptographic signature over canonical manifest bytes
-    sig_raw = hmac.new(_MANIFEST_SIGNING_KEY, canonical_bytes, hashlib.sha256).digest()
+    priv_key = _get_ed25519_private_key()
+    sig_raw = priv_key.sign(canonical_bytes)
     sig_b64 = base64.b64encode(sig_raw).decode("utf-8")
 
     return {
         "manifest_hash": manifest_hash,
         "signature": sig_b64,
         "key_id": key_id,
+        "algorithm": "Ed25519",
     }
 
 
@@ -205,13 +214,15 @@ def verify_manifest(
     provided_signature: str,
 ) -> bool:
     """
-    Verifies the cryptographic signature of a canonical integrity manifest.
+    Verifies the cryptographic signature of a canonical integrity manifest via Ed25519.
     Guards against metadata and digest tampering.
     """
     try:
         canonical_bytes = _canonicalize_dict(manifest_data)
-        expected_sig_raw = hmac.new(_MANIFEST_SIGNING_KEY, canonical_bytes, hashlib.sha256).digest()
-        expected_sig_b64 = base64.b64encode(expected_sig_raw).decode("utf-8")
-        return hmac.compare_digest(provided_signature, expected_sig_b64)
-    except Exception:
+        sig_raw = base64.b64decode(provided_signature.encode("utf-8"))
+        priv_key = _get_ed25519_private_key()
+        pub_key = priv_key.public_key()
+        pub_key.verify(sig_raw, canonical_bytes)
+        return True
+    except (InvalidSignature, Exception):
         return False

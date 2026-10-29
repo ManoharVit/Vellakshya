@@ -7,9 +7,19 @@ and local-first PII redaction workflows.
 from __future__ import annotations
 
 import hashlib
-from typing import Any
+from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+)
 from sqlalchemy.orm import Session
 
 from app.ai.chunking import extract_chunks_from_pdf_bytes
@@ -25,9 +35,12 @@ from app.ai.observability import check_rate_limit
 from app.ai.pii import apply_physical_redactions, scan_pdf_for_pii
 from app.ai.rag import answer_question_with_citations
 from app.ai.storage import (
+    AIDocument,
     store_document_and_chunks,
 )
+from app.core.config import config
 from app.models.db import get_db
+from app.services import auth
 
 router = APIRouter(prefix="/api/ai", tags=["AI & Document Intelligence"])
 
@@ -36,12 +49,39 @@ _TRANSIENT_PDF_STORE: dict[str, bytes] = {}
 _TRANSIENT_PII_MATCHES: dict[str, list[PIIEntityMatch]] = {}
 
 
+def _resolve_ai_actor(
+    authorization: Optional[str] = None,
+    x_user_id: Optional[str] = None,
+    token: Optional[str] = None,
+) -> Optional[str]:
+    active_token = token
+    if not active_token and authorization and authorization.startswith("Bearer "):
+        active_token = authorization.split(" ", 1)[1].strip()
+    if active_token:
+        user_info = auth.get_current_user_from_token(active_token)
+        if user_info:
+            return str(user_info.get("user_id") or user_info.get("email"))
+    if x_user_id:
+        return x_user_id
+    return None
+
+
 @router.post("/ingest", summary="Ingest PDF for RAG Chat")
 async def ingest_document_for_rag(
     file: UploadFile = File(...),
+    authorization: Optional[str] = Header(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
+    token: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Extracts text blocks with coordinate metadata, computes embeddings, and stores chunks."""
+    """Extracts text blocks with coordinate metadata, computes embeddings, and stores chunks with tenant ownership."""
+    actor = _resolve_ai_actor(authorization, x_user_id, token)
+    if config.is_prod and not actor:
+        raise HTTPException(
+            status_code=401, detail="Authentication required to ingest document into AI repository."
+        )
+    owner_id = actor or "demo_user"
+
     pdf_bytes = await file.read()
     if not pdf_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
@@ -62,7 +102,7 @@ async def ingest_document_for_rag(
     store_document_and_chunks(
         db=db,
         document_id=doc_id,
-        owner_id="demo_user",
+        owner_id=owner_id,
         filename=filename,
         sha256=sha256,
         embedding_model=DEFAULT_EMBEDDING_MODEL,
@@ -77,6 +117,7 @@ async def ingest_document_for_rag(
         "status": "success",
         "document_id": doc_id,
         "filename": filename,
+        "owner_id": owner_id,
         "chunks_indexed": len(chunks),
         "embedding_model": DEFAULT_EMBEDDING_MODEL,
     }
@@ -88,12 +129,32 @@ async def ingest_document_for_rag(
 async def query_rag_endpoint(
     req: RAGQueryRequest,
     request: Request,
+    authorization: Optional[str] = Header(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
+    token: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ) -> RAGResponse:
     """Answers user queries with page-level citations grounded in the server database index."""
     client_ip = request.client.host if request.client else "127.0.0.1"
     if not check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded. Please wait a minute.")
+
+    ai_doc = db.query(AIDocument).filter_by(id=req.document_id).first()
+    if not ai_doc:
+        raise HTTPException(status_code=404, detail="Document not found in AI index.")
+
+    # Enforce tenant isolation when document is bound to an authenticated owner
+    if ai_doc.owner_id != "demo_user":
+        actor = _resolve_ai_actor(authorization, x_user_id, token)
+        if not actor:
+            raise HTTPException(
+                status_code=401, detail="Authentication required to query this document."
+            )
+        if actor != ai_doc.owner_id and actor != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: You do not own this document in the AI index.",
+            )
 
     return answer_question_with_citations(
         db=db,

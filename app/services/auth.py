@@ -39,7 +39,9 @@ def register_user(email: str, password: str, role: str = "editor") -> dict[str, 
         raise ValueError("User with this email already exists.")
 
     hashed_pw, salt = _hash_password(password)
+    user_id = f"usr_{hashlib.sha256(email_clean.encode('utf-8')).hexdigest()[:16]}"
     user_record = {
+        "id": user_id,
         "email": email_clean,
         "password_hash": hashed_pw,
         "salt": salt,
@@ -47,7 +49,7 @@ def register_user(email: str, password: str, role: str = "editor") -> dict[str, 
         "created_at": time.time(),
     }
     _USERS_DB[email_clean] = user_record
-    return {"email": email_clean, "role": role}
+    return {"id": user_id, "email": email_clean, "role": role}
 
 
 def login_user(email: str, password: str) -> dict[str, Any]:
@@ -64,8 +66,12 @@ def login_user(email: str, password: str) -> dict[str, Any]:
         raise ValueError("Invalid email or password.")
 
     token = secrets.token_urlsafe(32)
+    user_id = (
+        user.get("id") or f"usr_{hashlib.sha256(email_clean.encode('utf-8')).hexdigest()[:16]}"
+    )
     session_data = {
         "token": token,
+        "user_id": user_id,
         "email": email_clean,
         "role": user["role"],
         "created_at": time.time(),
@@ -74,10 +80,29 @@ def login_user(email: str, password: str) -> dict[str, Any]:
     _SESSIONS_DB[token] = session_data
     return {
         "token": token,
+        "user_id": user_id,
         "email": email_clean,
         "role": user["role"],
         "expires_in": SESSION_TTL_SECONDS,
     }
+
+
+def create_session_for_user(email: str, role: str = "editor", user_id: Optional[str] = None) -> str:
+    """
+    Directly provisions an active, authenticated session token for a given user or test actor.
+    """
+    token = secrets.token_urlsafe(32)
+    email_clean = email.lower().strip()
+    resolved_id = user_id or f"usr_{hashlib.sha256(email_clean.encode('utf-8')).hexdigest()[:16]}"
+    _SESSIONS_DB[token] = {
+        "token": token,
+        "user_id": resolved_id,
+        "email": email_clean,
+        "role": role,
+        "created_at": time.time(),
+        "expires_at": time.time() + SESSION_TTL_SECONDS,
+    }
+    return token
 
 
 def logout_user(token: str) -> bool:
@@ -103,6 +128,7 @@ def get_current_user_from_token(token: Optional[str]) -> Optional[dict[str, Any]
         return None
 
     return {
+        "user_id": session.get("user_id"),
         "email": session["email"],
         "role": session["role"],
     }
@@ -202,19 +228,32 @@ def delete_document(doc_id: str) -> bool:
     return False
 
 
-def save_session_draft(session_id: str, draft_state: dict[str, Any]) -> None:
+def save_session_draft(
+    session_id: str, draft_state: dict[str, Any], owner: Optional[str] = None
+) -> None:
     """
     Saves work-in-progress edits to prevent data loss upon session expiry.
+    Optionally binds the draft to an authenticated owner.
     """
     _DRAFTS_DB[session_id] = {
         "draft_state": draft_state,
+        "owner": owner,
         "updated_at": time.time(),
     }
 
 
-def recover_session_draft(session_id: str) -> Optional[dict[str, Any]]:
+def recover_session_draft(
+    session_id: str, requester: Optional[str] = None
+) -> Optional[dict[str, Any]]:
     """
-    Restores uncommitted draft edits.
+    Restores uncommitted draft edits. Enforces ownership if draft is bound to a user.
     """
     record = _DRAFTS_DB.get(session_id)
-    return record["draft_state"] if record else None
+    if not record:
+        return None
+    draft_owner = record.get("owner")
+    if draft_owner and requester and draft_owner != requester and requester != "admin":
+        raise PermissionError("Access denied: You do not own this session draft.")
+    if draft_owner and not requester:
+        raise PermissionError("Authentication required: This session draft is user-protected.")
+    return record["draft_state"]

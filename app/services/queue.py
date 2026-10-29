@@ -15,6 +15,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import urlsplit, urlunsplit
 
 import fakeredis
 import redis
@@ -30,6 +31,20 @@ logger = logging.getLogger("vellakshya.queue")
 
 ARTIFACTS_DIR = Path(__file__).resolve().parent.parent / "data" / "job_artifacts"
 ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _sanitize_url(url: str) -> str:
+    """Masks credentials from connection URLs to prevent secret leakage in logs."""
+    try:
+        parts = urlsplit(url)
+        if parts.password or parts.username:
+            netloc = parts.netloc.split("@")[-1]
+            return urlunsplit(
+                (parts.scheme, f"***@{netloc}", parts.path, parts.query, parts.fragment)
+            )
+    except Exception:
+        pass
+    return url
 
 
 @dataclass
@@ -48,6 +63,7 @@ class JobInfo:
     duration_ms: Optional[float] = None
     metrics: dict[str, Any] = field(default_factory=dict)
     error: Optional[str] = None
+    owner_id: str = "anonymous"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -77,7 +93,9 @@ class JobQueue:
         try:
             r = redis.from_url(self.redis_url, socket_connect_timeout=1.0)
             r.ping()
-            logger.info("Connected to live Valkey/Redis server at %s", self.redis_url)
+            logger.info(
+                "Connected to live Valkey/Redis server at %s", _sanitize_url(self.redis_url)
+            )
             return r
         except Exception as err:
             logger.info(
@@ -119,14 +137,18 @@ class JobQueue:
         data = json.loads(raw_data.decode("utf-8") if isinstance(raw_data, bytes) else raw_data)
         return JobInfo(**data)
 
-    def list_jobs(self, limit: int = 50) -> list[JobInfo]:
-        job_ids = self.client.lrange("jobs:history", 0, limit - 1)
+    def list_jobs(self, limit: int = 50, owner_id: Optional[str] = None) -> list[JobInfo]:
+        job_ids = self.client.lrange("jobs:history", 0, limit * 2)
         results: list[JobInfo] = []
         for jid in job_ids:
             jid_str = jid.decode("utf-8") if isinstance(jid, bytes) else str(jid)
             job = self.get_job(jid_str)
             if job:
+                if owner_id is not None and job.owner_id != owner_id:
+                    continue
                 results.append(job)
+                if len(results) >= limit:
+                    break
         return results
 
     async def enqueue(
@@ -135,6 +157,7 @@ class JobQueue:
         pdf_bytes: bytes,
         filename: str = "document.pdf",
         params: Optional[dict[str, Any]] = None,
+        owner_id: str = "anonymous",
     ) -> JobInfo:
         if params is None:
             params = {}
@@ -166,6 +189,7 @@ class JobQueue:
             output_filename=out_filename,
             media_type=media_type,
             created_at=time.time(),
+            owner_id=owner_id,
         )
 
         # Cache input bytes for worker execution
@@ -179,7 +203,8 @@ class JobQueue:
         queue_payload = json.dumps({"job_id": job_id, "params": params})
         self.client.lpush("jobs:queue", queue_payload)
 
-        logger.info("Enqueued job %s (%s) for file %s", job_id, task, filename)
+        safe_log_name = Path(filename).name[:24]
+        logger.info("Enqueued job %s (%s) for file %s", job_id, task, safe_log_name)
         return job
 
     async def _process_queue_loop(self):

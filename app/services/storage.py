@@ -10,17 +10,14 @@ import base64
 import hashlib
 import hmac
 import json
-import os
 import time
 from pathlib import Path
 from typing import Optional
 
+from app.core.config import config
+
 STORAGE_ROOT = Path(__file__).resolve().parent.parent.parent / "data" / "object_store"
 STORAGE_ROOT.mkdir(parents=True, exist_ok=True)
-
-SECRET_STORAGE_KEY = os.environ.get(
-    "STORAGE_SIGNING_KEY", "vellakshya_secure_storage_hmac_secret_2026"
-)
 
 
 class ObjectNotFoundError(Exception):
@@ -35,10 +32,19 @@ class StorageService:
     and time-limited presigned access URLs.
     """
 
-    def __init__(self, root_dir: Optional[Path] = None, signing_secret: Optional[str] = None):
+    def __init__(
+        self, root_dir: Optional[Path] = None, signing_secret: Optional[bytes | str] = None
+    ):
         self.root_dir = root_dir or STORAGE_ROOT
         self.root_dir.mkdir(parents=True, exist_ok=True)
-        self.signing_secret = (signing_secret or SECRET_STORAGE_KEY).encode("utf-8")
+        if signing_secret is not None:
+            self.signing_secret = (
+                signing_secret.encode("utf-8")
+                if isinstance(signing_secret, str)
+                else signing_secret
+            )
+        else:
+            self.signing_secret = config.storage_signing_key
 
     def _resolve_path(self, key: str) -> Path:
         # Prevent directory traversal attacks

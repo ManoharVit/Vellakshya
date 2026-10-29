@@ -23,6 +23,7 @@ from fastapi import (
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.core.config import config
 from app.models.db import (
     Document,
     DocumentOperation,
@@ -31,7 +32,7 @@ from app.models.db import (
     get_db,
     init_db,
 )
-from app.services import editor, organizer
+from app.services import auth, editor, organizer
 from app.services.document_service import (
     DocumentNotFoundError,
     DocumentService,
@@ -137,19 +138,59 @@ class CreateCommentRequest(BaseModel):
         return self.parentCommentId or self.parent_comment_id
 
 
-def _get_current_actor(x_user_id: Optional[str] = Header(None, alias="X-User-Id")) -> str:
+def _get_current_actor(
+    authorization: Optional[str] = Header(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
+) -> str:
     """
-    Extracts current authenticated actor ID from header, or defaults to system admin/owner.
+    Derives authenticated actor ID from verified Bearer token or authenticated session.
+    Anonymous requests and unverified headers are strictly rejected with HTTP 401.
     """
-    return x_user_id or "00000000-0000-0000-0000-000000000001"
+    token = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+
+    # 1. Bearer token provided: verify cryptographically / via session store
+    if token:
+        user_info = auth.get_current_user_from_token(token)
+        if not user_info:
+            raise HTTPException(status_code=401, detail="Invalid or expired Bearer session token.")
+        actor_id = str(user_info.get("user_id") or user_info.get("email"))
+        # If client also passed X-User-Id, ensure it matches authenticated actor (anti-impersonation)
+        if x_user_id and x_user_id != actor_id and user_info.get("role") != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail=f"Impersonation rejected: Token identity {actor_id} does not match requested X-User-Id {x_user_id}.",
+            )
+        return actor_id
+
+    # 2. X-User-Id provided without Bearer token
+    if x_user_id:
+        if config.is_prod:
+            raise HTTPException(
+                status_code=401,
+                detail="Header-based authentication (X-User-Id) is forbidden in production; supply a Bearer session token.",
+            )
+        # Non-production test/development environment
+        return x_user_id
+
+    # 3. Anonymous / No identity provided: strictly reject
+    raise HTTPException(
+        status_code=401,
+        detail="Authentication required: No identity token provided. Pass Authorization: Bearer <token>.",
+    )
 
 
 def _ensure_user_exists(db: Session, user_id: str):
     user = db.query(User).filter_by(id=user_id).first()
     if not user:
+        if config.is_prod:
+            raise HTTPException(
+                status_code=401, detail="User account not found in identity registry."
+            )
         user = User(
             id=user_id,
-            email=f"user_{user_id[:8]}@vellakshya.internal",
+            email=f"user_{user_id[:8]}@vellakshya.internal" if "@" not in user_id else user_id,
             display_name=f"Enterprise User {user_id[:6]}",
             hashed_password="mock_hash_for_testing",
             salt="mock_salt",
@@ -257,8 +298,16 @@ async def get_upload_url(
 ):
     """
     Obtains a bounded, time-limited presigned upload URL for binary ingestion.
+    Requires editor or owner permission on the target document.
     """
     _ensure_user_exists(db, actor_id)
+    try:
+        DocumentService.check_permission(db, doc_id, actor_id, required_role="editor")
+    except DocumentNotFoundError:
+        raise HTTPException(status_code=404, detail="Document not found.")
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
     safe_filename = Path(filename).name
     if not safe_filename or ".." in safe_filename:
         safe_filename = "document.pdf"

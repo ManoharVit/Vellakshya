@@ -28,7 +28,21 @@ gcloud services enable \
     compute.googleapis.com \
     --project "${PROJECT_ID}"
 
-# 3. Deploy API Service to Cloud Run directly from source
+# 3. Grant required IAM roles to Compute Engine SA for Cloud Build source retrieval
+PROJECT_NUMBER=$(gcloud projects describe "${PROJECT_ID}" --format="value(projectNumber)")
+COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+echo "--> Ensuring Cloud Build permissions for Compute Engine SA (${COMPUTE_SA})..."
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${COMPUTE_SA}" \
+    --role="roles/storage.objectViewer" --quiet > /dev/null
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${COMPUTE_SA}" \
+    --role="roles/artifactregistry.writer" --quiet > /dev/null
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${COMPUTE_SA}" \
+    --role="roles/logging.logWriter" --quiet > /dev/null
+
+# 4. Deploy API Service to Cloud Run directly from source
 echo "--> Deploying Cloud Run service '${SERVICE_NAME}'..."
 gcloud run deploy "${SERVICE_NAME}" \
     --project "${PROJECT_ID}" \
@@ -44,7 +58,7 @@ gcloud run deploy "${SERVICE_NAME}" \
     --timeout 300s \
     --set-env-vars ENVIRONMENT=production,GCP_PROJECT_ID="${PROJECT_ID}",VERSION="${VERSION}"
 
-# 4. Deploy Isolated Worker Pool (Cloud Run Worker Pools GA)
+# 5. Deploy Isolated Worker Pool (Cloud Run Worker Pools GA)
 if [ -f "deploy/cloudrun-worker-pool.yaml" ]; then
     echo "--> Deploying Worker Pool (Cloud Run Worker Pools GA)..."
     gcloud beta run worker-pools replace deploy/cloudrun-worker-pool.yaml \
@@ -52,7 +66,7 @@ if [ -f "deploy/cloudrun-worker-pool.yaml" ]; then
         --region "${REGION}" || echo "Worker pool deployment skipped or pending."
 fi
 
-# 5. Deploy OCR GPU Job (Cloud Run GPU GA)
+# 6. Deploy OCR GPU Job (Cloud Run GPU GA)
 if [ -f "deploy/cloudrun-ocr-gpu-job.yaml" ]; then
     echo "--> Deploying OCR GPU Job (Cloud Run GPU GA)..."
     gcloud beta run jobs replace deploy/cloudrun-ocr-gpu-job.yaml \

@@ -65,7 +65,8 @@ const LUCIDE_ICONS = {
   "pen-tool": `<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>`,
   "maximize-2": `<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/>`,
   "link": `<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>`,
-  "map-pin": `<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>`
+  "map-pin": `<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>`,
+  "copy": `<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>`
 };
 
 function getLucideSvg(name, size = 14, className = "") {
@@ -368,6 +369,16 @@ const toolsConfig = {
     title: "Security & Sandbox Model",
     icon: getLucideSvg("shield", 18),
     render: renderSecurityAuditTool,
+  },
+  "analytics": {
+    title: "Document Analytics & Readability",
+    icon: getLucideSvg("file-bar-chart", 18),
+    render: renderAnalyticsTool,
+  },
+  "summarizer": {
+    title: "Smart Summarizer & Insights",
+    icon: getLucideSvg("sparkles", 18),
+    render: renderSummarizerTool,
   },
 };
 
@@ -7763,6 +7774,415 @@ function renderSecurityAuditTool() {
     };
   }
 }
+
+// =============================================================
+// Milestone 1: Document Analytics Tool
+// =============================================================
+function renderAnalyticsTool() {
+  toolConfigPanel.innerHTML = `
+    <div class="panel-section">
+      <div class="section-label">Active Document</div>
+      <div id="analyticsUploadArea"></div>
+      <div id="analyticsFileInfo"></div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Analysis Scope & Filters</div>
+      <div class="form-group">
+        <label class="form-label" for="analyticsPageRange">Page Range</label>
+        <input type="text" class="form-input" id="analyticsPageRange" placeholder="all or e.g. 1-3, 5" value="all" />
+        <span style="font-size:11px; color: var(--text-muted);">Leave 'all' to profile entire document.</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="analyticsCustomText">Or Analyze Custom / Selected Text</label>
+        <textarea class="form-input" id="analyticsCustomText" rows="3" placeholder="Paste specific text passage here to analyze..."></textarea>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <button class="btn-primary" id="btnRunAnalytics" style="width: 100%;">
+        ${getLucideSvg("file-bar-chart", 14)} Compute Document Profile
+      </button>
+    </div>
+
+    <div id="analyticsResultsContainer" style="display: none; margin-top: 12px;"></div>
+  `;
+
+  renderDocStatusBadge("analyticsFileInfo");
+
+  document.getElementById("analyticsUploadArea").appendChild(
+    buildDropZone(".pdf", false, (file) => {
+      setActivePdf(file);
+      renderDocStatusBadge("analyticsFileInfo");
+    })
+  );
+
+  document.getElementById("btnRunAnalytics").addEventListener("click", async () => {
+    const customText = document.getElementById("analyticsCustomText").value.trim();
+    const pageRange = document.getElementById("analyticsPageRange").value.trim() || "all";
+    const resultsContainer = document.getElementById("analyticsResultsContainer");
+
+    if (!state.currentPdfFile && !customText) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file or enter text to analyze.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
+
+    resultsContainer.style.display = "block";
+    resultsContainer.innerHTML = `
+      <div style="padding: 20px; text-align: center; color: var(--text-muted);">
+        <div class="spinner" style="margin: 0 auto 10px;"></div>
+        Analyzing document lexicon, reading levels, and n-grams...
+      </div>
+    `;
+
+    try {
+      let data;
+      if (customText) {
+        const res = await fetch("/api/ai/analytics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ selected_text: customText }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        data = await res.json();
+      } else {
+        const formData = new FormData();
+        formData.append("file", state.currentPdfFile);
+        formData.append("page_range", pageRange);
+        const res = await fetch("/api/ai/analytics/file", {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) throw new Error(await res.text());
+        data = await res.json();
+      }
+
+      renderAnalyticsResults(resultsContainer, data);
+      showNotification("Document analytics computed successfully!", "success", 3000);
+    } catch (err) {
+      resultsContainer.innerHTML = `
+        <div class="alert-box error" style="margin-top: 10px;">
+          <strong>Analysis Failed:</strong> ${escapeHtml(err.message || String(err))}
+        </div>
+      `;
+    }
+  });
+}
+
+function renderAnalyticsResults(container, data) {
+  const read = data.readability || {};
+  let easeBadgeColor = "var(--text-muted)";
+  if (read.flesch_reading_ease >= 80) {
+    easeBadgeColor = "#15803D";
+  } else if (read.flesch_reading_ease >= 60) {
+    easeBadgeColor = "#4F46E5";
+  } else {
+    easeBadgeColor = "#B91C1C";
+  }
+
+  const keywordRows = (data.top_keywords || []).slice(0, 8).map(kw => `
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border-color); font-size: 12px;">
+      <span style="font-weight: 500;">${escapeHtml(kw.word)}</span>
+      <span style="color: var(--text-muted); font-size: 11px;">${kw.count}&times; (${kw.frequency_percent}%)</span>
+    </div>
+  `).join("");
+
+  const phrasePills = (data.top_phrases || []).slice(0, 6).map(p => `
+    <span class="phrase-tag" style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: var(--selected-bg); color: var(--selected-text); font-size: 11px; margin: 2px;">
+      ${escapeHtml(p.phrase)} <small>(${p.count})</small>
+    </span>
+  `).join("");
+
+  container.innerHTML = `
+    <div class="panel-section" style="background: var(--surface); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <span class="section-label" style="margin: 0;">Statistical Overview</span>
+        <span style="font-size: 11px; color: var(--accent); font-weight: 600;">${escapeHtml(data.language_name || 'English')}</span>
+      </div>
+
+      <div class="stats-mini-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+        <div class="stat-card" style="background: var(--bg); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+          <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Pages Analyzed</div>
+          <div style="font-size: 16px; font-weight: 700; color: var(--text-main);">${data.filtered_page_count} <small style="font-size: 10px; font-weight: 400; color: var(--text-muted);">/ ${data.page_count}</small></div>
+        </div>
+        <div class="stat-card" style="background: var(--bg); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+          <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Word Count</div>
+          <div style="font-size: 16px; font-weight: 700; color: var(--text-main);">${data.word_count.toLocaleString()}</div>
+        </div>
+        <div class="stat-card" style="background: var(--bg); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+          <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Characters (No spaces)</div>
+          <div style="font-size: 14px; font-weight: 600; color: var(--text-main);">${data.char_count_excluding_spaces.toLocaleString()}</div>
+        </div>
+        <div class="stat-card" style="background: var(--bg); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+          <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Est. Reading Time</div>
+          <div style="font-size: 14px; font-weight: 600; color: var(--accent);">${escapeHtml(data.estimated_read_time_human || '')}</div>
+        </div>
+      </div>
+
+      <div style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <span style="font-size: 12px; font-weight: 600;">Readability Score</span>
+          <span style="font-size: 12px; font-weight: 700; color: ${easeBadgeColor};">${read.flesch_reading_ease || 0} / 100</span>
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">${escapeHtml(read.interpretation || '')}</div>
+        <div style="font-size: 11px; color: var(--text-muted);">
+          <strong>Flesch-Kincaid:</strong> Grade ${read.flesch_kincaid_grade || 0} &bull; 
+          ${read.avg_words_per_sentence || 0} words/sentence
+        </div>
+      </div>
+
+      <div style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-bottom: 12px;">
+        <div class="section-label" style="margin-bottom: 6px;">Top Filtered Keywords</div>
+        ${keywordRows || '<span style="font-size: 11px; color: var(--text-muted);">None detected</span>'}
+      </div>
+
+      <div style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-bottom: 12px;">
+        <div class="section-label" style="margin-bottom: 6px;">Frequent Phrases (N-Grams)</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+          ${phrasePills || '<span style="font-size: 11px; color: var(--text-muted);">None detected</span>'}
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 12px;">
+        <button type="button" class="btn-secondary" id="btnCopyAnalyticsJson" style="flex: 1; font-size: 11px; padding: 6px 8px;">
+          ${getLucideSvg("copy", 12)} Copy JSON
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("btnCopyAnalyticsJson").addEventListener("click", () => {
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    showNotification("Analytics profile copied to clipboard!", "success", 2500);
+  });
+}
+
+// =============================================================
+// Milestone 1: Smart Summarizer Tool
+// =============================================================
+function renderSummarizerTool() {
+  toolConfigPanel.innerHTML = `
+    <div class="panel-section">
+      <div class="section-label">Active Document</div>
+      <div id="summarizerUploadArea"></div>
+      <div id="summarizerFileInfo"></div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Summarization Controls</div>
+      
+      <div class="form-group">
+        <label class="form-label" for="sumLevel">Summary Level</label>
+        <select class="form-select" id="sumLevel">
+          <option value="executive_summary" selected>Executive Summary (Strategic Goals &amp; Outcomes)</option>
+          <option value="brief_overview">Brief Overview (Concise Synopsis)</option>
+          <option value="section_by_section">Section-by-Section (Page/Topic Breakdown)</option>
+          <option value="key_takeaways">Key Takeaways (High-Impact Bullet Points)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="sumLength">Target Length</label>
+        <select class="form-select" id="sumLength">
+          <option value="short">Short (~2-3 Sentences)</option>
+          <option value="medium" selected>Medium (~5-7 Sentences)</option>
+          <option value="long">Long (~10-15 Sentences / In-Depth)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="sumTone">Tone &amp; Voice</label>
+        <select class="form-select" id="sumTone">
+          <option value="neutral" selected>Neutral Factual</option>
+          <option value="executive">Executive &amp; Strategic</option>
+          <option value="technical">Technical Deep-Dive</option>
+          <option value="simplified">Simplified / Plain Language</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="sumFormat">Output Format</label>
+        <select class="form-select" id="sumFormat">
+          <option value="paragraph" selected>Formatted Paragraphs</option>
+          <option value="bullet_points">Bullet Points</option>
+          <option value="table">Tabular Matrix</option>
+          <option value="structured_report">Structured Report (Headers &amp; Outlook)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="sumScope">Page Range / Passage</label>
+        <input type="text" class="form-input" id="sumScope" placeholder="all or e.g. 1-2, 4" value="all" />
+      </div>
+
+      <div class="form-group">
+        <label style="display: flex; align-items: flex-start; gap: 8px; font-size: 12px; cursor: pointer;">
+          <input type="checkbox" id="sumAllowCloudAi" style="margin-top: 2px;" />
+          <span>
+            <strong>Allow External Cloud AI (F13 Privacy Gate)</strong><br />
+            <span style="font-size: 11px; color: var(--text-muted);">
+              When unchecked, runs strictly in-process with zero network egress.
+            </span>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <button class="btn-primary" id="btnRunSummarizer" style="width: 100%;">
+        ${getLucideSvg("sparkles", 14)} Generate Smart Summary
+      </button>
+    </div>
+
+    <div id="summarizerResultsContainer" style="display: none; margin-top: 12px;"></div>
+  `;
+
+  renderDocStatusBadge("summarizerFileInfo");
+
+  document.getElementById("summarizerUploadArea").appendChild(
+    buildDropZone(".pdf", false, (file) => {
+      setActivePdf(file);
+      renderDocStatusBadge("summarizerFileInfo");
+    })
+  );
+
+  document.getElementById("btnRunSummarizer").addEventListener("click", async () => {
+    const resultsContainer = document.getElementById("summarizerResultsContainer");
+    if (!state.currentPdfFile) {
+      renderErrorSummary(toolConfigPanel, "Please upload a PDF file first to generate a summary.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
+
+    const level = document.getElementById("sumLevel").value;
+    const length = document.getElementById("sumLength").value;
+    const tone = document.getElementById("sumTone").value;
+    const outputFormat = document.getElementById("sumFormat").value;
+    const pageRange = document.getElementById("sumScope").value.trim() || "all";
+    const allowExternalAi = document.getElementById("sumAllowCloudAi").checked;
+
+    resultsContainer.style.display = "block";
+    resultsContainer.innerHTML = `
+      <div style="padding: 20px; text-align: center; color: var(--text-muted);">
+        <div class="spinner" style="margin: 0 auto 10px;"></div>
+        Synthesizing document summary &amp; extracting structured insights...
+      </div>
+    `;
+
+    try {
+      const formData = new FormData();
+      formData.append("file", state.currentPdfFile);
+      formData.append("level", level);
+      formData.append("length", length);
+      formData.append("tone", tone);
+      formData.append("output_format", outputFormat);
+      formData.append("page_range", pageRange);
+      formData.append("allow_external_ai", allowExternalAi ? "true" : "false");
+
+      const res = await fetch("/api/ai/summarize/file", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+
+      renderSummarizerResults(resultsContainer, data);
+      showNotification("Summary generated successfully!", "success", 3000);
+    } catch (err) {
+      resultsContainer.innerHTML = `
+        <div class="alert-box error" style="margin-top: 10px;">
+          <strong>Summarization Failed:</strong> ${escapeHtml(err.message || String(err))}
+        </div>
+      `;
+    }
+  });
+}
+
+function renderSummarizerResults(container, data) {
+  const insights = data.insights || {};
+  const actionItemsHtml = (insights.action_items || []).map(a => `<li style="margin-bottom: 4px;">${escapeHtml(a)}</li>`).join("");
+  const decisionsHtml = (insights.decisions || []).map(d => `<li style="margin-bottom: 4px;">${escapeHtml(d)}</li>`).join("");
+  const risksHtml = (insights.risks || []).map(r => `<li style="margin-bottom: 4px; color: var(--error);">${escapeHtml(r)}</li>`).join("");
+  const datesHtml = (insights.dates || []).map(dt => `<span class="phrase-tag" style="padding: 2px 6px; border-radius: 4px; background: var(--bg); border: 1px solid var(--border-color); font-size: 11px;">${escapeHtml(dt)}</span>`).join(" ");
+  const entitiesHtml = (insights.entities || []).map(ent => `<span class="phrase-tag" style="padding: 2px 6px; border-radius: 4px; background: var(--selected-bg); color: var(--selected-text); font-size: 11px;">${escapeHtml(ent)}</span>`).join(" ");
+
+  container.innerHTML = `
+    <div class="panel-section" style="background: var(--surface); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span class="section-label" style="margin: 0;">Generated Summary</span>
+        <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--bg); border: 1px solid var(--border-color); color: var(--text-muted);">
+          ${escapeHtml(data.model_used || 'offline')} &bull; ${data.latency_ms || 0}ms
+        </span>
+      </div>
+
+      <div class="summary-body" style="font-size: 12px; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; margin-bottom: 14px; padding: 8px; background: var(--bg); border-radius: 6px; border: 1px solid var(--border-color);">
+${escapeHtml(data.summary)}
+      </div>
+
+      <!-- Structured Insights Accordion -->
+      <div style="border-top: 1px solid var(--border-color); padding-top: 10px;">
+        <span class="section-label" style="margin-bottom: 6px;">Structured Insights</span>
+
+        ${insights.action_items && insights.action_items.length > 0 ? `
+          <div style="margin-bottom: 8px;">
+            <strong style="font-size: 11px; color: var(--accent);">Action Items (${insights.action_items.length}):</strong>
+            <ul style="font-size: 11px; padding-left: 16px; margin: 4px 0;">${actionItemsHtml}</ul>
+          </div>
+        ` : ''}
+
+        ${insights.decisions && insights.decisions.length > 0 ? `
+          <div style="margin-bottom: 8px;">
+            <strong style="font-size: 11px; color: #15803D;">Decisions Approved (${insights.decisions.length}):</strong>
+            <ul style="font-size: 11px; padding-left: 16px; margin: 4px 0;">${decisionsHtml}</ul>
+          </div>
+        ` : ''}
+
+        ${insights.risks && insights.risks.length > 0 ? `
+          <div style="margin-bottom: 8px;">
+            <strong style="font-size: 11px; color: #B91C1C;">Identified Risks (${insights.risks.length}):</strong>
+            <ul style="font-size: 11px; padding-left: 16px; margin: 4px 0;">${risksHtml}</ul>
+          </div>
+        ` : ''}
+
+        ${insights.dates && insights.dates.length > 0 ? `
+          <div style="margin-bottom: 6px;">
+            <strong style="font-size: 11px; color: var(--text-muted);">Key Dates:</strong>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px;">${datesHtml}</div>
+          </div>
+        ` : ''}
+
+        ${insights.entities && insights.entities.length > 0 ? `
+          <div style="margin-bottom: 6px;">
+            <strong style="font-size: 11px; color: var(--text-muted);">Key Entities:</strong>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px;">${entitiesHtml}</div>
+          </div>
+        ` : ''}
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 12px;">
+        <button type="button" class="btn-secondary" id="btnCopySummaryText" style="flex: 1; font-size: 11px; padding: 6px 8px;">
+          ${getLucideSvg("copy", 12)} Copy Summary
+        </button>
+        <button type="button" class="btn-secondary" id="btnDownloadSummaryMd" style="flex: 1; font-size: 11px; padding: 6px 8px;">
+          ${getLucideSvg("download", 12)} Download .md
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("btnCopySummaryText").addEventListener("click", () => {
+    navigator.clipboard.writeText(data.summary);
+    showNotification("Summary copied to clipboard!", "success", 2500);
+  });
+
+  document.getElementById("btnDownloadSummaryMd").addEventListener("click", () => {
+    const mdContent = `# Document Summary\n\n${data.summary}\n\n## Insights\n- Action Items: ${(insights.action_items || []).join('; ')}\n- Decisions: ${(insights.decisions || []).join('; ')}\n- Risks: ${(insights.risks || []).join('; ')}\n`;
+    const blob = new Blob([mdContent], { type: "text/markdown" });
+    downloadBlob(blob, `document_summary_${data.level}.md`);
+  });
+}
+
 
 
 

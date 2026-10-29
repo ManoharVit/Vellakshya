@@ -108,3 +108,93 @@ class PIIScanResponse(BaseModel):
 class PIIApplyRequest(BaseModel):
     document_id: str
     approved_entity_ids: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Milestone 1: Document Analytics & Smart Summarizer Models
+# ---------------------------------------------------------------------------
+
+class ReadabilityMetrics(BaseModel):
+    flesch_reading_ease: float
+    flesch_kincaid_grade: float
+    interpretation: str
+    total_syllables: int
+    avg_words_per_sentence: float
+    avg_syllables_per_word: float
+
+
+class KeywordFrequency(BaseModel):
+    word: str
+    count: int
+    frequency_percent: float
+
+
+class PhraseFrequency(BaseModel):
+    phrase: str
+    count: int
+    type: str
+
+
+class AnalyticsResponse(BaseModel):
+    page_count: int
+    filtered_page_count: int
+    word_count: int
+    char_count: int
+    char_count_excluding_spaces: int
+    sentence_count: int
+    paragraph_count: int
+    estimated_read_time_seconds: int
+    estimated_read_time_human: str
+    language_code: str
+    language_name: str
+    readability: ReadabilityMetrics
+    top_keywords: list[KeywordFrequency]
+    top_phrases: list[PhraseFrequency]
+
+
+class AnalyticsRequest(BaseModel):
+    document_id: Optional[str] = None
+    selected_text: Optional[str] = None
+    page_range: Optional[str] = None
+
+
+class ExtractedInsights(BaseModel):
+    action_items: list[str] = Field(default_factory=list)
+    decisions: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    entities: list[str] = Field(default_factory=list)
+    dates: list[str] = Field(default_factory=list)
+
+
+class SummarizeRequest(BaseModel):
+    document_id: Optional[str] = None
+    selected_text: Optional[str] = None
+    page_range: Optional[str] = None
+    level: str = Field(
+        default="executive_summary",
+        description="brief_overview, executive_summary, section_by_section, key_takeaways",
+    )
+    length: str = Field(default="medium", description="short, medium, long")
+    tone: str = Field(default="neutral", description="neutral, executive, technical, simplified")
+    output_format: str = Field(
+        default="paragraph",
+        description="paragraph, bullet_points, table, structured_report",
+    )
+    allow_external_ai: bool = Field(
+        default=False,
+        description="Local-first privacy gate. When False, strictly runs offline extractive summarization.",
+    )
+
+
+class SummarizeResponse(BaseModel):
+    summary: str
+    level: str
+    length: str
+    tone: str
+    output_format: str
+    insights: ExtractedInsights
+    model_used: str
+    page_count: int
+    filtered_page_count: int
+    latency_ms: float = 0.0
+

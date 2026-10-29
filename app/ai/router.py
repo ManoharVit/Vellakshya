@@ -13,6 +13,7 @@ from fastapi import (
     APIRouter,
     Depends,
     File,
+    Form,
     Header,
     HTTPException,
     Query,
@@ -22,21 +23,31 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
+from app.ai.analytics import analyze_pdf_document, compute_document_analytics
 from app.ai.chunking import extract_chunks_from_pdf_bytes
 from app.ai.embeddings import DEFAULT_EMBEDDING_DIM, DEFAULT_EMBEDDING_MODEL, get_embedding
 from app.ai.models import (
+    AnalyticsRequest,
+    AnalyticsResponse,
     PIIApplyRequest,
     PIIScanResponse,
     RAGQueryRequest,
     RAGResponse,
+    SummarizeRequest,
+    SummarizeResponse,
 )
 from app.ai.observability import check_rate_limit
 from app.ai.pii import apply_physical_redactions, scan_pdf_for_pii
 from app.ai.rag import answer_question_with_citations
 from app.ai.storage import (
+    AIChunk,
     AIDocument,
     delete_ai_document,
     store_document_and_chunks,
+)
+from app.ai.summarizer import (
+    summarize_pdf_document,
+    summarize_text_extractive,
 )
 from app.core.config import config
 from app.models.db import get_db
@@ -276,3 +287,176 @@ async def apply_pii_endpoint(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=redacted_{doc_id}.pdf"},
     )
+
+
+# ---------------------------------------------------------------------------
+# Milestone 1: Document Analytics Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/analytics", response_model=AnalyticsResponse, summary="Compute Document Analytics")
+async def compute_analytics_endpoint(
+    req: AnalyticsRequest,
+    db: Session = Depends(get_db),
+) -> AnalyticsResponse:
+    """Computes lexical density, readability scores, and n-gram frequencies for text or document."""
+    if req.selected_text and req.selected_text.strip():
+        data = compute_document_analytics(
+            req.selected_text.strip(), page_count=1, filtered_page_count=1
+        )
+        return AnalyticsResponse(**data)
+
+    if req.document_id:
+        item = _TRANSIENT_PDF_STORE.get(req.document_id)
+        if item and "bytes" in item:
+            data = analyze_pdf_document(
+                pdf_bytes=item["bytes"],
+                page_range=req.page_range,
+                selected_text=req.selected_text,
+            )
+            return AnalyticsResponse(**data)
+
+        # Fallback to database indexed chunks
+        chunks = db.query(AIChunk).filter_by(document_id=req.document_id).all()
+        if chunks:
+            full_text = "\n\n".join(c.content for c in chunks)
+            pages = set(c.page for c in chunks)
+            data = compute_document_analytics(
+                full_text, page_count=len(pages), filtered_page_count=len(pages)
+            )
+            return AnalyticsResponse(**data)
+        raise HTTPException(status_code=404, detail="Document not found or session expired.")
+
+    raise HTTPException(status_code=400, detail="Either document_id or selected_text must be provided.")
+
+
+@router.post("/analytics/file", response_model=AnalyticsResponse, summary="Upload PDF and Compute Analytics")
+async def compute_analytics_file_endpoint(
+    file: UploadFile = File(...),
+    page_range: Optional[str] = Form(None),
+    selected_text: Optional[str] = Form(None),
+) -> AnalyticsResponse:
+    """Uploads a PDF file directly and computes comprehensive statistical metrics."""
+    import time
+
+    pdf_bytes = await file.read()
+    if not pdf_bytes:
+        raise HTTPException(status_code=400, detail="Empty PDF file.")
+
+    sha256 = hashlib.sha256(pdf_bytes).hexdigest()
+    doc_id = f"doc_{sha256[:16]}"
+    purge_expired_transient_ai_data()
+    _TRANSIENT_PDF_STORE[doc_id] = {"bytes": pdf_bytes, "created_at": time.time()}
+
+    data = analyze_pdf_document(
+        pdf_bytes=pdf_bytes,
+        page_range=page_range,
+        selected_text=selected_text,
+    )
+    return AnalyticsResponse(**data)
+
+
+# ---------------------------------------------------------------------------
+# Milestone 1: Smart Summarization Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/summarize", response_model=SummarizeResponse, summary="Smart Multi-Tier Document Summarization")
+async def summarize_document_endpoint(
+    req: SummarizeRequest,
+    db: Session = Depends(get_db),
+) -> SummarizeResponse:
+    """Summarizes document with selectable depth, tone, format, and structured insight extraction."""
+    import time
+
+    if req.selected_text and req.selected_text.strip():
+        return summarize_pdf_document(
+            pdf_bytes=b"",
+            selected_text=req.selected_text,
+            level=req.level,
+            length=req.length,
+            tone=req.tone,
+            output_format=req.output_format,
+            allow_external_ai=req.allow_external_ai,
+        )
+
+    if req.document_id:
+        item = _TRANSIENT_PDF_STORE.get(req.document_id)
+        if item and "bytes" in item:
+            return summarize_pdf_document(
+                pdf_bytes=item["bytes"],
+                page_range=req.page_range,
+                selected_text=req.selected_text,
+                level=req.level,
+                length=req.length,
+                tone=req.tone,
+                output_format=req.output_format,
+                allow_external_ai=req.allow_external_ai,
+            )
+
+        chunks = db.query(AIChunk).filter_by(document_id=req.document_id).all()
+        if chunks:
+            full_text = "\n\n".join(c.content for c in chunks)
+            pages = sorted(list(set(c.page for c in chunks)))
+            pages_text = [
+                (f"Page {p}", "\n".join(c.content for c in chunks if c.page == p))
+                for p in pages
+            ]
+            t_start = time.perf_counter()
+            summary_text, insights = summarize_text_extractive(
+                text=full_text,
+                level=req.level,
+                length=req.length,
+                tone=req.tone,
+                output_format=req.output_format,
+                pages_text=pages_text,
+            )
+            return SummarizeResponse(
+                summary=summary_text,
+                level=req.level,
+                length=req.length,
+                tone=req.tone,
+                output_format=req.output_format,
+                insights=insights,
+                model_used="offline-extractive-v1",
+                page_count=len(pages),
+                filtered_page_count=len(pages),
+                latency_ms=round((time.perf_counter() - t_start) * 1000, 2),
+            )
+        raise HTTPException(status_code=404, detail="Document not found or session expired.")
+
+    raise HTTPException(status_code=400, detail="Either document_id or selected_text must be provided.")
+
+
+@router.post("/summarize/file", response_model=SummarizeResponse, summary="Upload PDF and Summarize")
+async def summarize_file_endpoint(
+    file: UploadFile = File(...),
+    page_range: Optional[str] = Form(None),
+    selected_text: Optional[str] = Form(None),
+    level: str = Form("executive_summary"),
+    length: str = Form("medium"),
+    tone: str = Form("neutral"),
+    output_format: str = Form("paragraph"),
+    allow_external_ai: bool = Form(False),
+) -> SummarizeResponse:
+    """Uploads a PDF directly and generates a multi-tier summary with structured insights."""
+    import time
+
+    pdf_bytes = await file.read()
+    if not pdf_bytes:
+        raise HTTPException(status_code=400, detail="Empty PDF file.")
+
+    sha256 = hashlib.sha256(pdf_bytes).hexdigest()
+    doc_id = f"doc_{sha256[:16]}"
+    purge_expired_transient_ai_data()
+    _TRANSIENT_PDF_STORE[doc_id] = {"bytes": pdf_bytes, "created_at": time.time()}
+
+    return summarize_pdf_document(
+        pdf_bytes=pdf_bytes,
+        page_range=page_range,
+        selected_text=selected_text,
+        level=level,
+        length=length,
+        tone=tone,
+        output_format=output_format,
+        allow_external_ai=allow_external_ai,
+    )
+

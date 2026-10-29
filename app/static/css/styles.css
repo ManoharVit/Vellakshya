@@ -4387,6 +4387,78 @@ a:focus-visible {
   background: #94A3B8 !important;
 }
 
+/* -------------------------------------------------------------
+ * Milestone 1: Analytics & Summarizer Components
+ * ------------------------------------------------------------- */
+.stats-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.stat-card {
+  background: var(--bg);
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  transition: border-color 0.15s ease;
+}
+
+.stat-card:hover {
+  border-color: var(--accent);
+}
+
+.phrase-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--selected-bg);
+  color: var(--selected-text);
+  font-size: 11px;
+  border: 1px solid rgba(79, 70, 229, 0.15);
+  transition: all 0.15s ease;
+}
+
+.phrase-tag:hover {
+  background: var(--accent);
+  color: #FFFFFF;
+}
+
+.summary-body {
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-main);
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 10px;
+  background: var(--bg);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+[data-theme="light"] .summary-body,
+.theme-light .summary-body {
+  background: #F8FAFC !important;
+  color: #0F172A !important;
+  border-color: #E2E8F0 !important;
+}
+
+[data-theme="light"] .stat-card,
+.theme-light .stat-card {
+  background: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+}
+
+[data-theme="light"] .phrase-tag,
+.theme-light .phrase-tag {
+  background: #EEF2FF !important;
+  color: #3730A3 !important;
+  border-color: #C7D2FE !important;
+}
+
+
 
 
 

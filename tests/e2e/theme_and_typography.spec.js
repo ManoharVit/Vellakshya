@@ -50,7 +50,7 @@ test.describe('Theme & Self-Hosted Typography Verification (Step 8)', () => {
       const el = document.querySelector('.brand-title');
       return el ? getComputedStyle(el).fontFamily : '';
     });
-    expect(brandFont).toContain('Manrope');
+    expect(brandFont).toContain('Geist Brand');
   });
 
   test('verifies export dropdown touchpoints for PDF, DOCX, Semantic HTML, and Markdown', async ({ page }) => {

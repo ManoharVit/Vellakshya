@@ -1,7 +1,7 @@
 {
   "name": "vellakshya",
   "version": "2.0.0",
-  "description": "Enterprise Document Workstation & PDF Intelligence System featuring in-browser pdf-lib processing, zero-backend Netlify Edge CDN deployment, and high-fidelity document assembly.",
+  "description": "Enterprise Document Workstation & PDF Intelligence System featuring in-browser pdf-lib processing, Google Cloud Run microservices, and high-fidelity document assembly.",
   "main": "index.js",
   "directories": {
     "test": "tests"
@@ -28,14 +28,16 @@
     "document-intelligence",
     "pdf-lib",
     "fastapi",
-    "netlify"
+    "gcp",
+    "cloud-run",
+    "google-cloud"
   ],
   "author": "Giri Manohar Vemula <https://www.linkedin.com/in/manoharv511>",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/ManoharVit/Vellakshya/issues"
   },
-  "homepage": "https://vellakshya.netlify.app/",
+  "homepage": "https://vellakshya-gcp.web.app",
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "@cantoo/pdf-lib": "^2.11.1",

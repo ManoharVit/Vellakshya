@@ -4,9 +4,9 @@ import path from 'path';
 const SAMPLE_PDF_PATH = path.resolve(__dirname, '../../test-data/sample-pdfs/sample.pdf');
 const CV_PDF_PATH = path.resolve(__dirname, '../../test-data/sample-pdfs/cv_test.pdf');
 
-test.describe('In-Browser Client PDF Engine (Netlify Simulation)', () => {
+test.describe('In-Browser Client PDF Engine (Offline Fallback)', () => {
   test('replaces text in-browser when backend /api is blocked or unreachable', async ({ page }) => {
-    // Intercept and abort /api/* requests to simulate Netlify without backend
+    // Intercept and abort /api/* requests to simulate offline mode without backend
     await page.route('**/api/edit/replace-text', (route) => route.abort('failed'));
 
     await page.goto('/');

@@ -13,7 +13,7 @@ authors = [
 ]
 
 [project.urls]
-Homepage = "https://vellakshya.netlify.app/"
+Homepage = "https://vellakshya-gcp.web.app"
 Repository = "https://github.com/ManoharVit/Vellakshya"
 Documentation = "https://github.com/ManoharVit/Vellakshya#readme"
 
@@ -67,5 +67,10 @@ module = [
     "fakeredis",
     "psycopg2.*",
     "pgvector.*",
+    "presidio_analyzer.*",
+    "presidio_anonymizer.*",
+    "google.*",
+    "openai.*",
+    "docx.*",
 ]
 ignore_missing_imports = true

@@ -1,6 +1,6 @@
 {
   "name": "vellakshya",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Enterprise Document Workstation & PDF Intelligence System featuring in-browser pdf-lib processing, zero-backend Netlify Edge CDN deployment, and high-fidelity document assembly.",
   "main": "index.js",
   "directories": {
@@ -38,8 +38,8 @@
   "homepage": "https://vellakshya.netlify.app/",
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
+    "@cantoo/pdf-lib": "^2.11.1",
     "@playwright/test": "^1.64.1",
-    "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.4.299",
     "vitest": "^5.0.5"
   }

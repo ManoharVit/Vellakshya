@@ -305,7 +305,7 @@ class DocumentCollaborationRoom:
             "user_id": author_id,
             "annotation": annot_record,
         }
-        await self.broadcast(msg, exclude=sender_ws)
+        await self.broadcast(msg)
         return annot_record
 
     async def broadcast_comment(
@@ -318,7 +318,7 @@ class DocumentCollaborationRoom:
             "doc_id": self.doc_id,
             "comment": comment_dict,
         }
-        await self.broadcast(msg, exclude=sender_ws)
+        await self.broadcast(msg)
 
     async def broadcast(self, message: dict[str, Any], exclude: Optional[WebSocket] = None) -> None:
         dead_sockets: list[WebSocket] = []

@@ -302,38 +302,65 @@ def _select_target_rect(
     return rects[0]
 
 
+class ReplaceResult(tuple):
+    def __new__(cls, pdf_bytes: bytes, count: int, warnings: list[str] | None = None):
+        inst = super().__new__(cls, (pdf_bytes, count))
+        inst.pdf_bytes = pdf_bytes
+        inst.count = count
+        inst.warnings = warnings or []
+        return inst
+
+
+def _sample_bg_color(page: fitz.Page, rect: fitz.Rect) -> tuple[float, float, float]:
+    """
+    Samples the underlying background color around a text rect to avoid hardcoded white boxes.
+    """
+    try:
+        sample_rect = fitz.Rect(
+            max(0, rect.x0 - 4),
+            max(0, rect.y0 - 4),
+            min(page.rect.width, rect.x0),
+            min(page.rect.height, rect.y0),
+        )
+        if sample_rect.width > 0 and sample_rect.height > 0:
+            pix = page.get_pixmap(clip=sample_rect)
+            if pix.width > 0 and pix.height > 0:
+                p = pix.pixel(0, 0)
+                return (round(p[0] / 255.0, 4), round(p[1] / 255.0, 4), round(p[2] / 255.0, 4))
+    except Exception:
+        pass
+    return (1.0, 1.0, 1.0)
+
+
 def replace_text_batch(
     pdf_bytes: bytes,
     rules: list[dict],
-    fill_bg_color: tuple[float, float, float] = (1.0, 1.0, 1.0),
+    fill_bg_color: Optional[tuple[float, float, float]] = None,
     pages: Optional[list[int]] = None,
     preserve_style: bool = True,
-) -> tuple[bytes, int]:
+    cover_box: bool = False,
+    match_case: bool = False,
+) -> ReplaceResult:
     """
     Applies text search & replace rules on the document.
     Automatically detects and preserves the exact font family, style (bold/italic),
     font size, color, and typographical baseline from the original text being replaced.
     Supports either targeted single-occurrence replacement (single=True with optional
     occurrence index or bounding box rect) or full document/page replacement (single=False).
-    Each rule is a dict:
-      {
-        "search_text": str,
-        "replacement_text": str,
-        "font_size": Optional[int],
-        "color": Optional[tuple],
-        "font_name": Optional[str],
-        "single": Optional[bool],
-        "occurrence": Optional[int],
-        "rect": Optional[list[float]],
-        "page_num": Optional[int],
-        "preserve_style": Optional[bool],
-        "override_color": Optional[bool],
-        "override_size": Optional[bool]
-      }
+
+    Collision & Overflow Prevention:
+      - Measures pixel width of replacement vs original text.
+      - If wider: shifts remaining words on the same line to the right.
+      - If line passes right margin: shrinks font size (down to 85% limit).
+      - If collision persists: records precise collision warning for user review.
+      - If cover_box is False (default): applies fill=None to avoid visible white boxes.
+      - If cover_box is True: dynamically samples true background color.
+      - Single-pass matching guarantees no recursive self-replacement loops.
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     total_replaced = 0
     target_pages = set(pages) if pages is not None else set(range(1, len(doc) + 1))
+    collision_warnings: list[str] = []
 
     for rule in rules:
         clean_search = (rule.get("search_text") or rule.get("search") or "").strip()
@@ -352,6 +379,8 @@ def replace_text_batch(
         rule_preserve_style = bool(rule.get("preserve_style", preserve_style))
         override_color = bool(rule.get("override_color", False))
         override_size = bool(rule.get("override_size", False))
+        rule_cover_box = bool(rule.get("cover_box", cover_box))
+        rule_match_case = bool(rule.get("match_case", match_case))
 
         rule_target_pages = target_pages
         if rule_page is not None and 1 <= rule_page <= len(doc):
@@ -360,7 +389,22 @@ def replace_text_batch(
         for idx, page in enumerate(doc, 1):
             if idx not in rule_target_pages:
                 continue
-            rects = page.search_for(clean_search)
+
+            # Single-pass candidate extraction
+            all_rects = page.search_for(clean_search)
+            if not all_rects:
+                continue
+
+            if rule_match_case:
+                # Filter to matches with exact casing
+                rects = []
+                for r in all_rects:
+                    extracted = page.get_text("text", clip=r).strip()
+                    if extracted == clean_search or clean_search in extracted:
+                        rects.append(r)
+            else:
+                rects = all_rects
+
             if not rects:
                 continue
 
@@ -373,15 +417,18 @@ def replace_text_batch(
             if not rects_to_process:
                 continue
 
-            # Extract untouched page text structure BEFORE applying redactions
+            # Extract page structure and word blocks BEFORE modifying page
             spans = _extract_page_spans(page)
+            page_words = page.get_text("words")
+            max_allowed_x = page.rect.width - 36.0  # 0.5 in right margin
 
-            # Build replacement execution plan matching original font, size, color & baseline
-            plan = []
-            for r in rects_to_process:
+            # Sort targets by vertical position then horizontal
+            sorted_rects = sorted(rects_to_process, key=lambda r: (round(r.y0, 1), r.x0))
+
+            # 1. Compute fonts, colors, and line deltas for all targets on this page
+            match_data: list[dict] = []
+            for r in sorted_rects:
                 best_span = _find_matching_span(r, spans) if spans else None
-
-                # 1. Resolve Font Family & Style
                 if best_span and (rule_preserve_style or not font_name_override):
                     final_font = _map_to_standard_pdf_font(
                         best_span.get("font", ""), best_span.get("flags", 0)
@@ -391,7 +438,6 @@ def replace_text_batch(
                 else:
                     final_font = "helv"
 
-                # 2. Resolve Font Size
                 if override_size and font_size is not None and font_size > 0:
                     final_fs = float(font_size)
                 elif (
@@ -405,7 +451,6 @@ def replace_text_batch(
                 else:
                     final_fs = max(8.0, r.height * 0.85)
 
-                # 3. Resolve Font Color
                 if override_color and color is not None:
                     final_color = color
                 elif (
@@ -414,42 +459,170 @@ def replace_text_batch(
                     and best_span.get("color") is not None
                 ):
                     c_int = best_span["color"]
-                    r_col = ((c_int >> 16) & 255) / 255.0
-                    g_col = ((c_int >> 8) & 255) / 255.0
-                    b_col = (c_int & 255) / 255.0
-                    final_color = (round(r_col, 4), round(g_col, 4), round(b_col, 4))
+                    final_color = (
+                        round(((c_int >> 16) & 255) / 255.0, 4),
+                        round(((c_int >> 8) & 255) / 255.0, 4),
+                        round((c_int & 255) / 255.0, 4),
+                    )
                 elif color is not None:
                     final_color = color
                 else:
                     final_color = (0.0, 0.0, 0.0)
 
-                # 4. Resolve Typographical Baseline Origin
                 origin = best_span.get("origin") if best_span else None
                 if origin and (r.y0 - 2.0 <= origin[1] <= r.y1 + 4.0):
-                    insert_pt = fitz.Point(r.x0, origin[1])
+                    origin_y = origin[1]
                 else:
-                    insert_pt = fitz.Point(r.x0, r.y1 - (r.height * 0.15))
+                    origin_y = r.y1 - (r.height * 0.15)
 
-                plan.append((r, final_font, final_fs, final_color, insert_pt))
+                w_orig = r.width
+                w_new = (
+                    fitz.get_text_length(replacement, fontname=final_font, fontsize=final_fs)
+                    if replacement
+                    else 0.0
+                )
 
-            # Apply redactions to erase original glyphs cleanly
-            for r in rects_to_process:
-                page.add_redact_annot(r, fill=fill_bg_color)
+                # Margin check: if replacement overflows page margin, shrink font down (limit >= 85%)
+                if r.x0 + w_new > max_allowed_x and replacement:
+                    scale_factor = max(0.85, (max_allowed_x - r.x0) / max(1.0, w_new))
+                    if scale_factor < 1.0:
+                        final_fs = max(7.0, round(final_fs * scale_factor, 2))
+                        w_new = fitz.get_text_length(
+                            replacement, fontname=final_font, fontsize=final_fs
+                        )
+
+                    if r.x0 + w_new > max_allowed_x:
+                        overflow_pt = round((r.x0 + w_new) - max_allowed_x, 1)
+                        collision_warnings.append(
+                            f"Replacement '{replacement}' is {overflow_pt} pt wider than available space on line (page {idx})."
+                        )
+
+                delta = max(0.0, w_new - w_orig)
+                fill_col = (
+                    (fill_bg_color if fill_bg_color is not None else _sample_bg_color(page, r))
+                    if rule_cover_box
+                    else None
+                )
+
+                match_data.append(
+                    {
+                        "rect": r,
+                        "delta": delta,
+                        "font": final_font,
+                        "fs": final_fs,
+                        "color": final_color,
+                        "origin_y": origin_y,
+                        "fill": fill_col,
+                        "w_new": w_new,
+                    }
+                )
+
+            redactions: list[tuple[fitz.Rect, Optional[tuple[float, float, float]]]] = []
+            insertions: list[
+                tuple[fitz.Point, str, str, float, tuple[float, float, float], float]
+            ] = []
+
+            # 2. Schedule redaction and replacement for each target
+            for m in match_data:
+                r = m["rect"]
+                # Cumulative shift from preceding matches on the same typographical line
+                shift = sum(
+                    prev["delta"]
+                    for prev in match_data
+                    if (
+                        (
+                            min(prev["rect"].y1, r.y1) - max(prev["rect"].y0, r.y0)
+                            > 0.4 * min(prev["rect"].height, max(1.0, r.height))
+                        )
+                        or abs(prev["rect"].y0 - r.y0) < 8.0
+                    )
+                    and prev["rect"].x1 <= r.x0 + 2.0
+                )
+                redactions.append((r, m["fill"]))
                 total_replaced += 1
+                if replacement:
+                    insert_pt = fitz.Point(r.x0 + shift, m["origin_y"])
+                    insertions.append(
+                        (insert_pt, replacement, m["font"], m["fs"], m["color"], m["w_new"])
+                    )
 
+            # 3. Schedule shift for non-matching subsequent words on the same line
+            for w in page_words:
+                w_rect = fitz.Rect(w[:4])
+                if any(m["rect"].intersects(w_rect) for m in match_data):
+                    continue
+
+                shift = sum(
+                    prev["delta"]
+                    for prev in match_data
+                    if (
+                        (
+                            min(prev["rect"].y1, w[3]) - max(prev["rect"].y0, w[1])
+                            > 0.4 * min(prev["rect"].height, max(1.0, w[3] - w[1]))
+                        )
+                        or abs(prev["rect"].y0 - w[1]) < 8.0
+                    )
+                    and prev["rect"].x1 <= w[0] + 2.0
+                )
+                if shift > 0.5:
+                    w_s = _find_matching_span(w_rect, spans) if spans else None
+                    w_font = (
+                        _map_to_standard_pdf_font(w_s.get("font", ""), w_s.get("flags", 0))
+                        if w_s
+                        else "helv"
+                    )
+                    w_fs = float(w_s.get("size", 12.0)) if w_s else 12.0
+                    w_c_int = w_s.get("color", 0) if w_s else 0
+                    w_color = (
+                        round(((w_c_int >> 16) & 255) / 255.0, 4),
+                        round(((w_c_int >> 8) & 255) / 255.0, 4),
+                        round((w_c_int & 255) / 255.0, 4),
+                    )
+                    w_origin_y = w_s.get("origin", [0, w[3] - 2.0])[1] if w_s else (w[3] - 2.0)
+                    w_fill = (
+                        (
+                            fill_bg_color
+                            if fill_bg_color is not None
+                            else _sample_bg_color(page, w_rect)
+                        )
+                        if rule_cover_box
+                        else None
+                    )
+
+                    redactions.append((w_rect, w_fill))
+                    insert_pt = fitz.Point(w[0] + shift, w_origin_y)
+                    insertions.append((insert_pt, w[4], w_font, w_fs, w_color, w_rect.width))
+
+            # Apply redactions once to cleanly erase original glyphs
+            for r, fill_col in redactions:
+                page.add_redact_annot(r, fill=fill_col)
             page.apply_redactions()
 
-            # Insert replacement text with identical font, size, color, and baseline
-            if replacement:
-                for r, f_font, f_size, f_col, pt in plan:
-                    page.insert_text(pt, replacement, fontname=f_font, fontsize=f_size, color=f_col)
+            # Sort insertions in natural reading order (top-to-bottom, left-to-right)
+            insertions.sort(key=lambda item: (round(item[0].y, 1), item[0].x))
+
+            # Insert replacement and shifted words
+            for pt, text_to_insert, f_font, f_size, f_col, w_len in insertions:
+                page.insert_text(pt, text_to_insert, fontname=f_font, fontsize=f_size, color=f_col)
+
+                if text_to_insert == replacement:
+                    new_bbox = fitz.Rect(pt.x, pt.y - f_size, pt.x + w_len, pt.y + 2.0)
+                    intersecting = [
+                        w
+                        for w in page.get_text("words")
+                        if fitz.Rect(w[:4]).intersects(new_bbox) and w[4] not in replacement.split()
+                    ]
+                    if intersecting:
+                        collision_warnings.append(
+                            f"Collision detected on page {idx}: replacement '{replacement}' intersects neighboring text '{intersecting[0][4]}'."
+                        )
 
             if is_single:
                 break
 
     out_bytes = doc.tobytes(deflate=True, garbage=4)
     doc.close()
-    return out_bytes, total_replaced
+    return ReplaceResult(out_bytes, total_replaced, collision_warnings)
 
 
 def replace_text(
@@ -458,7 +631,7 @@ def replace_text(
     replacement_text: str,
     font_size: Optional[int] = None,
     color: Optional[tuple[float, float, float]] = None,
-    fill_bg_color: tuple[float, float, float] = (1.0, 1.0, 1.0),
+    fill_bg_color: Optional[tuple[float, float, float]] = None,
     pages: Optional[list[int]] = None,
     single: bool = False,
     occurrence: Optional[int] = None,
@@ -467,14 +640,16 @@ def replace_text(
     preserve_style: bool = True,
     override_color: bool = False,
     override_size: bool = False,
-) -> tuple[bytes, int]:
+    cover_box: bool = False,
+    match_case: bool = False,
+) -> ReplaceResult:
     """
     Finds occurrences of search_text, whites out the existing text glyphs,
     and inserts the replacement_text at the matching positions.
     When single=True, replaces only one target occurrence (specified by rect or occurrence index).
     When single=False, replaces all occurrences.
     Preserves exact original font family, bold/italic style, font size, color and baseline.
-    Returns (modified_pdf_bytes, replacement_count).
+    Returns ReplaceResult (modified_pdf_bytes, replacement_count) with .warnings.
     """
     return replace_text_batch(
         pdf_bytes=pdf_bytes,
@@ -491,11 +666,15 @@ def replace_text(
                 "preserve_style": preserve_style,
                 "override_color": override_color,
                 "override_size": override_size,
+                "cover_box": cover_box,
+                "match_case": match_case,
             }
         ],
         fill_bg_color=fill_bg_color,
         pages=pages,
         preserve_style=preserve_style,
+        cover_box=cover_box,
+        match_case=match_case,
     )
 
 

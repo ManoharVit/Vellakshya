@@ -1,14 +1,14 @@
-# Vellakshya: Enterprise Document Workstation & PDF Intelligence System
+# Vellakshya: Enterprise Document Workstation & PDF Intelligence System (v2.0)
 
 [![CI/CD Pipeline](https://github.com/ManoharVit/Vellakshya/actions/workflows/ci-full.yml/badge.svg)](https://github.com/ManoharVit/Vellakshya/actions/workflows/ci-full.yml)
-[![Live Demo](https://img.shields.io/badge/Production-vellakshya.netlify.app-00ad9f?style=flat&logo=netlify)](https://vellakshya.netlify.app/)
-[![Automated Tests](https://img.shields.io/badge/Tests-117%20Passed-brightgreen)](https://github.com/ManoharVit/Vellakshya/actions)
+[![Google Cloud Run](https://img.shields.io/badge/GCP_Cloud_Run-vellakshya--gcp-4285F4?style=flat&logo=googlecloud&logoColor=white)](https://console.cloud.google.com/run?project=vellakshya-gcp)
+[![Automated Tests](https://img.shields.io/badge/Tests-Passed-brightgreen)](https://github.com/ManoharVit/Vellakshya/actions)
 [![Python Version](https://img.shields.io/badge/Python-3.12-blue)](pyproject.toml)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
 
 > **One-Line Pitch:** An enterprise-ready, privacy-first PDF intelligence platform combining real-time canvas redaction with coordinate-grounded RAG, server-side citations, and local-first statutory PII sanitization.
 
-**Live Web Application:** [https://vellakshya.netlify.app/](https://vellakshya.netlify.app/)  
+**Target Cloud Platform:** Google Cloud Platform (`vellakshya-gcp`, Region: `us-central1`)  
 **Source Code Repository:** [https://github.com/ManoharVit/Vellakshya.git](https://github.com/ManoharVit/Vellakshya.git)  
 
 ---

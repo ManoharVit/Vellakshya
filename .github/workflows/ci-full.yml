@@ -2,7 +2,7 @@ name: Vellakshya GitHub Actions CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feat-ux-design-system-patterns ]
   pull_request:
     branches: [ main ]
 
@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: pgvector/pgvector:pg16
+        image: pgvector/pgvector:pg18
         env:
           POSTGRES_USER: vellakshya
           POSTGRES_PASSWORD: vellakshya_secret
@@ -89,7 +89,15 @@ jobs:
                   time.sleep(1)
           "
 
-      - name: Run Pytest Layered Suite
+      - name: Run License Audit Scanner (Copyleft & Dual-License Verification)
+        run: |
+          python scripts/audit_licenses.py
+
+      - name: Run Vulnerability Audit (pip-audit & OSV)
+        run: |
+          pip-audit -r requirements.txt
+
+      - name: Run Pytest Layered Suite (including 50-document Golden Corpus)
         env:
           DATABASE_URL: postgresql://vellakshya:vellakshya_secret@127.0.0.1:5432/vellakshya_db
         run: |

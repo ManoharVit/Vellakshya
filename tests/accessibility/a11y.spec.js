@@ -5,12 +5,12 @@ import path from 'path';
 
 const SAMPLE_PDF_PATH = path.resolve(__dirname, '../../test-data/sample-pdfs/sample.pdf');
 
-test.describe('Automated Accessibility Audits (axe-core + WCAG 2.1 AA)', () => {
+test.describe('Automated Accessibility Audits (axe-core + WCAG 2.2 AA)', () => {
   test('single-page editor interface has zero critical WCAG violations', async ({ page }) => {
     await page.goto('/');
 
     const accessibilityScanResults = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa'])
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
       .disableRules(['color-contrast']) // Color contrast evaluated in custom visual suite
       .analyze();
 
@@ -40,9 +40,9 @@ test.describe('Automated Accessibility Audits (axe-core + WCAG 2.1 AA)', () => {
     // Render in browser
     await page.setContent(htmlContent);
 
-    // Analyze with axe-core
+    // Analyze with axe-core including WCAG 2.2 AA tag
     const results = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
       .analyze();
 
     expect(results.violations).toEqual([]);

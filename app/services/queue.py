@@ -1,6 +1,6 @@
 """
 Vellakshya Asynchronous Job Queue System.
-Backed by Redis with seamless local fallback to Fakeredis.
+Backed by Valkey 9.x (BSD-3-Clause) / Redis with seamless local fallback to Fakeredis.
 Orchestrates worker jobs and offloads untrusted PDF processing to the sandbox.
 """
 
@@ -56,10 +56,15 @@ class JobInfo:
 class JobQueue:
     """
     Asynchronous job dispatcher and worker pool.
+    Supports Valkey 9.x (BSD) and Redis protocols transparently.
     """
 
     def __init__(self, redis_url: Optional[str] = None):
-        self.redis_url = redis_url or os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+        self.redis_url = (
+            redis_url
+            or os.environ.get("VALKEY_URL")
+            or os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+        )
         self.client: redis.Redis = self._init_redis_client()
         self._worker_task: Optional[asyncio.Task] = None
         self._is_running: bool = False
@@ -67,15 +72,17 @@ class JobQueue:
 
     def _init_redis_client(self) -> redis.Redis:
         """
-        Attempts live Redis connection; falls back to Fakeredis seamlessly.
+        Attempts live Valkey/Redis connection; falls back to Fakeredis seamlessly.
         """
         try:
             r = redis.from_url(self.redis_url, socket_connect_timeout=1.0)
             r.ping()
-            logger.info("Connected to live Redis server at %s", self.redis_url)
+            logger.info("Connected to live Valkey/Redis server at %s", self.redis_url)
             return r
         except Exception as err:
-            logger.info("Redis server unavailable (%s); using in-memory Fakeredis backend", err)
+            logger.info(
+                "Valkey/Redis server unavailable (%s); using in-memory Fakeredis backend", err
+            )
             return fakeredis.FakeRedis()
 
     def start_worker(self):

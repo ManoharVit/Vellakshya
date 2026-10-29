@@ -1,0 +1,32 @@
+apiVersion: run.googleapis.com/v2
+kind: WorkerPool
+metadata:
+  name: vellakshya-worker-pool
+  annotations:
+    run.googleapis.com/launch-stage: GA
+    run.googleapis.com/ingress: internal-and-cloud-load-balancing
+    run.googleapis.com/vpc-access-egress: all-traffic
+spec:
+  template:
+    scaling:
+      minInstanceCount: 0
+      maxInstanceCount: 10
+    containers:
+      - name: sandbox-worker
+        image: gcr.io/vellakshya-gcp/vellakshya-sandbox:latest
+        resources:
+          limits:
+            cpu: "2"
+            memory: "2Gi"
+        env:
+          - name: ENVIRONMENT
+            value: "production"
+          - name: VALKEY_URL
+            value: "redis://valkey.internal:6379/0"
+          - name: SANDBOX_EGRESS_BLOCKED
+            value: "true"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false

@@ -13,8 +13,8 @@ MAX_UPLOAD_SIZE_BYTES = 30 * 1024 * 1024  # 30 MiB hard limit
 
 @dataclass(frozen=True)
 class AppConfig:
-    title: str = "PDF Workbench Pro"
-    version: str = "1.0.0"
+    title: str = "Vellakshya PDF Workstation"
+    version: str = "2.0.0"
     max_upload_size: int = MAX_UPLOAD_SIZE_BYTES
     allowed_extensions: tuple = (".pdf", ".png", ".jpg", ".jpeg")
 

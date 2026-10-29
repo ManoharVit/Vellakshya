@@ -19,6 +19,7 @@ def inspect_pdf(pdf_bytes: bytes) -> dict[str, Any]:
     meta = doc.metadata or {}
 
     pages_info = []
+    page_metrics = []
     total_images = 0
     total_annots = 0
     total_links = 0
@@ -63,8 +64,33 @@ def inspect_pdf(pdf_bytes: bytes) -> dict[str, Any]:
 
         # Text counts
         p_text = page.get_text()
-        total_chars += len(p_text)
-        total_words += len(page.get_text("words"))
+        p_chars = len(p_text)
+        p_words = len(p_text.split())
+        total_chars += p_chars
+        total_words += p_words
+
+        # Compute image coverage for classification if images present and text is sparse
+        page_area = max(1.0, rect.width * rect.height)
+        img_coverage = 0.0
+        if len(images) > 0 and p_chars < 150:
+            for img in images:
+                xref = img[0]
+                try:
+                    for ir in page.get_image_rects(xref):
+                        img_coverage += ir.width * ir.height
+                except Exception:
+                    pass
+            img_coverage = min(1.0, img_coverage / page_area)
+
+        page_metrics.append(
+            {
+                "page_number": idx,
+                "char_count": p_chars,
+                "word_count": p_words,
+                "image_count": len(images),
+                "image_coverage_ratio": round(img_coverage, 2),
+            }
+        )
 
         # Extract fonts
         for font in page.get_fonts():
@@ -147,6 +173,15 @@ def inspect_pdf(pdf_bytes: bytes) -> dict[str, Any]:
     }
 
     doc.close()
+
+    # Document Classifier & OCR recommendation
+    from app.services.ocr import classify_document
+
+    classification = classify_document(page_metrics=page_metrics)
+    result["classification"] = classification["classification"]
+    result["document_classification"] = classification
+    result["ocr_recommended"] = classification["ocr_recommended"]
+
     return result
 
 

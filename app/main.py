@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import secrets
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
 
@@ -30,16 +31,32 @@ from app.services import (
     editor,
     forms,
     inspection,
+    ocr,
     organizer,
     security,
     signatures,
 )
 from app.services.queue import queue_instance
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Application lifecycle manager (Starlette 1.x & FastAPI 0.140+ standard).
+    Starts the background worker queue processor upon launch and gracefully terminates upon shutdown.
+    """
+    queue_instance.start_worker()
+    try:
+        yield
+    finally:
+        await queue_instance.stop_worker()
+
+
 app = FastAPI(
     title=config.title,
     version=config.version,
     description="Full-featured PDF Workstation with Adobe Acrobat Pro capabilities and PDF-to-HTML conversion",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -71,18 +88,6 @@ if ai_router is not None:
 def make_attachment_filename(source_filename: Optional[str], suffix: str, ext: str = "pdf") -> str:
     stem = Path(source_filename or "document").stem
     return f"{stem}_{suffix}.{ext}"
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Starts the background worker queue processor upon application launch."""
-    queue_instance.start_worker()
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Gracefully terminates background worker routines."""
-    await queue_instance.stop_worker()
 
 
 @app.get("/api/health")
@@ -416,9 +421,11 @@ async def list_recent_jobs(limit: int = Query(20, ge=1, le=100)):
 async def convert_pdf_to_html(
     file: UploadFile = File(...),
     mode: str = Form("fixed"),  # "fixed" or "semantic"
+    engine: str = Form("auto"),  # "auto", "docling", "heuristic"
 ):
     """
     Converts uploaded PDF into high-fidelity or semantic responsive HTML.
+    Supports Docling (MIT) layout parser and fast heuristic digital path.
     """
     pdf_bytes = await file.read()
     if not pdf_bytes.startswith(b"%PDF"):
@@ -426,7 +433,7 @@ async def convert_pdf_to_html(
 
     title = Path(file.filename or "document").stem
     if mode == "semantic":
-        result_html = converter.pdf_to_html_semantic(pdf_bytes, title=title)
+        result_html = converter.pdf_to_html_semantic(pdf_bytes, title=title, engine=engine)
     else:
         result_html = converter.pdf_to_html_fixed(pdf_bytes, title=title)
 
@@ -479,13 +486,108 @@ async def convert_images_to_pdf(
 @app.post("/api/convert/markdown")
 async def convert_pdf_to_markdown(
     file: UploadFile = File(...),
+    engine: str = Form("auto"),  # "auto", "pymupdf4llm", "docling", "heuristic"
 ):
     """
-    Extracts text as structured Markdown.
+    Extracts text as structured Markdown via PyMuPDF4LLM ML layout or heuristic block extraction.
     """
     pdf_bytes = await file.read()
-    md_content = converter.pdf_to_markdown(pdf_bytes)
-    return {"filename": file.filename, "markdown": md_content}
+    md_content = converter.pdf_to_markdown(pdf_bytes, engine=engine)
+    return {"filename": file.filename, "markdown": md_content, "engine_used": engine}
+
+
+@app.post("/api/convert/docx")
+async def convert_pdf_to_docx(
+    file: UploadFile = File(...),
+    pages: Optional[str] = Form(None),
+    layout_mode: Optional[str] = Form("flow"),
+    engine: Optional[str] = Form("auto"),  # "auto", "pdf2docx", "pandoc"
+    reference_docx: Optional[UploadFile] = File(None),
+):
+    """
+    Converts the uploaded PDF document (including any in-memory find & replace edits)
+    to Microsoft Word (.docx) format.
+    Supports dual conversion lanes:
+      1. Primary rule engine: pdf2docx 0.5.13 (flow vs absolute layout).
+      2. Pandoc pipeline: Markdown AST -> Pandoc with custom reference.docx template.
+    """
+    pdf_bytes = await file.read()
+    ref_bytes = await reference_docx.read() if reference_docx else None
+    page_list = [int(p.strip()) for p in pages.split(",") if p.strip()] if pages else None
+    try:
+        docx_bytes = converter.pdf_to_docx(
+            pdf_bytes,
+            pages=page_list,
+            layout_mode=layout_mode or "flow",
+            engine=engine or "auto",
+            reference_docx=ref_bytes,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"DOCX conversion failed: {str(e)}")
+
+    docx_filename = (file.filename or "document.pdf").rsplit(".", 1)[0] + ".docx"
+    return Response(
+        content=docx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": f'attachment; filename="{docx_filename}"',
+            "X-Converted-Format": "docx",
+            "X-Conversion-Engine": engine or "auto",
+        },
+    )
+
+
+# -------------------------------------------------------------
+# 1B. OCR & DOCUMENT INTELLIGENCE ENDPOINTS
+# -------------------------------------------------------------
+
+
+@app.post("/api/ocr/classify")
+async def classify_pdf_document(
+    file: UploadFile = File(...),
+):
+    """
+    Classifies a PDF into 'digital', 'scanned', or 'mixed' with per-page confidence scoring.
+    Determines whether OCR or layout analysis is recommended.
+    """
+    pdf_bytes = await file.read()
+    if not pdf_bytes.startswith(b"%PDF"):
+        raise HTTPException(status_code=400, detail="Uploaded file is not a valid PDF.")
+
+    result = ocr.classify_document(pdf_bytes)
+    return result
+
+
+@app.post("/api/ocr/searchable")
+async def make_pdf_searchable(
+    file: UploadFile = File(...),
+    pages: Optional[str] = Form(None),
+    engine: str = Form("auto"),  # "auto", "paddleocr-vl", "pymupdf", "vision"
+):
+    """
+    Generates a searchable PDF by recognizing text in scanned pages and embedding
+    an invisible text layer while preserving original scanned image fidelity.
+    """
+    pdf_bytes = await file.read()
+    if not pdf_bytes.startswith(b"%PDF"):
+        raise HTTPException(status_code=400, detail="Uploaded file is not a valid PDF.")
+
+    page_list = [int(p.strip()) for p in pages.split(",") if p.strip()] if pages else None
+    searchable_pdf, stats = ocr.ocr_lane.make_searchable_pdf(
+        pdf_bytes, pages=page_list, engine=engine
+    )
+
+    stem = Path(file.filename or "document").stem
+    return Response(
+        content=searchable_pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{stem}_searchable.pdf"',
+            "X-OCR-Pages-Processed": str(stats.get("pages_processed", 0)),
+        },
+    )
 
 
 # -------------------------------------------------------------
@@ -814,12 +916,15 @@ async def replace_pdf_text(
     preserve_style: bool = Form(True),
     override_color: bool = Form(False),
     override_size: bool = Form(False),
+    cover_box: bool = Form(False),
+    match_case: bool = Form(False),
 ):
     """
-    Searches for target text, whites out the original glyphs, and inserts replacement text.
+    Searches for target text, removes the original glyphs (without visible white box by default),
+    measures width to prevent collisions/text overlap, and inserts replacement text.
     Automatically detects and preserves the exact font family, style (bold/italic), font size,
     text color, and typographical baseline from the original text being replaced.
-    Supports either targeted single-match replacement (single=True) or document-wide Replace All (single=False).
+    Supports single-match replacement (single=True) or document-wide Replace All (single=False).
     """
     import json
 
@@ -837,6 +942,8 @@ async def replace_pdf_text(
                     r_preserve = bool(r.get("preserve_style", preserve_style))
                     r_override_col = bool(r.get("override_color", override_color))
                     r_override_sz = bool(r.get("override_size", override_size))
+                    r_cover_box = bool(r.get("cover_box", cover_box))
+                    r_match_case = bool(r.get("match_case", match_case))
 
                     r_color = None
                     if "color" in r and r.get("color"):
@@ -878,6 +985,8 @@ async def replace_pdf_text(
                             "preserve_style": r_preserve,
                             "override_color": r_override_col,
                             "override_size": r_override_sz,
+                            "cover_box": r_cover_box,
+                            "match_case": r_match_case,
                         }
                     )
         except Exception:
@@ -897,21 +1006,29 @@ async def replace_pdf_text(
                 "preserve_style": preserve_style,
                 "override_color": override_color,
                 "override_size": override_size,
+                "cover_box": cover_box,
+                "match_case": match_case,
             }
         )
 
-    modified, count = editor.replace_text_batch(
+    replace_res = editor.replace_text_batch(
         pdf_bytes,
         rules=rule_list,
         pages=page_list,
         preserve_style=preserve_style,
+        cover_box=cover_box,
+        match_case=match_case,
     )
+    modified, count = replace_res
+    warnings_json = json.dumps(replace_res.warnings) if replace_res.warnings else "[]"
+
     return Response(
         content=modified,
         media_type="application/pdf",
         headers={
             "Content-Disposition": f"attachment; filename={make_attachment_filename(file.filename, 'edited')}",
             "X-Replacement-Count": str(count),
+            "X-Collision-Warnings": warnings_json,
         },
     )
 

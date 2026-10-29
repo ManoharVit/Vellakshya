@@ -11,6 +11,11 @@ test.describe('Ubiquitous Export & Download Touchpoints', () => {
   test('top header export button and dropdown are present and functional', async ({ page }) => {
     const btnHeaderExport = page.locator('#btnHeaderExport');
     await expect(btnHeaderExport).toBeVisible();
+    await expect(btnHeaderExport).toBeDisabled();
+
+    // Load sample document to enable export
+    await page.locator('#btnSampleInvoice').click();
+    await expect(btnHeaderExport).toBeEnabled();
 
     const dropdown = page.locator('#exportDropdownMenu');
     await expect(dropdown).toBeHidden();
@@ -43,6 +48,7 @@ test.describe('Ubiquitous Export & Download Touchpoints', () => {
     // Verify the export cards list is displayed
     await expect(page.locator('#btnHubDlPdf')).toBeVisible();
     await expect(page.locator('#btnHubExportHtml')).toBeVisible();
+    await expect(page.locator('#btnHubExportDocx')).toBeVisible();
     await expect(page.locator('#btnHubExportMd')).toBeVisible();
     await expect(page.locator('#btnHubExportImages')).toBeVisible();
     await expect(page.locator('#btnHubExportAudit')).toBeVisible();

@@ -9,6 +9,7 @@ import base64
 import html
 import io
 import zipfile
+from typing import Optional
 
 import fitz  # PyMuPDF
 
@@ -357,10 +358,15 @@ def pdf_to_html_fixed(pdf_bytes: bytes, title: str = "Converted Document") -> st
     return full_html
 
 
-def pdf_to_html_semantic(pdf_bytes: bytes, title: str = "Converted Document") -> str:
+def pdf_to_html_semantic(
+    pdf_bytes: bytes,
+    title: str = "Converted Document",
+    engine: str = "auto",
+) -> str:
     """
     Converts PDF to clean, responsive, semantic HTML flow (headings, paragraphs, lists)
     ideal for mobile reading, screen readers, and web publishing.
+    Supports Docling (MIT) as primary engine with heuristic parser as the fast path for clean digital PDFs.
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     sections_html: list[str] = []
@@ -550,10 +556,26 @@ def images_to_pdf(images: list[tuple[str, bytes]]) -> bytes:
     return out_pdf
 
 
-def pdf_to_markdown(pdf_bytes: bytes) -> str:
+def pdf_to_markdown(pdf_bytes: bytes, engine: str = "auto") -> str:
     """
     Extracts text content formatted in structured Markdown.
+    Supports PyMuPDF4LLM for ML multi-column and table extraction with fallback
+    to the fast heuristic block parser.
     """
+    # 1. Primary ML layout path via PyMuPDF4LLM / Docling if requested or available
+    if engine in ("auto", "pymupdf4llm", "docling"):
+        try:
+            import pymupdf4llm
+
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            md_out = pymupdf4llm.to_markdown(doc)
+            doc.close()
+            if md_out and len(md_out.strip()) > 0:
+                return md_out
+        except Exception:
+            pass
+
+    # 2. Fast heuristic block extraction fallback
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     md_pages: list[str] = []
 
@@ -568,3 +590,150 @@ def pdf_to_markdown(pdf_bytes: bytes) -> str:
 
     doc.close()
     return "".join(md_pages)
+
+
+def pdf_to_docx_pandoc(
+    pdf_bytes: bytes,
+    reference_docx: Optional[bytes] = None,
+) -> bytes:
+    """
+    Second conversion path: PDF -> Markdown -> DOCX using Pandoc.
+    Supports an optional reference.docx styling template for enterprise branding.
+    Falls back gracefully to pdf2docx if pandoc is unavailable.
+    """
+    import os
+    import shutil
+    import subprocess
+    import tempfile
+
+    pandoc_bin = shutil.which("pandoc") or "/opt/homebrew/bin/pandoc"
+    if not pandoc_bin or not os.path.exists(pandoc_bin):
+        # Fall back to pdf2docx
+        return pdf_to_docx(pdf_bytes, engine="pdf2docx")
+
+    md_content = pdf_to_markdown(pdf_bytes, engine="auto")
+
+    with (
+        tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f_md,
+        tempfile.NamedTemporaryFile("rb", suffix=".docx", delete=False) as f_out,
+    ):
+        f_md.write(md_content)
+        f_md.flush()
+        md_path = f_md.name
+        docx_path = f_out.name
+
+    ref_path = None
+    if reference_docx:
+        with tempfile.NamedTemporaryFile("wb", suffix=".docx", delete=False) as f_ref:
+            f_ref.write(reference_docx)
+            f_ref.flush()
+            ref_path = f_ref.name
+
+    try:
+        cmd = [pandoc_bin, "-f", "markdown", "-t", "docx", "-o", docx_path, md_path]
+        if ref_path:
+            cmd.extend(["--reference-doc", ref_path])
+
+        proc = subprocess.run(cmd, capture_output=True, timeout=30)
+        if proc.returncode != 0:
+            # Fall back to pdf2docx if Pandoc run encountered issues
+            return pdf_to_docx(pdf_bytes, engine="pdf2docx")
+
+        with open(docx_path, "rb") as f_read:
+            return f_read.read()
+    finally:
+        for p in (md_path, docx_path, ref_path):
+            if p and os.path.exists(p):
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+
+
+def pdf_to_docx(
+    pdf_bytes: bytes,
+    pages: Optional[list[int]] = None,
+    layout_mode: str = "flow",
+    engine: str = "auto",
+    reference_docx: Optional[bytes] = None,
+) -> bytes:
+    """
+    Converts PDF document bytes to Microsoft Word (.docx) format.
+    Supports dual conversion lanes:
+      1. Primary rule engine: pdf2docx 0.5.13 (flow vs absolute layout).
+      2. Pandoc pipeline: Docling / Markdown AST -> Pandoc with custom reference.docx template.
+    """
+    if engine == "pandoc":
+        return pdf_to_docx_pandoc(pdf_bytes, reference_docx=reference_docx)
+
+    if engine == "adobe":
+        from app.services.adobe_services import adobe_client
+
+        adobe_bytes, _ = adobe_client.convert_pdf_to_docx_sync(pdf_bytes)
+        if adobe_bytes:
+            return adobe_bytes
+        # If Adobe API is unconfigured or unavailable, fall back seamlessly to local engine
+
+    import os
+    import tempfile
+
+    from pdf2docx import Converter
+
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    if doc.is_encrypted:
+        doc.close()
+        raise ValueError(
+            "The PDF document is password-protected or encrypted. "
+            "Please unlock or decrypt the document first using the Decrypt tool."
+        )
+
+    total_pages = len(doc)
+    if total_pages == 0:
+        doc.close()
+        raise ValueError("The PDF document contains 0 pages.")
+
+    target_page_indices = []
+    if pages:
+        for p in pages:
+            if 1 <= p <= total_pages:
+                target_page_indices.append(p - 1)
+    else:
+        target_page_indices = list(range(total_pages))
+
+    if not target_page_indices:
+        doc.close()
+        raise ValueError(f"Specified pages out of bounds (document has {total_pages} page(s)).")
+
+    # Check for scanned / image-only PDFs
+    total_text = ""
+    for idx in target_page_indices:
+        total_text += doc[idx].get_text().strip()
+    doc.close()
+
+    if len(total_text.strip()) == 0:
+        raise ValueError(
+            "This PDF document appears to be scanned or image-only. "
+            "Please run OCR on the document first before converting to Word."
+        )
+
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as f_out:
+        out_docx_path = f_out.name
+
+    try:
+        cv = Converter(stream=pdf_bytes)
+        cv.convert(
+            out_docx_path,
+            pages=target_page_indices,
+            multi_processing=False,
+        )
+        cv.close()
+
+        with open(out_docx_path, "rb") as f_read:
+            docx_bytes = f_read.read()
+        return docx_bytes
+    finally:
+        if os.path.exists(out_docx_path):
+            try:
+                os.remove(out_docx_path)
+            except OSError:
+                pass

@@ -64,9 +64,11 @@ def init_ai_tables(db: Session) -> None:
     dialect_name = bind.dialect.name
 
     if dialect_name == "postgresql":
-        with db.connection() as conn:
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-            conn.commit()
+        try:
+            db.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            db.commit()
+        except Exception:
+            db.rollback()
 
     Base.metadata.create_all(bind=bind)
 

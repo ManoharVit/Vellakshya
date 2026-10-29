@@ -1,13 +1,67 @@
+# Git and CI/CD
 .git/
 .github/
+
+# Sensitive Environment & Credentials (Finding F14)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*sa-key*.json
+*credentials*.json
+*service-account*.json
+gcp-key*.json
+firebase-key*.json
+.gcloud/
+gcloud/
+
+# Dependencies & Virtual Environments
 node_modules/
-playwright-report/
-test-results/
-.pytest_cache/
-__pycache__/
-*.pyc
 .venv/
 venv/
+ENV/
+
+# Build & Package Artifacts
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Test Suites, Reports & Fixtures
 tests/
 test-data/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Databases, Logs & Runtime Data
+data/
+app/data/
+*.db
+*.sqlite
+*.sqlite3
 *.log
+*.tmp
+
+# Operating System & IDE Artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+.system_generated/
+.antigravity/
+.gemini/
+.claude/

@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 import secrets
 import time
+from pathlib import Path
 
 import fitz
 import pytest
@@ -699,3 +700,95 @@ def test_f13_embedding_privacy_gate_blocks_network(monkeypatch):
     vec = get_embedding("Secret financial text", allow_external=False)
     assert len(vec) == 768
     assert mock_urlopen.call_count == 0
+
+
+# ============================================================================
+# PHASE 5 AUDIT REMEDIATION TESTS: ENVIRONMENT & BOUNDARY HARDENING
+# ============================================================================
+
+
+def test_f14_gitignore_and_dockerignore_hardening():
+    """F14: Sensitive credentials, service account keys, and env files must be ignored."""
+    repo_root = Path(__file__).resolve().parent.parent
+    gitignore_path = repo_root / ".gitignore"
+    dockerignore_path = repo_root / ".dockerignore"
+
+    assert gitignore_path.exists(), ".gitignore must exist"
+    assert dockerignore_path.exists(), ".dockerignore must exist"
+
+    gitignore_content = gitignore_path.read_text(encoding="utf-8")
+    dockerignore_content = dockerignore_path.read_text(encoding="utf-8")
+
+    critical_patterns = [
+        ".env",
+        "*.pem",
+        "*.key",
+        "*sa-key*.json",
+        "*credentials*.json",
+        "*service-account*.json",
+        ".gcloud/",
+    ]
+
+    for pattern in critical_patterns:
+        assert pattern in gitignore_content, f"Pattern {pattern} missing from .gitignore"
+        assert pattern in dockerignore_content, f"Pattern {pattern} missing from .dockerignore"
+
+
+def test_f15_compose_ports_bound_to_loopback():
+    """F15: All exposed host ports in Docker Compose files must bind strictly to 127.0.0.1."""
+
+    repo_root = Path(__file__).resolve().parent.parent
+    compose_files = [
+        repo_root / "docker-compose.yml",
+        repo_root / "deploy" / "docker-compose.yml",
+    ]
+
+    for cfile in compose_files:
+        assert cfile.exists(), f"{cfile} must exist"
+        lines = cfile.read_text(encoding="utf-8").splitlines()
+        in_ports_block = False
+        for line in lines:
+            stripped = line.strip()
+            if stripped == "ports:":
+                in_ports_block = True
+                continue
+            if in_ports_block:
+                if stripped.startswith("-"):
+                    port_entry = stripped.lstrip("-").strip().strip('"').strip("'")
+                    # If host:container mapping exists, must begin with 127.0.0.1:
+                    if ":" in port_entry:
+                        assert port_entry.startswith("127.0.0.1:"), (
+                            f"Insecure public port binding '{port_entry}' in {cfile.name}. "
+                            f"Must be prefixed with '127.0.0.1:'"
+                        )
+                else:
+                    in_ports_block = False
+
+
+def test_f16_synthetic_cv_test_pdf():
+    """F16: cv_test.pdf must contain standardized synthetic benchmark profile with zero personal letters."""
+    import fitz
+
+    repo_root = Path(__file__).resolve().parent.parent
+    cv_pdf_path = repo_root / "test-data" / "sample-pdfs" / "cv_test.pdf"
+
+    assert cv_pdf_path.exists(), "cv_test.pdf must exist"
+
+    doc = fitz.open(cv_pdf_path)
+    assert len(doc) >= 1
+    text = doc[0].get_text()
+
+    # Eliminate personal letter text
+    assert "internship" not in text.lower()
+    assert "i saw the opening" not in text.lower()
+    assert "my master's" not in text.lower()
+
+    # Verify synthetic benchmark persona and keywords required by E2E tests
+    assert "Alex Morgan" in text
+    assert "Python" in text
+    assert "automated" in text
+    assert "Git" in text
+    assert "Markdown" in text
+    # Giri appears exactly once for client_offline_replace.spec.js compatibility
+    assert text.count("Giri") == 1
+    doc.close()

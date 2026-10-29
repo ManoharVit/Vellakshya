@@ -33,15 +33,38 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# IDE & Editor
+# IDE, Editor & Agent Caches
 .vscode/
 .idea/
 *.swp
 *.swo
+.system_generated/
+.antigravity/
+.gemini/
+.claude/
 
-# Temporary Files & Runtime Data
+# Sensitive Environment & Credentials (Finding F14)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*sa-key*.json
+*credentials*.json
+*service-account*.json
+gcp-key*.json
+firebase-key*.json
+.gcloud/
+gcloud/
+
+# Temporary Files & Local Runtime Data
 *.tmp
 *.log
 *.db
+*.sqlite
+*.sqlite3
 data/
 app/data/

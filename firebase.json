@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "vellakshya-gcp",
     "public": "app/static",
     "cleanUrls": true,
     "rewrites": [

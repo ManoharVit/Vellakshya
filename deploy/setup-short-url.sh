@@ -12,17 +12,24 @@ SERVICE_NAME="vellakshya"
 echo "=== Vellakshya Short & Simple URL Provisioning ==="
 echo "Project: ${PROJECT_ID}"
 
-# 1. Enable Firebase Hosting API in GCP
-echo "--> Enabling Firebase Hosting API in GCP project..."
-gcloud services enable firebasehosting.googleapis.com --project "${PROJECT_ID}"
+# 1. Enable Firebase Management & Hosting APIs in GCP
+echo "--> Enabling Firebase Management & Hosting APIs in GCP project..."
+gcloud services enable \
+    firebase.googleapis.com \
+    firebasehosting.googleapis.com \
+    --project "${PROJECT_ID}"
 
-# 2. Deploy Firebase Hosting rewrite to Cloud Run
+# 2. Add Firebase capabilities to the GCP project if not already present
+echo "--> Linking Firebase to GCP project ${PROJECT_ID}..."
+firebase projects:addfirebase "${PROJECT_ID}" 2>/dev/null || echo "Firebase already linked or initialized."
+
+# 3. Create hosting site if not yet existing
+echo "--> Ensuring hosting site '${PROJECT_ID}' exists..."
+firebase hosting:sites:create "${PROJECT_ID}" --project "${PROJECT_ID}" 2>/dev/null || echo "Hosting site already registered."
+
+# 4. Deploy Firebase Hosting rewrite to Cloud Run
 echo "--> Deploying short URL proxy via Firebase Hosting..."
-if command -v firebase &> /dev/null; then
-    firebase deploy --only hosting --project "${PROJECT_ID}"
-else
-    echo "Firebase CLI not found in local environment. Use Cloud Shell or run: npm install -g firebase-tools"
-fi
+firebase deploy --only hosting --project "${PROJECT_ID}"
 
 echo ""
 echo "=== Your Short & Clean URLs ==="

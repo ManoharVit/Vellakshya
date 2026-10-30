@@ -4482,8 +4482,15 @@ a:focus-visible {
  * Milestone 2: AI Chat Sidecar Drawer & Citations
  * ------------------------------------------------------------- */
 .ai-chat-drawer {
-  width: 420px;
+  width: 440px;
   max-width: 95vw;
+}
+
+[data-theme="light"] .ai-chat-drawer,
+.theme-light .ai-chat-drawer {
+  background: #FFFFFF;
+  border-left: 1px solid #E2E8F0;
+  box-shadow: -4px 0 24px rgba(15, 23, 42, 0.08);
 }
 
 .chat-drawer-body {
@@ -4503,19 +4510,22 @@ a:focus-visible {
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  gap: 8px;
 }
 
 .chat-doc-info {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex: 1;
 }
 
 .chat-doc-pill {
   font-size: 11px;
   font-weight: 600;
   color: var(--accent);
-  max-width: 180px;
+  max-width: 210px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4527,6 +4537,8 @@ a:focus-visible {
   display: flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .privacy-dot {
@@ -4552,6 +4564,8 @@ a:focus-visible {
   background: var(--selected-bg);
   color: var(--selected-text);
   border: 1px solid rgba(79, 70, 229, 0.2);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .grounding-dot {

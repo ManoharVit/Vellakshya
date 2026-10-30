@@ -157,7 +157,11 @@ test.describe('Theme & Self-Hosted Typography Verification (Step 8)', () => {
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
     await expect(page.locator('html')).toHaveAttribute('data-theme', initialTheme);
 
-    await page.locator('#themeToggleText').click();
+    if (await page.locator('#themeToggleText').isVisible()) {
+      await page.locator('#themeToggleText').click();
+    } else {
+      await toggle.locator('svg:not(.dropdown-chevron):visible').click();
+    }
     await expect(menu).toBeHidden();
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await expect(page.locator('html')).toHaveAttribute('data-theme', initialTheme === 'dark' ? 'light' : 'dark');

@@ -64,6 +64,10 @@
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
                             <span>Security</span>
                         </button>
+                        <button type="button" class="status-shortcut-btn" id="btnToggleAiChat" title="Chat with Document (AI Assistant)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>
+                            <span>AI Chat</span>
+                        </button>
                         <button type="button" class="status-shortcut-btn" id="btnToggleThumbnails" title="Toggle Page Thumbnails Filmstrip">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
                             <span>Pages</span>
@@ -75,6 +79,10 @@
 
         <div class="header-right">
             <div class="header-actions">
+                <button type="button" class="btn-hdr-action btn-hdr-ai-chat" id="btnHeaderAiChat" title="Chat with Document (AI Assistant)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>
+                    <span class="btn-hdr-text">AI Chat</span>
+                </button>
                 <button type="button" class="btn-hdr-action" id="btnHeaderUndo" disabled title="Undo last action">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
                     <span class="btn-hdr-text">Undo</span>
@@ -261,6 +269,10 @@
 
             <div class="sidebar-category">Intelligence &amp; Analysis</div>
             <ul class="sidebar-nav">
+                <li class="nav-item" data-tool="ai-chat">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <span>Chat with Document</span>
+                </li>
                 <li class="nav-item" data-tool="analytics">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="12" x2="12" y1="18" y2="12"/><line x1="8" x2="8" y1="18" y2="15"/><line x1="16" x2="16" y1="18" y2="9"/></svg>
                     <span>Document Analytics</span>
@@ -611,6 +623,73 @@
                     Manifest signatures verified using RFC 8032 Ed25519 public keys.
                 </div>
             </div>
+        </div>
+    </aside>
+
+    <!-- AI Chat & Document Q&A Sidecar Drawer (Milestone 2) -->
+    <aside class="app-drawer ai-chat-drawer" id="drawerAiChat" style="display: none;">
+        <div class="drawer-header">
+            <div class="drawer-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent);" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>
+                <span>AI Document Assistant</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" class="btn-drawer-action" id="btnClearChatHistory" title="Clear Chat History">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                </button>
+                <button type="button" class="btn-drawer-close" id="btnCloseAiChat" title="Close AI Chat drawer">&times;</button>
+            </div>
+        </div>
+
+        <div class="drawer-body chat-drawer-body">
+            <!-- Active Document Context Bar -->
+            <div class="chat-doc-context-bar" id="chatDocContextBar">
+                <div class="chat-doc-info">
+                    <span class="chat-doc-pill" id="chatDocPill">No Document Ingested</span>
+                    <span class="chat-privacy-indicator" id="chatPrivacyIndicator" title="Local-First Privacy Gate (F13)">
+                        <span class="privacy-dot"></span> Offline Local
+                    </span>
+                </div>
+                <div class="chat-grounding-badge" id="chatGroundingBadge" style="display: none;">
+                    <span class="grounding-dot"></span> <span id="chatGroundingText">100% Grounded</span>
+                </div>
+            </div>
+
+            <!-- Chat Messages Container -->
+            <div class="chat-messages-container" id="chatMessagesContainer">
+                <div class="chat-message assistant welcome-msg" id="chatWelcomeMsg">
+                    <div class="msg-avatar">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>
+                    </div>
+                    <div class="msg-content">
+                        <div class="msg-bubble">
+                            <p>Hello! I am your grounded document assistant. Ask any question about your active document, and I'll retrieve relevant passages with verifiable page citations.</p>
+                            <div class="chat-prompt-chips" id="chatPromptChips">
+                                <button type="button" class="prompt-chip" data-query="What is the primary objective of this document?">Primary objective?</button>
+                                <button type="button" class="prompt-chip" data-query="List all action items and deadlines.">Action items &amp; deadlines?</button>
+                                <button type="button" class="prompt-chip" data-query="What risks or legal liabilities are identified?">Risks &amp; liabilities?</button>
+                                <button type="button" class="prompt-chip" data-query="Summarize key executive decisions.">Key decisions?</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Input Footer -->
+        <div class="chat-input-footer">
+            <div class="chat-privacy-toggle-wrap">
+                <label class="chat-privacy-toggle-label" style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); cursor: pointer;">
+                    <input type="checkbox" id="chatAllowCloudAi" />
+                    <span>Allow Cloud AI (External)</span>
+                </label>
+            </div>
+            <form id="chatForm" class="chat-form">
+                <textarea id="chatInputText" class="chat-textarea" placeholder="Ask a question about the document... (Enter to send)" rows="1"></textarea>
+                <button type="submit" class="btn-chat-send" id="btnChatSend" title="Send Question">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </button>
+            </form>
         </div>
     </aside>
 

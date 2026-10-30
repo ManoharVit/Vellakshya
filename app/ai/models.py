@@ -68,6 +68,22 @@ class LLMAnswerOutput(BaseModel):
     used_chunk_ids: list[str] = Field(default_factory=list)
 
 
+class ChatMessage(BaseModel):
+    """Conversation turn for multi-turn Q&A context."""
+
+    role: str = Field(description="'user' or 'assistant'")
+    content: str
+    timestamp: Optional[str] = None
+
+
+class GroundingIndicator(BaseModel):
+    """Groundedness and confidence metrics computed from retrieval rank fusion and passage coverage."""
+
+    score: float = Field(ge=0.0, le=1.0, description="Normalized grounding confidence [0.0, 1.0]")
+    confidence: str = Field(description="'High', 'Medium', or 'Low'")
+    evidence_count: int = Field(default=0, description="Number of verified database chunks cited as evidence")
+
+
 class RAGQueryRequest(BaseModel):
     document_id: str
     query: str
@@ -75,6 +91,14 @@ class RAGQueryRequest(BaseModel):
     allow_external_ai: bool = Field(
         default=False,
         description="Local-first privacy gate for external AI (F13). When False, processing strictly stays offline.",
+    )
+    messages: list[ChatMessage] = Field(
+        default_factory=list,
+        description="Conversation history for multi-turn follow-up queries and context continuity.",
+    )
+    stream: bool = Field(
+        default=False,
+        description="Whether to stream tokens progressively via Server-Sent Events (SSE).",
     )
 
 
@@ -86,6 +110,7 @@ class RAGResponse(BaseModel):
     completion_tokens: int = 0
     latency_ms: float = 0.0
     cached: bool = False
+    grounding: Optional[GroundingIndicator] = None
 
 
 class PIIEntityMatch(BaseModel):

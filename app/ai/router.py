@@ -21,6 +21,7 @@ from fastapi import (
     Response,
     UploadFile,
 )
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.ai.analytics import analyze_pdf_document, compute_document_analytics
@@ -38,7 +39,7 @@ from app.ai.models import (
 )
 from app.ai.observability import check_rate_limit
 from app.ai.pii import apply_physical_redactions, scan_pdf_for_pii
-from app.ai.rag import answer_question_with_citations
+from app.ai.rag import answer_question_with_citations, stream_answer_with_citations
 from app.ai.storage import (
     AIChunk,
     AIDocument,
@@ -168,7 +169,7 @@ async def ingest_document_for_rag(
 
 
 @router.post(
-    "/chat", response_model=RAGResponse, summary="Query PDF with Hybrid RAG & Server Citations"
+    "/chat", summary="Query PDF with Hybrid RAG & Server Citations"
 )
 async def query_rag_endpoint(
     req: RAGQueryRequest,
@@ -177,7 +178,7 @@ async def query_rag_endpoint(
     x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
     token: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-) -> RAGResponse:
+):
     """Answers user queries with page-level citations grounded in the server database index."""
     client_ip = request.client.host if request.client else "127.0.0.1"
     if not check_rate_limit(client_ip):
@@ -187,7 +188,7 @@ async def query_rag_endpoint(
     if not ai_doc:
         raise HTTPException(status_code=404, detail="Document not found in AI index.")
 
-    # Enforce tenant isolation when document is bound to an authenticated owner
+    # Enforce tenant isolation when document is bound to an authenticated owner (F05)
     if ai_doc.owner_id != "demo_user":
         actor = _resolve_ai_actor(authorization, x_user_id, token)
         if not actor:
@@ -201,12 +202,86 @@ async def query_rag_endpoint(
             )
 
     effective_allow_external = bool(ai_doc.allow_external_ai and req.allow_external_ai)
+
+    if req.stream:
+        return StreamingResponse(
+            stream_answer_with_citations(
+                db=db,
+                document_id=req.document_id,
+                query=req.query,
+                top_k=req.top_k,
+                history=req.messages,
+                owner_id=ai_doc.owner_id,
+                allow_external=effective_allow_external,
+            ),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
     return answer_question_with_citations(
         db=db,
         document_id=req.document_id,
         query=req.query,
         top_k=req.top_k,
+        history=req.messages,
+        owner_id=ai_doc.owner_id,
         allow_external=effective_allow_external,
+    )
+
+
+@router.post(
+    "/chat/stream", summary="Streaming Hybrid RAG with Real-Time SSE and Page Citations"
+)
+async def query_rag_stream_endpoint(
+    req: RAGQueryRequest,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
+    token: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    """Streams token-by-token answer with confidence scores and database citation sources via SSE."""
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    if not check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please wait a minute.")
+
+    ai_doc = db.query(AIDocument).filter_by(id=req.document_id).first()
+    if not ai_doc:
+        raise HTTPException(status_code=404, detail="Document not found in AI index.")
+
+    if ai_doc.owner_id != "demo_user":
+        actor = _resolve_ai_actor(authorization, x_user_id, token)
+        if not actor:
+            raise HTTPException(
+                status_code=401, detail="Authentication required to query this document."
+            )
+        if actor != ai_doc.owner_id and actor != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: You do not own this document in the AI index.",
+            )
+
+    effective_allow_external = bool(ai_doc.allow_external_ai and req.allow_external_ai)
+    return StreamingResponse(
+        stream_answer_with_citations(
+            db=db,
+            document_id=req.document_id,
+            query=req.query,
+            top_k=req.top_k,
+            history=req.messages,
+            owner_id=ai_doc.owner_id,
+            allow_external=effective_allow_external,
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

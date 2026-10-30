@@ -178,6 +178,9 @@ const state = {
   activeMatchIndex: -1,
   history: [],          // [{ blob, file, label, timestamp }]
   historyIndex: -1,     // Current position in history stack
+  aiDocumentId: null,   // Active indexed document ID for RAG
+  chatHistory: [],      // [{ role, content, citations, grounding }]
+  isStreamingChat: false,
 };
 
 // DOM References
@@ -380,6 +383,11 @@ const toolsConfig = {
     icon: getLucideSvg("sparkles", 18),
     render: renderSummarizerTool,
   },
+  "ai-chat": {
+    title: "AI Document Assistant & Q&A",
+    icon: getLucideSvg("message-square", 18),
+    render: renderAiChatTool,
+  },
 };
 
 // Initialization
@@ -395,6 +403,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupQuickStartSamples();
   setupGlobalExportHandlers();
   setupDrawerControls();
+  setupAiChatSystem();
   switchTool("pdf-to-html");
 });
 
@@ -3374,6 +3383,9 @@ function setupUndoRedo() {
 
 function setActivePdf(file) {
   state.currentPdfFile = file;
+  state.aiDocumentId = null;
+  const chatPill = document.getElementById("chatDocPill");
+  if (chatPill) chatPill.textContent = file ? file.name : "No Document Ingested";
   if (!state.originalPdfFile || state.editCount === 0) {
     state.originalPdfFile = file;
     state.editCount = 0;
@@ -6917,12 +6929,14 @@ function setupDrawerControls() {
   const drawerHistory = document.getElementById("drawerVersionHistory");
   const drawerCollab = document.getElementById("drawerCollaboration");
   const drawerSecurity = document.getElementById("drawerSecurity");
+  const drawerAiChat = document.getElementById("drawerAiChat");
 
   const closeAllDrawers = () => {
     if (backdrop) backdrop.style.display = "none";
     if (drawerHistory) drawerHistory.style.display = "none";
     if (drawerCollab) drawerCollab.style.display = "none";
     if (drawerSecurity) drawerSecurity.style.display = "none";
+    if (drawerAiChat) drawerAiChat.style.display = "none";
   };
 
   const openDrawer = (drawer) => {
@@ -6936,16 +6950,31 @@ function setupDrawerControls() {
   const btnCloseHist = document.getElementById("btnCloseVersionHistory");
   const btnCloseCollab = document.getElementById("btnCloseCollaboration");
   const btnCloseSec = document.getElementById("btnCloseSecurity");
+  const btnCloseAiChat = document.getElementById("btnCloseAiChat");
   if (btnCloseHist) btnCloseHist.addEventListener("click", closeAllDrawers);
   if (btnCloseCollab) btnCloseCollab.addEventListener("click", closeAllDrawers);
   if (btnCloseSec) btnCloseSec.addEventListener("click", closeAllDrawers);
+  if (btnCloseAiChat) btnCloseAiChat.addEventListener("click", closeAllDrawers);
 
   const btnHist = document.getElementById("btnToggleHistoryDrawer");
   const btnCollab = document.getElementById("btnToggleCollabDrawer");
   const btnSec = document.getElementById("btnToggleSecurityDrawer");
+  const btnAiChat = document.getElementById("btnToggleAiChat");
+  const btnHdrAiChat = document.getElementById("btnHeaderAiChat");
   const btnIntegrity = document.getElementById("btnHeaderIntegrity");
   const btnVersion = document.getElementById("btnHeaderVersion");
   const collabPresenceBar = document.getElementById("collabPresenceBar");
+
+  if (btnAiChat) {
+    btnAiChat.addEventListener("click", () => {
+      openAiChatDrawer();
+    });
+  }
+  if (btnHdrAiChat) {
+    btnHdrAiChat.addEventListener("click", () => {
+      openAiChatDrawer();
+    });
+  }
 
   if (btnHist) {
     btnHist.addEventListener("click", () => {
@@ -8182,6 +8211,470 @@ ${escapeHtml(data.summary)}
     downloadBlob(blob, `document_summary_${data.level}.md`);
   });
 }
+
+// =============================================================
+// Milestone 2: AI Document Assistant & Sidecar Chat
+// =============================================================
+
+function jumpToPdfPage(pageNum) {
+  if (state.activeTab !== "preview") {
+    const previewTab = document.querySelector('.preview-tab[data-tab="preview"]');
+    if (previewTab) previewTab.click();
+  }
+  const pageCard = document.getElementById(`pdfPageCard_${pageNum}`);
+  if (pageCard) {
+    pageCard.scrollIntoView({ behavior: "smooth", block: "center" });
+    pageCard.classList.add("page-highlight-pulse");
+    setTimeout(() => pageCard.classList.remove("page-highlight-pulse"), 1800);
+  }
+  const thumb = document.querySelector(`.thumb-card[data-page="${pageNum}"]`);
+  if (thumb) {
+    document.querySelectorAll(".thumb-card").forEach((t) => t.classList.remove("active"));
+    thumb.classList.add("active");
+    thumb.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
+
+async function ensureAiDocumentIngested() {
+  if (state.aiDocumentId) return state.aiDocumentId;
+  if (!state.currentPdfFile) return null;
+
+  const pill = document.getElementById("chatDocPill");
+  if (pill) pill.textContent = `Indexing ${state.currentPdfFile.name}...`;
+
+  const allowExternal = document.getElementById("chatAllowCloudAi")?.checked || false;
+  const formData = new FormData();
+  formData.append("file", state.currentPdfFile);
+
+  try {
+    const res = await fetch(`/api/ai/ingest?allow_external_ai=${allowExternal}`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    state.aiDocumentId = data.document_id;
+    if (pill) pill.textContent = `${state.currentPdfFile.name} (${data.chunks_indexed} passages)`;
+    return data.document_id;
+  } catch (err) {
+    if (pill) pill.textContent = `Indexing failed: ${err.message}`;
+    throw err;
+  }
+}
+
+function openAiChatDrawer() {
+  const drawerAiChat = document.getElementById("drawerAiChat");
+  const backdrop = document.getElementById("drawerBackdrop");
+  if (!drawerAiChat) return;
+
+  // Close other open drawers
+  const drawerHistory = document.getElementById("drawerVersionHistory");
+  const drawerCollab = document.getElementById("drawerCollaboration");
+  const drawerSecurity = document.getElementById("drawerSecurity");
+  if (drawerHistory) drawerHistory.style.display = "none";
+  if (drawerCollab) drawerCollab.style.display = "none";
+  if (drawerSecurity) drawerSecurity.style.display = "none";
+
+  if (backdrop) backdrop.style.display = "block";
+  drawerAiChat.style.display = "flex";
+
+  const pill = document.getElementById("chatDocPill");
+  if (pill) {
+    if (state.currentPdfFile) {
+      pill.textContent = state.aiDocumentId
+        ? `${state.currentPdfFile.name} (Ready)`
+        : `${state.currentPdfFile.name}`;
+      if (!state.aiDocumentId) {
+        ensureAiDocumentIngested().catch(() => {});
+      }
+    } else {
+      pill.textContent = "No Document Loaded";
+    }
+  }
+
+  const inputEl = document.getElementById("chatInputText");
+  if (inputEl) setTimeout(() => inputEl.focus(), 150);
+}
+
+function renderAiChatTool() {
+  toolConfigPanel.innerHTML = `
+    <div class="panel-section">
+      <div class="section-label">Active Document</div>
+      <div id="aiChatUploadArea"></div>
+      <div id="aiChatFileInfo"></div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">AI Document Assistant</div>
+      <p style="font-size: 12px; line-height: 1.5; color: var(--text-muted); margin-bottom: 12px;">
+        Chat directly with your document using Hybrid RAG (Reciprocal Rank Fusion) and token-by-token streaming with verifiable database citations.
+      </p>
+
+      <button type="button" class="btn-primary" id="btnOpenSidecarChat" style="width: 100%;">
+        ${getLucideSvg("sparkles", 14)} Open AI Chat Sidecar
+      </button>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Common Queries</div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <button type="button" class="btn-secondary prompt-side-btn" data-query="What is the primary objective of this document?" style="text-align: left; font-size: 11px;">
+          What is the primary objective?
+        </button>
+        <button type="button" class="btn-secondary prompt-side-btn" data-query="List all action items, assignees, and deadlines." style="text-align: left; font-size: 11px;">
+          List action items &amp; deadlines
+        </button>
+        <button type="button" class="btn-secondary prompt-side-btn" data-query="What risks, legal liabilities, or penalties are identified?" style="text-align: left; font-size: 11px;">
+          Identify risks &amp; liabilities
+        </button>
+        <button type="button" class="btn-secondary prompt-side-btn" data-query="Summarize all executive decisions and resolutions." style="text-align: left; font-size: 11px;">
+          Summarize executive decisions
+        </button>
+      </div>
+    </div>
+  `;
+
+  renderDocStatusBadge("aiChatFileInfo");
+
+  document.getElementById("aiChatUploadArea").appendChild(
+    buildDropZone(".pdf", false, (file) => {
+      setActivePdf(file);
+      renderDocStatusBadge("aiChatFileInfo");
+      ensureAiDocumentIngested().catch(() => {});
+    })
+  );
+
+  document.getElementById("btnOpenSidecarChat").addEventListener("click", () => {
+    openAiChatDrawer();
+  });
+
+  document.querySelectorAll(".prompt-side-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openAiChatDrawer();
+      const inputEl = document.getElementById("chatInputText");
+      if (inputEl) {
+        inputEl.value = btn.dataset.query;
+        handleChatSubmit();
+      }
+    });
+  });
+
+  // Automatically open the sidecar drawer when tool is activated
+  openAiChatDrawer();
+}
+
+function setupAiChatSystem() {
+  const form = document.getElementById("chatForm");
+  const inputEl = document.getElementById("chatInputText");
+  const clearBtn = document.getElementById("btnClearChatHistory");
+  const privacyToggle = document.getElementById("chatAllowCloudAi");
+
+  if (privacyToggle) {
+    privacyToggle.addEventListener("change", () => {
+      const ind = document.getElementById("chatPrivacyIndicator");
+      if (ind) {
+        if (privacyToggle.checked) {
+          ind.innerHTML = `<span class="privacy-dot cloud-active"></span> External Cloud AI`;
+          ind.title = "External Cloud AI permitted (F13 privacy gate enabled)";
+        } else {
+          ind.innerHTML = `<span class="privacy-dot"></span> Offline Local`;
+          ind.title = "Local-First Privacy Gate active (0 external network egress)";
+        }
+      }
+    });
+  }
+
+  if (form) {
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      handleChatSubmit();
+    });
+  }
+
+  if (inputEl) {
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleChatSubmit();
+      }
+    });
+    inputEl.addEventListener("input", () => {
+      inputEl.style.height = "auto";
+      inputEl.style.height = `${Math.min(120, inputEl.scrollHeight)}px`;
+    });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      state.chatHistory = [];
+      const container = document.getElementById("chatMessagesContainer");
+      if (container) {
+        container.innerHTML = `
+          <div class="chat-message assistant welcome-msg" id="chatWelcomeMsg">
+            <div class="msg-avatar">
+              ${getLucideSvg("sparkles", 14)}
+            </div>
+            <div class="msg-content">
+              <div class="msg-bubble">
+                <p>Chat history cleared. What would you like to explore next in your document?</p>
+                <div class="chat-prompt-chips" id="chatPromptChips">
+                  <button type="button" class="prompt-chip" data-query="What is the primary objective of this document?">Primary objective?</button>
+                  <button type="button" class="prompt-chip" data-query="List all action items and deadlines.">Action items &amp; deadlines?</button>
+                  <button type="button" class="prompt-chip" data-query="What risks or legal liabilities are identified?">Risks &amp; liabilities?</button>
+                  <button type="button" class="prompt-chip" data-query="Summarize key executive decisions.">Key decisions?</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        wirePromptChips();
+      }
+      const gBadge = document.getElementById("chatGroundingBadge");
+      if (gBadge) gBadge.style.display = "none";
+      showNotification("Chat conversation reset.", "info", 2000);
+    });
+  }
+
+  wirePromptChips();
+}
+
+function wirePromptChips() {
+  document.querySelectorAll(".prompt-chip").forEach((chip) => {
+    chip.onclick = () => {
+      const inputEl = document.getElementById("chatInputText");
+      if (inputEl) {
+        inputEl.value = chip.dataset.query;
+        handleChatSubmit();
+      }
+    };
+  });
+}
+
+function appendUserChatMessage(text) {
+  const container = document.getElementById("chatMessagesContainer");
+  if (!container) return;
+
+  const msgDiv = document.createElement("div");
+  msgDiv.className = "chat-message user";
+  msgDiv.innerHTML = `
+    <div class="msg-content">
+      <div class="msg-bubble">${escapeHtml(text)}</div>
+    </div>
+  `;
+  container.appendChild(msgDiv);
+  scrollChatToBottom();
+}
+
+function appendAssistantChatMessagePlaceholder() {
+  const container = document.getElementById("chatMessagesContainer");
+  if (!container) return null;
+
+  const msgDiv = document.createElement("div");
+  msgDiv.className = "chat-message assistant";
+  msgDiv.innerHTML = `
+    <div class="msg-avatar">
+      ${getLucideSvg("sparkles", 14)}
+    </div>
+    <div class="msg-content">
+      <div class="msg-bubble assistant-stream-bubble">
+        <span class="chat-status-text" style="color: var(--text-muted); font-style: italic;">
+          Retrieving relevant document passages...
+        </span>
+      </div>
+    </div>
+  `;
+  container.appendChild(msgDiv);
+  scrollChatToBottom();
+  return msgDiv.querySelector(".assistant-stream-bubble");
+}
+
+function scrollChatToBottom() {
+  const container = document.getElementById("chatMessagesContainer");
+  if (container) {
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+function updateAssistantBubbleContent(bubble, text, citations, grounding) {
+  if (!bubble) return;
+
+  let citationsHtml = "";
+  if (citations && citations.length > 0) {
+    const pills = citations.map(c => `
+      <button type="button" class="citation-pill" data-page="${c.page}" title="${escapeHtml(c.quote)}">
+        ${getLucideSvg("link", 11)} Page ${c.page}
+      </button>
+    `).join("");
+
+    const refItems = citations.map(c => `
+      <div class="reference-item" data-page="${c.page}">
+        <div style="font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 4px;">
+          ${getLucideSvg("file-text", 11)} Page ${c.page}
+        </div>
+        <div style="color: var(--text-muted); font-style: italic;">&ldquo;${escapeHtml(c.quote)}&rdquo;</div>
+      </div>
+    `).join("");
+
+    citationsHtml = `
+      <div style="margin-top: 8px;">
+        <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 2px;">Citations:</div>
+        <div>${pills}</div>
+        <details class="references-box" style="margin-top: 6px;">
+          <summary class="references-header">Show References (${citations.length})</summary>
+          <div class="references-list">${refItems}</div>
+        </details>
+      </div>
+    `;
+  }
+
+  let groundingHtml = "";
+  if (grounding && grounding.confidence) {
+    let gColor = "#15803D";
+    if (grounding.confidence === "Medium") gColor = "#D97706";
+    if (grounding.confidence === "Low") gColor = "#B91C1C";
+    groundingHtml = `
+      <div style="font-size: 10px; color: ${gColor}; margin-top: 6px; display: flex; align-items: center; gap: 4px; font-weight: 600;">
+        <span style="width: 5px; height: 5px; border-radius: 50%; background: ${gColor}; display: inline-block;"></span>
+        ${Math.round(grounding.score * 100)}% Grounded (${grounding.confidence} Confidence)
+      </div>
+    `;
+  }
+
+  bubble.innerHTML = `
+    <div class="stream-text" style="white-space: pre-wrap;">${escapeHtml(text)}</div>
+    ${groundingHtml}
+    ${citationsHtml}
+  `;
+
+  bubble.querySelectorAll(".citation-pill, .reference-item").forEach((btn) => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const pageNum = parseInt(btn.dataset.page, 10);
+      if (pageNum) {
+        jumpToPdfPage(pageNum);
+        showNotification(`Navigated to verified citation on Page ${pageNum}`, "info", 2000);
+      }
+    };
+  });
+}
+
+function updateGroundingBadge(grounding) {
+  const badge = document.getElementById("chatGroundingBadge");
+  const text = document.getElementById("chatGroundingText");
+  if (!badge || !text || !grounding) return;
+
+  badge.style.display = "inline-flex";
+  text.textContent = `${Math.round(grounding.score * 100)}% Grounded (${grounding.confidence})`;
+}
+
+async function handleChatSubmit() {
+  const inputEl = document.getElementById("chatInputText");
+  if (!inputEl) return;
+  const query = inputEl.value.trim();
+  if (!query) return;
+  if (state.isStreamingChat) return;
+
+  if (!state.currentPdfFile) {
+    showNotification("Please upload or load a PDF document before asking questions.", "warning");
+    return;
+  }
+
+  inputEl.value = "";
+  inputEl.style.height = "auto";
+
+  const welcomeChips = document.getElementById("chatPromptChips");
+  if (welcomeChips) welcomeChips.style.display = "none";
+
+  appendUserChatMessage(query);
+  const assistantBubble = appendAssistantChatMessagePlaceholder();
+  state.isStreamingChat = true;
+
+  try {
+    const docId = await ensureAiDocumentIngested();
+    const allowCloud = document.getElementById("chatAllowCloudAi")?.checked || false;
+
+    const payload = {
+      document_id: docId,
+      query: query,
+      allow_external_ai: allowCloud,
+      messages: state.chatHistory.map((m) => ({ role: m.role, content: m.content })),
+      stream: true,
+    };
+
+    const response = await fetch("/api/ai/chat/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let accumulatedText = "";
+    let citations = [];
+    let grounding = null;
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith(":")) continue;
+        if (trimmed.startsWith("data: ")) {
+          const dataStr = trimmed.slice(6).trim();
+          if (dataStr === "[DONE]") break;
+          try {
+            const event = JSON.parse(dataStr);
+            if (event.type === "token") {
+              accumulatedText += event.content;
+              updateAssistantBubbleContent(assistantBubble, accumulatedText, citations, grounding);
+            } else if (event.type === "citations") {
+              citations = event.citations || [];
+              updateAssistantBubbleContent(assistantBubble, accumulatedText, citations, grounding);
+            } else if (event.type === "grounding") {
+              grounding = event;
+              updateAssistantBubbleContent(assistantBubble, accumulatedText, citations, grounding);
+              updateGroundingBadge(grounding);
+            } else if (event.type === "status") {
+              if (assistantBubble && !accumulatedText) {
+                assistantBubble.innerHTML = `<span style="color: var(--text-muted); font-style: italic;">${escapeHtml(event.message)}</span>`;
+              }
+            } else if (event.type === "done") {
+              updateAssistantBubbleContent(assistantBubble, accumulatedText, citations, grounding);
+            }
+          } catch (err) {
+            console.warn("Error parsing SSE event:", err);
+          }
+        }
+      }
+    }
+
+    state.chatHistory.push({ role: "user", content: query });
+    state.chatHistory.push({
+      role: "assistant",
+      content: accumulatedText,
+      citations: citations,
+      grounding: grounding,
+    });
+  } catch (err) {
+    if (assistantBubble) {
+      assistantBubble.innerHTML = `<span style="color: var(--error);">Error: ${escapeHtml(err.message || String(err))}</span>`;
+    }
+  } finally {
+    state.isStreamingChat = false;
+    scrollChatToBottom();
+  }
+}
+
 
 
 

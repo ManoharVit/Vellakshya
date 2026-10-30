@@ -4164,8 +4164,10 @@ a:focus-visible {
 
 /* Active Document Card */
 [data-theme="light"] .loaded-file-chip,
+[data-theme="light"] .active-file-card,
 [data-theme="light"] .active-file-card.loaded-file-chip,
 .theme-light .loaded-file-chip,
+.theme-light .active-file-card,
 .theme-light .active-file-card.loaded-file-chip {
   background: #FFFFFF !important;
   border: 1px solid #CBD5E1 !important;
@@ -4174,24 +4176,38 @@ a:focus-visible {
 }
 
 [data-theme="light"] .loaded-file-chip .chip-name,
-.theme-light .loaded-file-chip .chip-name {
+[data-theme="light"] .loaded-file-chip .chip-filename,
+[data-theme="light"] .active-file-card .active-card-filename,
+.theme-light .loaded-file-chip .chip-name,
+.theme-light .loaded-file-chip .chip-filename,
+.theme-light .active-file-card .active-card-filename {
   color: #0F172A !important;
 }
 
 [data-theme="light"] .loaded-file-chip .chip-size,
-.theme-light .loaded-file-chip .chip-size {
+[data-theme="light"] .loaded-file-chip .chip-filesize,
+.theme-light .loaded-file-chip .chip-size,
+.theme-light .loaded-file-chip .chip-filesize {
   color: #475569 !important;
 }
 
 [data-theme="light"] .loaded-file-chip .btn-chip-action,
-.theme-light .loaded-file-chip .btn-chip-action {
+[data-theme="light"] .active-file-card .btn-chip-action,
+[data-theme="light"] .active-file-card .btn-card-ch,
+.theme-light .loaded-file-chip .btn-chip-action,
+.theme-light .active-file-card .btn-chip-action,
+.theme-light .active-file-card .btn-card-ch {
   background: #FFFFFF !important;
   border: 1px solid #CBD5E1 !important;
   color: #0F172A !important;
 }
 
 [data-theme="light"] .loaded-file-chip .btn-chip-action:hover,
-.theme-light .loaded-file-chip .btn-chip-action:hover {
+[data-theme="light"] .active-file-card .btn-chip-action:hover,
+[data-theme="light"] .active-file-card .btn-card-ch:hover,
+.theme-light .loaded-file-chip .btn-chip-action:hover,
+.theme-light .active-file-card .btn-chip-action:hover,
+.theme-light .active-file-card .btn-card-ch:hover {
   background: #F1F5F9 !important;
   border-color: #4F46E5 !important;
   color: #4F46E5 !important;

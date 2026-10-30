@@ -146,4 +146,40 @@ test.describe('Theme & Self-Hosted Typography Verification (Step 8)', () => {
       await page.screenshot({ path: `${artifactDir}/light_theme_crop_conformance.png` });
     }
   });
+  test('opens the theme menu with the arrow and keyboard without toggling the theme', async ({ page }) => {
+    await page.goto('/');
+    const toggle = page.locator('#btnThemeToggle');
+    const menu = page.locator('#themeDropdownMenu');
+    const initialTheme = await page.locator('html').getAttribute('data-theme');
+
+    await toggle.locator('.dropdown-chevron').click();
+    await expect(menu).toBeVisible();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', initialTheme);
+
+    await page.locator('#themeToggleText').click();
+    await expect(menu).toBeHidden();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', initialTheme === 'dark' ? 'light' : 'dark');
+
+    await toggle.focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(menu).toBeVisible();
+    await expect(menu.locator('[data-theme-val="system"]')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(toggle).toBeFocused();
+
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await toggle.locator('.dropdown-chevron').click();
+    await menu.locator('[data-theme-val="system"]').click();
+    await expect(menu).toBeHidden();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await page.emulateMedia({ colorScheme: 'light' });
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    await expect(page.locator('#themeToggleText')).toHaveText('Theme: System');
+  });
+
 });

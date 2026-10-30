@@ -474,20 +474,23 @@ function setupThemeToggle() {
     }
   });
 
+  function setThemeMenuOpen(open) {
+    if (dropdown) dropdown.style.display = open ? "flex" : "none";
+    if (btn) btn.setAttribute("aria-expanded", String(open));
+  }
+
   applyTheme(savedTheme);
 
   if (btn) {
     btn.addEventListener("click", (e) => {
       // If clicking the caret specifically, toggle the menu
-      if (e.target.closest(".theme-caret")) {
+      if (e.target.closest(".dropdown-chevron")) {
         e.stopPropagation();
-        if (dropdown) {
-          const isOpen = dropdown.style.display !== "none";
-          dropdown.style.display = isOpen ? "none" : "flex";
-        }
+        setThemeMenuOpen(dropdown?.style.display === "none");
         return;
       }
 
+      setThemeMenuOpen(false);
       // Quick toggle between dark and light
       const currentAttr = document.documentElement.getAttribute("data-theme") || "dark";
       const nextTheme = currentAttr === "dark" ? "light" : "dark";
@@ -500,8 +503,14 @@ function setupThemeToggle() {
 
     btn.addEventListener("contextmenu", (e) => {
       e.preventDefault();
-      if (dropdown) {
-        dropdown.style.display = "flex";
+      setThemeMenuOpen(true);
+    });
+
+    btn.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setThemeMenuOpen(true);
+        dropdown?.querySelector(".theme-dropdown-item")?.focus();
       }
     });
   }
@@ -514,7 +523,7 @@ function setupThemeToggle() {
       if (selected) {
         localStorage.setItem("vellakshya_theme", selected);
         applyTheme(selected);
-        if (dropdown) dropdown.style.display = "none";
+        setThemeMenuOpen(false);
         if (typeof showNotification === "function") {
           showNotification(`Theme set to ${selected.charAt(0).toUpperCase() + selected.slice(1)}`, "info", 1800);
         }
@@ -524,7 +533,15 @@ function setupThemeToggle() {
 
   document.addEventListener("click", (e) => {
     if (dropdown && !e.target.closest("#headerThemeWrap")) {
-      dropdown.style.display = "none";
+      setThemeMenuOpen(false);
+    }
+  });
+
+  document.getElementById("headerThemeWrap")?.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && dropdown?.style.display !== "none") {
+      e.preventDefault();
+      setThemeMenuOpen(false);
+      btn?.focus();
     }
   });
 }
@@ -8202,14 +8219,14 @@ ${escapeHtml(data.summary)}
 
         ${insights.decisions && insights.decisions.length > 0 ? `
           <div style="margin-bottom: 8px;">
-            <strong style="font-size: 11px; color: #15803D;">Decisions Approved (${insights.decisions.length}):</strong>
+            <strong style="font-size: 11px; color: var(--success);">Decisions Approved (${insights.decisions.length}):</strong>
             <ul style="font-size: 11px; padding-left: 16px; margin: 4px 0;">${decisionsHtml}</ul>
           </div>
         ` : ''}
 
         ${insights.risks && insights.risks.length > 0 ? `
           <div style="margin-bottom: 8px;">
-            <strong style="font-size: 11px; color: #B91C1C;">Identified Risks (${insights.risks.length}):</strong>
+            <strong style="font-size: 11px; color: var(--error);">Identified Risks (${insights.risks.length}):</strong>
             <ul style="font-size: 11px; padding-left: 16px; margin: 4px 0;">${risksHtml}</ul>
           </div>
         ` : ''}
@@ -8569,9 +8586,9 @@ function updateAssistantBubbleContent(bubble, text, citations, grounding) {
 
   let groundingHtml = "";
   if (grounding && grounding.confidence) {
-    let gColor = "#15803D";
-    if (grounding.confidence === "Medium") gColor = "#D97706";
-    if (grounding.confidence === "Low") gColor = "#B91C1C";
+    let gColor = "var(--success)";
+    if (grounding.confidence === "Medium") gColor = "var(--warning)";
+    if (grounding.confidence === "Low") gColor = "var(--error)";
     groundingHtml = `
       <div style="font-size: 10px; color: ${gColor}; margin-top: 6px; display: flex; align-items: center; gap: 4px; font-weight: 600;">
         <span style="width: 5px; height: 5px; border-radius: 50%; background: ${gColor}; display: inline-block;"></span>

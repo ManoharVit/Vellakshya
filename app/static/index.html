@@ -144,7 +144,7 @@
                 </div>
                 <!-- Theme Control (System, Light, Dark) -->
                 <div class="header-theme-wrap" id="headerThemeWrap">
-                    <button type="button" class="btn-hdr-action btn-theme-toggle" id="btnThemeToggle" aria-haspopup="true" aria-expanded="false" title="Theme Mode: System, Light, Dark">
+                    <button type="button" class="btn-hdr-action btn-theme-toggle" id="btnThemeToggle" aria-haspopup="true" aria-expanded="false" aria-controls="themeDropdownMenu" title="Theme Mode: System, Light, Dark">
                         <svg class="icon-theme-dark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
                         <svg class="icon-theme-light" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
                         <svg class="icon-theme-system" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;" aria-hidden="true"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
@@ -586,7 +586,7 @@
         </div>
         <div class="drawer-body" id="collaborationDrawerBody">
             <div class="drawer-summary-box">
-                <div class="drawer-summary-title">Multi-User Room: <span id="collabRoomId" style="font-family: monospace; color: #38bdf8;">vellakshya-main</span></div>
+                <div class="drawer-summary-title">Multi-User Room: <span id="collabRoomId" style="font-family: monospace; color: var(--text-accent);">vellakshya-main</span></div>
                 <div class="drawer-summary-sub">WebSocket real-time presence synchronization and threaded annotation discussions.</div>
             </div>
             <div class="collab-peers-section">
@@ -626,7 +626,7 @@
             <div class="security-metrics-grid">
                 <div class="security-metric-card">
                     <div class="smc-label">Execution Isolation</div>
-                    <div class="smc-value" style="color: #34d399;">Subprocess Sandboxed</div>
+                    <div class="smc-value" style="color: var(--success);">Subprocess Sandboxed</div>
                     <div class="smc-sub">RLIMIT_AS &amp; RLIMIT_CPU active</div>
                 </div>
                 <div class="security-metric-card">
@@ -641,7 +641,7 @@
                 </div>
                 <div class="security-metric-card">
                     <div class="smc-label">HTML Security</div>
-                    <div class="smc-value" style="color: #38bdf8;">script-src 'none'</div>
+                    <div class="smc-value" style="color: var(--text-accent);">script-src 'none'</div>
                     <div class="smc-sub">Strict Content Security Policy</div>
                 </div>
                 <div class="security-metric-card">
@@ -651,7 +651,7 @@
                 </div>
                 <div class="security-metric-card">
                     <div class="smc-label">Retention Control</div>
-                    <div class="smc-value" style="color: #a78bfa;">Owner-Restricted</div>
+                    <div class="smc-value" style="color: var(--text-accent);">Owner-Restricted</div>
                     <div class="smc-sub">DELETE /api/v2/documents/{id}</div>
                 </div>
             </div>

@@ -47,6 +47,9 @@
   --accent: #2F6FED;              /* Base primary interactive accent */
   --accent-hover: #2563EB;        /* Slightly darker hover (preserves >= 4.55:1 white text) */
   --text-on-accent: #FFFFFF;      /* 4.55:1 contrast against #2F6FED */
+  --text-accent: #60A5FA;
+  --selected-bg: #1E2D4A;
+  --selected-text: #BFDBFE;
   --success: #4ADE80;
   --warning: #FBBF24;
   --error: #F87171;
@@ -141,6 +144,7 @@
   --accent: #4F46E5;              /* Primary action: Choose PDF, Apply Crop, enabled Export */
   --accent-hover: #4338CA;        /* Primary hover: Hovered primary buttons */
   --text-on-accent: #FFFFFF;      /* White text on primary buttons (6.29:1 contrast) */
+  --text-accent: #4F46E5;
   --selected-bg: #EEF2FF;         /* Selected background: Active navigation item, selected tool */
   --selected-text: #3730A3;       /* Selected text: Labels and icons on selected backgrounds */
   --success: #15803D;             /* Success: Ready or completed status */
@@ -188,7 +192,7 @@
   margin: 0;
   padding: 0;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.22) rgba(15, 23, 42, 0.6);
+  scrollbar-color: var(--border-strong) var(--bg-primary);
 }
 
 *::-webkit-scrollbar {
@@ -3342,8 +3346,8 @@ button,
   position: absolute;
   top: 10px;
   right: 12px;
-  background: rgba(37, 99, 235, 0.9);
-  color: var(--text-main);
+  background: var(--accent);
+  color: var(--text-on-accent);
   font-size: 11px;
   font-weight: 600;
   padding: 3px 8px;
@@ -3355,16 +3359,16 @@ button,
 }
 
 @keyframes pulse-badge {
-  0%, 100% { opacity: 0.95; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(0.97); }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.97); }
 }
 
 .thumb-rotate-badge {
   position: absolute;
   top: 4px;
   right: 4px;
-  background: rgba(37, 99, 235, 0.85);
-  color: var(--text-main);
+  background: var(--accent);
+  color: var(--text-on-accent);
   font-size: 9px;
   font-weight: 700;
   padding: 1px 4px;
@@ -3435,8 +3439,8 @@ button,
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: rgba(18, 21, 32, 0.85);
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: var(--surface);
+  border: 1px solid var(--status-success-border);
   border-radius: 6px;
   padding: 10px;
 }

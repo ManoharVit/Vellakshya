@@ -33,25 +33,14 @@ _CACHED_MANIFEST_KEY: bytes | None = None
 def get_storage_signing_key() -> bytes:
     global _CACHED_STORAGE_KEY
     key_str = os.environ.get("STORAGE_SIGNING_KEY")
-    if is_production():
-        if not key_str:
-            raise RuntimeError(
-                "CRITICAL SECURITY FAILURE: STORAGE_SIGNING_KEY must be configured in production."
-            )
+    if key_str:
         if key_str in COMPROMISED_FALLBACK_KEYS:
             raise RuntimeError(
                 "CRITICAL SECURITY FAILURE: Compromised fallback STORAGE_SIGNING_KEY cannot be used in production."
             )
         return key_str.encode("utf-8")
 
-    if key_str:
-        if key_str in COMPROMISED_FALLBACK_KEYS:
-            raise ValueError(
-                "Compromised literal STORAGE_SIGNING_KEY rejected. Set a fresh secret key."
-            )
-        return key_str.encode("utf-8")
-
-    # In dev/test: generate a fresh high-entropy random key per process lifetime
+    # If key is not explicitly configured, generate a fresh high-entropy 256-bit key per process lifetime
     if _CACHED_STORAGE_KEY is None:
         _CACHED_STORAGE_KEY = secrets.token_bytes(32)
     return _CACHED_STORAGE_KEY
@@ -60,21 +49,10 @@ def get_storage_signing_key() -> bytes:
 def get_manifest_signing_key() -> bytes:
     global _CACHED_MANIFEST_KEY
     key_str = os.environ.get("MANIFEST_SIGNING_KEY")
-    if is_production():
-        if not key_str:
-            raise RuntimeError(
-                "CRITICAL SECURITY FAILURE: MANIFEST_SIGNING_KEY must be configured in production."
-            )
+    if key_str:
         if key_str in COMPROMISED_FALLBACK_KEYS:
             raise RuntimeError(
                 "CRITICAL SECURITY FAILURE: Compromised fallback MANIFEST_SIGNING_KEY cannot be used in production."
-            )
-        return key_str.encode("utf-8")[:32].ljust(32, b"0")
-
-    if key_str:
-        if key_str in COMPROMISED_FALLBACK_KEYS:
-            raise ValueError(
-                "Compromised literal MANIFEST_SIGNING_KEY rejected. Set a fresh secret key."
             )
         return key_str.encode("utf-8")[:32].ljust(32, b"0")
 

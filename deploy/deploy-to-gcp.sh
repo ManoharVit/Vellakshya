@@ -72,6 +72,12 @@ if [ -f "deploy/cloudrun-ocr-gpu-job.yaml" ]; then
         --project "${PROJECT_ID}" --region "${REGION}" 2>/dev/null || echo "OCR GPU job deployment pending GPU image build."
 fi
 
+# 7. Deploy to Firebase Hosting (Google Global Edge CDN)
+if command -v firebase >/dev/null 2>&1; then
+    echo "--> Deploying Firebase Hosting static assets & CDN proxy..."
+    firebase deploy --only hosting --project "${PROJECT_ID}"
+fi
+
 echo ""
 echo "=== Deployment to Google Cloud Platform Completed Successfully! ==="
 gcloud run services describe "${SERVICE_NAME}" --project "${PROJECT_ID}" --region "${REGION}" --format="value(status.url)"

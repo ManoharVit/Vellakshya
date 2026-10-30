@@ -13,7 +13,7 @@ import os
 import re
 import time
 from collections import Counter
-from typing import Any, Optional
+from typing import Optional
 
 import fitz  # PyMuPDF
 
@@ -23,10 +23,29 @@ from app.ai.models import ExtractedInsights, SummarizeResponse
 # Cue phrases indicating high-impact summary sentences
 CUE_PHRASES = frozenset(
     {
-        "in conclusion", "to conclude", "in summary", "overall", "significant", "crucial",
-        "important", "essential", "demonstrates", "reveals", "found that", "results indicate",
-        "we conclude", "therefore", "as a result", "key finding", "primary objective",
-        "decided to", "agreed to", "recommended", "must ensure", "risk of", "critical"
+        "in conclusion",
+        "to conclude",
+        "in summary",
+        "overall",
+        "significant",
+        "crucial",
+        "important",
+        "essential",
+        "demonstrates",
+        "reveals",
+        "found that",
+        "results indicate",
+        "we conclude",
+        "therefore",
+        "as a result",
+        "key finding",
+        "primary objective",
+        "decided to",
+        "agreed to",
+        "recommended",
+        "must ensure",
+        "risk of",
+        "critical",
     }
 )
 
@@ -85,7 +104,8 @@ def extract_structured_insights_offline(text: str) -> ExtractedInsights:
     entity_counter = Counter(acronyms + proper_nouns)
     # Filter common false positives
     filtered_entities = [
-        ent for ent, cnt in entity_counter.most_common(20)
+        ent
+        for ent, cnt in entity_counter.most_common(20)
         if ent.lower() not in STOPWORDS and len(ent) > 2
     ]
     unique_entities = filtered_entities[:8]
@@ -132,7 +152,15 @@ def score_and_rank_sentences(sentences: list[str]) -> list[tuple[str, float]]:
         cue_bonus = 0.5 if any(cue in s_clean.lower() for cue in CUE_PHRASES) else 0.0
 
         # Action/Decision/Risk cue bonus
-        semantic_bonus = 0.3 if (ACTION_MARKERS.search(s_clean) or DECISION_MARKERS.search(s_clean) or RISK_MARKERS.search(s_clean)) else 0.0
+        semantic_bonus = (
+            0.3
+            if (
+                ACTION_MARKERS.search(s_clean)
+                or DECISION_MARKERS.search(s_clean)
+                or RISK_MARKERS.search(s_clean)
+            )
+            else 0.0
+        )
 
         # Length penalty (penalize overly short < 6 words or overly long > 50 words)
         length_penalty = 1.0
@@ -197,7 +225,7 @@ def format_summary_output(
     # 2. Key Takeaways level
     if level == "key_takeaways":
         if output_format == "table":
-            rows = [f"| Takeaway {i+1} | {s} |" for i, s in enumerate(sentences)]
+            rows = [f"| Takeaway {i + 1} | {s} |" for i, s in enumerate(sentences)]
             return "| # | Key Takeaway |\n| :--- | :--- |\n" + "\n".join(rows)
         # Default or bullet_points
         return "\n".join(f"- {s}" for s in sentences)
@@ -207,15 +235,25 @@ def format_summary_output(
         return "\n".join(f"- {s}" for s in sentences)
 
     if output_format == "table":
-        rows = [f"| Item {i+1} | {s} |" for i, s in enumerate(sentences)]
+        rows = [f"| Item {i + 1} | {s} |" for i, s in enumerate(sentences)]
         return "| # | Summary Point |\n| :--- | :--- |\n" + "\n".join(rows)
 
     if output_format == "structured_report":
         # Divide into Overview, Key Findings, and Actionable Outlook
         mid = max(1, len(sentences) // 2)
-        overview_part = " ".join(sentences[:2]) if len(sentences) >= 2 else (sentences[0] if sentences else "")
-        findings_part = "\n".join(f"- {s}" for s in sentences[1:mid+1]) if len(sentences) > 2 else "- " + (sentences[-1] if sentences else "")
-        outlook_part = " ".join(sentences[mid+1:]) if len(sentences) > mid + 1 else "All items subject to operational review."
+        overview_part = (
+            " ".join(sentences[:2]) if len(sentences) >= 2 else (sentences[0] if sentences else "")
+        )
+        findings_part = (
+            "\n".join(f"- {s}" for s in sentences[1 : mid + 1])
+            if len(sentences) > 2
+            else "- " + (sentences[-1] if sentences else "")
+        )
+        outlook_part = (
+            " ".join(sentences[mid + 1 :])
+            if len(sentences) > mid + 1
+            else "All items subject to operational review."
+        )
 
         return (
             f"## Executive Report\n\n"
@@ -264,7 +302,11 @@ def summarize_text_extractive(
         section_map: list[tuple[str, list[str]]] = []
         k_per_section = 1 if length == "short" else (2 if length == "medium" else 3)
         for title, p_text in pages_text:
-            raw_s = [s.strip() for s in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9])", p_text.strip()) if len(s.strip()) > 10]
+            raw_s = [
+                s.strip()
+                for s in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9])", p_text.strip())
+                if len(s.strip()) > 10
+            ]
             scored = score_and_rank_sentences(raw_s)
             scored.sort(key=lambda x: x[1], reverse=True)
             top_sec = [s for s, _ in scored[:k_per_section]]
@@ -354,12 +396,20 @@ INSTRUCTIONS:
             return None
         try:
             import urllib.request
+
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
-            payload = json.dumps({
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.0, "responseMimeType": "application/json"}
-            }).encode("utf-8")
-            req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+            payload = json.dumps(
+                {
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {
+                        "temperature": 0.0,
+                        "responseMimeType": "application/json",
+                    },
+                }
+            ).encode("utf-8")
+            req = urllib.request.Request(
+                url, data=payload, headers={"Content-Type": "application/json"}
+            )
             with urllib.request.urlopen(req, timeout=12) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 raw_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
@@ -369,7 +419,7 @@ INSTRUCTIONS:
                     decisions=parsed.get("decisions", []),
                     risks=parsed.get("risks", []),
                     entities=parsed.get("entities", []),
-                    dates=parsed.get("dates", [])
+                    dates=parsed.get("dates", []),
                 )
                 return (parsed.get("summary", ""), insights, "gemini-1.5-flash")
         except Exception:
@@ -381,17 +431,24 @@ INSTRUCTIONS:
             return None
         try:
             import urllib.request
+
             url = "https://api.openai.com/v1/chat/completions"
-            payload = json.dumps({
-                "model": "gpt-4o-mini",
-                "temperature": 0.0,
-                "response_format": {"type": "json_object"},
-                "messages": [{"role": "user", "content": prompt}]
-            }).encode("utf-8")
-            req = urllib.request.Request(url, data=payload, headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {openai_key}"
-            })
+            payload = json.dumps(
+                {
+                    "model": "gpt-4o-mini",
+                    "temperature": 0.0,
+                    "response_format": {"type": "json_object"},
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+            ).encode("utf-8")
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {openai_key}",
+                },
+            )
             with urllib.request.urlopen(req, timeout=12) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 raw_text = res_data["choices"][0]["message"]["content"]
@@ -401,7 +458,7 @@ INSTRUCTIONS:
                     decisions=parsed.get("decisions", []),
                     risks=parsed.get("risks", []),
                     entities=parsed.get("entities", []),
-                    dates=parsed.get("dates", [])
+                    dates=parsed.get("dates", []),
                 )
                 return (parsed.get("summary", ""), insights, "gpt-4o-mini")
         except Exception:

@@ -156,13 +156,18 @@ test.describe('Sidebar Hide/Show and Section Dropdown Accordions', () => {
     await categories.nth(1).click(); // Collapse Organize Pages
     await page.waitForTimeout(300);
 
+    const fs = require('fs');
     const artifactDir = '/Users/girimanoharv/.gemini/antigravity/brain/0e08655c-3da7-43d3-a0d8-178d85741da0';
-    await page.screenshot({ path: `${artifactDir}/sidebar_dropdown_accordions_e2e.png` });
+    if (fs.existsSync(artifactDir)) {
+      await page.screenshot({ path: `${artifactDir}/sidebar_dropdown_accordions_e2e.png` });
+    }
 
     // 2. Collapsed sidebar mode
     const toggleBtn = page.locator('#btnToggleSidebar');
     await toggleBtn.click();
     await page.waitForTimeout(300);
-    await page.screenshot({ path: `${artifactDir}/sidebar_collapsed_mode_e2e.png` });
+    if (fs.existsSync(artifactDir)) {
+      await page.screenshot({ path: `${artifactDir}/sidebar_collapsed_mode_e2e.png` });
+    }
   });
 });

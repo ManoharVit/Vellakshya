@@ -17,16 +17,22 @@ CRITICAL INVARIANTS:
 import hashlib
 import math
 import os
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 # Standardized Local & Evaluation Candidate Models
-PINNED_LOCAL_EMBEDDING_CANDIDATE = "nomic-embed-text-v1.5"  # 768-dim evaluation candidate for English
-LOCAL_DETERMINISTIC_HASH_MODEL = "local-deterministic-hash-v1"  # 768-dim offline deterministic hashed vector space
+PINNED_LOCAL_EMBEDDING_CANDIDATE = (
+    "nomic-embed-text-v1.5"  # 768-dim evaluation candidate for English
+)
+LOCAL_DETERMINISTIC_HASH_MODEL = (
+    "local-deterministic-hash-v1"  # 768-dim offline deterministic hashed vector space
+)
 
 # Cloud Models & Deprecation Registry
 DEPRECATED_GEMINI_EMBEDDING_MODEL = "text-embedding-004"  # Shutdown scheduled Jan 14, 2026
 CURRENT_GEMINI_EMBEDDING_MODEL = "text-embedding-005"
-CURRENT_OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"  # Supports reduced dimensions (e.g. 768, 512, or default 1536)
+CURRENT_OPENAI_EMBEDDING_MODEL = (
+    "text-embedding-3-small"  # Supports reduced dimensions (e.g. 768, 512, or default 1536)
+)
 
 # Default model identifiers
 DEFAULT_EMBEDDING_MODEL = "text-embedding-004"  # Maintained for backwards-compatible test fixtures
@@ -96,7 +102,12 @@ def get_embedding_with_metadata(
         vec = generate_deterministic_embedding(text, dim=dim)
         effective_model = (
             LOCAL_DETERMINISTIC_HASH_MODEL
-            if model_name in (DEFAULT_EMBEDDING_MODEL, DEPRECATED_GEMINI_EMBEDDING_MODEL, PINNED_LOCAL_EMBEDDING_CANDIDATE)
+            if model_name
+            in (
+                DEFAULT_EMBEDDING_MODEL,
+                DEPRECATED_GEMINI_EMBEDDING_MODEL,
+                PINNED_LOCAL_EMBEDDING_CANDIDATE,
+            )
             else model_name
         )
         return EmbeddingResult(

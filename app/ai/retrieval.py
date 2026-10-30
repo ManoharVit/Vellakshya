@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from app.ai.embeddings import get_embedding
 from app.ai.models import DocumentChunk
 from app.ai.storage import query_keyword_chunks, query_vector_chunks
 
@@ -59,9 +58,13 @@ def hybrid_search(
     from app.ai.storage import AIDocument
 
     ai_doc = db.query(AIDocument).filter_by(id=document_id).first()
-    model_name = ai_doc.embedding_model if ai_doc else "local-deterministic-hash-v1"
-    allow_ext = bool(ai_doc.allow_external_ai) if ai_doc else False
-    dim = ai_doc.embedding_dim if ai_doc else 768
+    model_name: str = (
+        str(ai_doc.embedding_model)
+        if ai_doc and ai_doc.embedding_model
+        else "local-deterministic-hash-v1"
+    )
+    allow_ext: bool = bool(ai_doc.allow_external_ai) if ai_doc else False
+    dim: int = int(ai_doc.embedding_dim) if ai_doc and ai_doc.embedding_dim else 768
 
     vector_candidates: list[DocumentChunk] = []
     # 1. Compute query vector preserving space provenance

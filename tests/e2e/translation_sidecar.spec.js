@@ -94,11 +94,15 @@ test.describe("Milestone 3: Translation & Multi-Format Ingestion E2E", () => {
     await syncBtn.click();
     await expect(syncBtn).toContainText("Sync Scroll: OFF");
 
-    // Capture screenshot for visual audit
-    await page.screenshot({
-      path: "/Users/girimanoharv/.gemini/antigravity/brain/0e08655c-3da7-43d3-a0d8-178d85741da0/bilingual_translation_canvas_e2e.png",
-      fullPage: false,
-    });
+    // Capture screenshot for visual audit if local artifact directory exists
+    const fs = require("fs");
+    const artifactDir = "/Users/girimanoharv/.gemini/antigravity/brain/0e08655c-3da7-43d3-a0d8-178d85741da0";
+    if (fs.existsSync(artifactDir)) {
+      await page.screenshot({
+        path: `${artifactDir}/bilingual_translation_canvas_e2e.png`,
+        fullPage: false,
+      });
+    }
   });
 
   test("should ingest multi-format Markdown document and load into workspace", async ({ page }) => {

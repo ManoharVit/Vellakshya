@@ -81,7 +81,9 @@ class GroundingIndicator(BaseModel):
 
     score: float = Field(ge=0.0, le=1.0, description="Normalized grounding confidence [0.0, 1.0]")
     confidence: str = Field(description="'High', 'Medium', or 'Low'")
-    evidence_count: int = Field(default=0, description="Number of verified database chunks cited as evidence")
+    evidence_count: int = Field(
+        default=0, description="Number of verified database chunks cited as evidence"
+    )
 
 
 class RAGQueryRequest(BaseModel):
@@ -138,6 +140,7 @@ class PIIApplyRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Milestone 1: Document Analytics & Smart Summarizer Models
 # ---------------------------------------------------------------------------
+
 
 class ReadabilityMetrics(BaseModel):
     flesch_reading_ease: float
@@ -228,13 +231,20 @@ class SummarizeResponse(BaseModel):
 # Milestone 3: Multi-Format Ingestion & Bilingual Translation Models
 # ---------------------------------------------------------------------------
 
+
 class TranslatedSegment(BaseModel):
     segment_id: int
     source_text: str
     target_text: str
-    segment_type: str = Field(default="paragraph", description="heading, paragraph, table_cell, list_item")
-    expansion_factor: float = Field(default=1.0, description="Ratio of target length to source length")
-    suggested_font_scale: float = Field(default=1.0, description="Recommended font scale (0.7 - 1.0) to prevent overflow")
+    segment_type: str = Field(
+        default="paragraph", description="heading, paragraph, table_cell, list_item"
+    )
+    expansion_factor: float = Field(
+        default=1.0, description="Ratio of target length to source length"
+    )
+    suggested_font_scale: float = Field(
+        default=1.0, description="Recommended font scale (0.7 - 1.0) to prevent overflow"
+    )
     glossary_terms_applied: list[str] = Field(default_factory=list)
 
 
@@ -242,15 +252,22 @@ class TranslationRequest(BaseModel):
     document_id: Optional[str] = None
     selected_text: Optional[str] = None
     source_language: str = Field(default="auto", description="Source ISO language code or 'auto'")
-    target_language: str = Field(default="es", description="Target ISO language code (e.g. es, fr, de, hi, zh, ja, ar, it, pt)")
-    domain: str = Field(default="general", description="general, legal, financial, medical, technical")
+    target_language: str = Field(
+        default="es",
+        description="Target ISO language code (e.g. es, fr, de, hi, zh, ja, ar, it, pt)",
+    )
+    domain: str = Field(
+        default="general", description="general, legal, financial, medical, technical"
+    )
     scope: str = Field(default="selection", description="selection, full_document, current_page")
     page_number: Optional[int] = None
     allow_external_ai: bool = Field(
         default=False,
         description="Local-first privacy gate (F13). When False, zero network egress; uses local glossary & translation memory.",
     )
-    preserve_layout: bool = Field(default=True, description="Whether to preserve headings, tables, and markup structures")
+    preserve_layout: bool = Field(
+        default=True, description="Whether to preserve headings, tables, and markup structures"
+    )
 
 
 class TranslationResponse(BaseModel):
@@ -284,5 +301,3 @@ class MultiFormatIngestResponse(BaseModel):
     pdf_url: str
     owner_id: str
     allow_external_ai: bool
-
-

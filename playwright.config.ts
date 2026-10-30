@@ -40,6 +40,8 @@ export default defineConfig({
   webServer: {
     command: process.env.VIRTUAL_ENV
       ? `${process.env.VIRTUAL_ENV}/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000`
+      : require('fs').existsSync('./.venv/bin/python')
+      ? './.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000'
       : 'python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000',
     env: {
       PYTHONPATH: '.',

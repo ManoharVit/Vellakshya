@@ -1,4 +1,7 @@
 const { test, expect } = require('@playwright/test');
+const fs = require('fs');
+
+const artifactDir = '/Users/girimanoharv/.gemini/antigravity/brain/0e08655c-3da7-43d3-a0d8-178d85741da0';
 
 test.describe('Milestone 1: Analytics & Summarizer E2E', () => {
   test('should open Document Analytics in Light Theme, analyze custom text and render statistical cards', async ({ page }) => {
@@ -40,11 +43,13 @@ test.describe('Milestone 1: Analytics & Summarizer E2E', () => {
     await expect(results).toContainText('Readability Score');
     await expect(results).toContainText('Top Filtered Keywords');
 
-    // Take screenshot of analytics panel in light mode
-    await page.screenshot({
-      path: '/Users/girimanoharv/.gemini/antigravity/brain/0e08655c-3da7-43d3-a0d8-178d85741da0/analytics_tool_light_e2e.png',
-      fullPage: false,
-    });
+    // Take screenshot of analytics panel in light mode if local artifact directory exists
+    if (fs.existsSync(artifactDir)) {
+      await page.screenshot({
+        path: `${artifactDir}/analytics_tool_light_e2e.png`,
+        fullPage: false,
+      });
+    }
   });
 
   test('should open Smart Summarizer, summarize sample report and render insights in Light Theme', async ({ page }) => {
@@ -95,10 +100,12 @@ test.describe('Milestone 1: Analytics & Summarizer E2E', () => {
 
     await results.scrollIntoViewIfNeeded();
 
-    // Take screenshot of summarizer results in light mode
-    await page.screenshot({
-      path: '/Users/girimanoharv/.gemini/antigravity/brain/0e08655c-3da7-43d3-a0d8-178d85741da0/summarizer_results_light_e2e.png',
-      fullPage: false,
-    });
+    // Take screenshot of summarizer results in light mode if local artifact directory exists
+    if (fs.existsSync(artifactDir)) {
+      await page.screenshot({
+        path: `${artifactDir}/summarizer_results_light_e2e.png`,
+        fullPage: false,
+      });
+    }
   });
 });

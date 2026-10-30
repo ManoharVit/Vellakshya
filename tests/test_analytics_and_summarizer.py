@@ -15,8 +15,8 @@ Tests:
 from __future__ import annotations
 
 import io
+
 import fitz
-import pytest
 from fastapi.testclient import TestClient
 
 from app.ai.analytics import (
@@ -27,10 +27,8 @@ from app.ai.analytics import (
     detect_language_simple,
     parse_page_range,
 )
-from app.ai.models import ExtractedInsights
 from app.ai.summarizer import (
     extract_structured_insights_offline,
-    score_and_rank_sentences,
     summarize_pdf_document,
     summarize_text_extractive,
 )
@@ -88,6 +86,7 @@ def _build_multi_page_sample_pdf() -> bytes:
 # 1. Analytics Engine Unit Tests
 # =========================================================================
 
+
 def test_syllable_counter():
     """Verifies syllable counter accuracy on monosyllabic and polysyllabic terms."""
     assert count_syllables_in_word("cat") == 1
@@ -107,8 +106,15 @@ def test_flesch_kincaid_readability():
     assert r_simple["flesch_kincaid_grade"] < 6.0
 
     complex_words = [
-        "cryptographic", "verification", "demonstrates", "uncompromising",
-        "institutional", "confidentiality", "mitigating", "adversarial", "vulnerabilities"
+        "cryptographic",
+        "verification",
+        "demonstrates",
+        "uncompromising",
+        "institutional",
+        "confidentiality",
+        "mitigating",
+        "adversarial",
+        "vulnerabilities",
     ]
     complex_sentences = [
         "Cryptographic verification demonstrates uncompromising institutional confidentiality mitigating adversarial vulnerabilities."
@@ -175,6 +181,7 @@ def test_analyze_pdf_document_page_filtering():
 # 2. Summarization & Structured Insight Extraction Unit Tests
 # =========================================================================
 
+
 def test_extract_structured_insights_offline():
     """Verifies offline extraction of action items, decisions, risks, entities, and dates."""
     pdf_bytes = _build_multi_page_sample_pdf()
@@ -187,10 +194,16 @@ def test_extract_structured_insights_offline():
     assert any("shall" in a.lower() or "must" in a.lower() for a in insights.action_items)
 
     assert len(insights.decisions) > 0
-    assert any("approved" in d.lower() or "decided" in d.lower() or "agreed" in d.lower() for d in insights.decisions)
+    assert any(
+        "approved" in d.lower() or "decided" in d.lower() or "agreed" in d.lower()
+        for d in insights.decisions
+    )
 
     assert len(insights.risks) > 0
-    assert any("risk" in r.lower() or "vulnerability" in r.lower() or "liability" in r.lower() for r in insights.risks)
+    assert any(
+        "risk" in r.lower() or "vulnerability" in r.lower() or "liability" in r.lower()
+        for r in insights.risks
+    )
 
     assert len(insights.dates) > 0
     assert any("2026" in dt for dt in insights.dates)
@@ -259,6 +272,7 @@ def test_local_first_privacy_gate_f13():
 # =========================================================================
 # 3. HTTP API Endpoints Integration Tests
 # =========================================================================
+
 
 def test_api_analytics_json_selected_text():
     """Tests POST /api/ai/analytics with selected text snippet."""

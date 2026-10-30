@@ -58,11 +58,15 @@ test.describe('Milestone 2: Streaming RAG & Sidecar Chat E2E', () => {
     await expect(toast).toBeVisible();
     await expect(toast).toContainText('Navigated to verified citation');
 
-    // Capture screenshot of sidecar chat drawer in light mode
-    await page.screenshot({
-      path: '/Users/girimanoharv/.gemini/antigravity/brain/0e08655c-3da7-43d3-a0d8-178d85741da0/ai_chat_sidecar_light_e2e.png',
-      fullPage: false,
-    });
+    // Capture screenshot of sidecar chat drawer in light mode if local artifact directory exists
+    const fs = require('fs');
+    const artifactDir = '/Users/girimanoharv/.gemini/antigravity/brain/0e08655c-3da7-43d3-a0d8-178d85741da0';
+    if (fs.existsSync(artifactDir)) {
+      await page.screenshot({
+        path: `${artifactDir}/ai_chat_sidecar_light_e2e.png`,
+        fullPage: false,
+      });
+    }
   });
 
   test('should open AI Chat from sidebar navigation and support prompt chips', async ({ page }) => {

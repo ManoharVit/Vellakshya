@@ -34,7 +34,6 @@ from app.ai.models import (
     PIIApplyRequest,
     PIIScanResponse,
     RAGQueryRequest,
-    RAGResponse,
     SummarizeRequest,
     SummarizeResponse,
     TranslationRequest,
@@ -43,12 +42,6 @@ from app.ai.models import (
 from app.ai.observability import check_rate_limit
 from app.ai.pii import apply_physical_redactions, scan_pdf_for_pii
 from app.ai.rag import answer_question_with_citations, stream_answer_with_citations
-from app.ai.translation import (
-    DOMAIN_GLOSSARIES,
-    SUPPORTED_LANGUAGES,
-    execute_document_translation,
-)
-from app.services.multi_format import process_multi_format_document
 from app.ai.storage import (
     AIChunk,
     AIDocument,
@@ -59,9 +52,15 @@ from app.ai.summarizer import (
     summarize_pdf_document,
     summarize_text_extractive,
 )
+from app.ai.translation import (
+    DOMAIN_GLOSSARIES,
+    SUPPORTED_LANGUAGES,
+    execute_document_translation,
+)
 from app.core.config import config
 from app.models.db import get_db
 from app.services import auth
+from app.services.multi_format import process_multi_format_document
 
 router = APIRouter(prefix="/api/ai", tags=["AI & Document Intelligence"])
 
@@ -177,9 +176,7 @@ async def ingest_document_for_rag(
     }
 
 
-@router.post(
-    "/chat", summary="Query PDF with Hybrid RAG & Server Citations"
-)
+@router.post("/chat", summary="Query PDF with Hybrid RAG & Server Citations")
 async def query_rag_endpoint(
     req: RAGQueryRequest,
     request: Request,
@@ -187,7 +184,7 @@ async def query_rag_endpoint(
     x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
     token: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-):
+) -> Any:
     """Answers user queries with page-level citations grounded in the server database index."""
     client_ip = request.client.host if request.client else "127.0.0.1"
     if not check_rate_limit(client_ip):
@@ -220,7 +217,7 @@ async def query_rag_endpoint(
                 query=req.query,
                 top_k=req.top_k,
                 history=req.messages,
-                owner_id=ai_doc.owner_id,
+                owner_id=str(ai_doc.owner_id),
                 allow_external=effective_allow_external,
             ),
             media_type="text/event-stream",
@@ -237,14 +234,12 @@ async def query_rag_endpoint(
         query=req.query,
         top_k=req.top_k,
         history=req.messages,
-        owner_id=ai_doc.owner_id,
+        owner_id=str(ai_doc.owner_id),
         allow_external=effective_allow_external,
     )
 
 
-@router.post(
-    "/chat/stream", summary="Streaming Hybrid RAG with Real-Time SSE and Page Citations"
-)
+@router.post("/chat/stream", summary="Streaming Hybrid RAG with Real-Time SSE and Page Citations")
 async def query_rag_stream_endpoint(
     req: RAGQueryRequest,
     request: Request,
@@ -282,7 +277,7 @@ async def query_rag_stream_endpoint(
             query=req.query,
             top_k=req.top_k,
             history=req.messages,
-            owner_id=ai_doc.owner_id,
+            owner_id=str(ai_doc.owner_id),
             allow_external=effective_allow_external,
         ),
         media_type="text/event-stream",
@@ -377,6 +372,7 @@ async def apply_pii_endpoint(
 # Milestone 1: Document Analytics Endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.post("/analytics", response_model=AnalyticsResponse, summary="Compute Document Analytics")
 async def compute_analytics_endpoint(
     req: AnalyticsRequest,
@@ -402,7 +398,7 @@ async def compute_analytics_endpoint(
         # Fallback to database indexed chunks
         chunks = db.query(AIChunk).filter_by(document_id=req.document_id).all()
         if chunks:
-            full_text = "\n\n".join(c.content for c in chunks)
+            full_text = "\n\n".join(str(c.content) for c in chunks)
             pages = set(c.page for c in chunks)
             data = compute_document_analytics(
                 full_text, page_count=len(pages), filtered_page_count=len(pages)
@@ -410,10 +406,14 @@ async def compute_analytics_endpoint(
             return AnalyticsResponse(**data)
         raise HTTPException(status_code=404, detail="Document not found or session expired.")
 
-    raise HTTPException(status_code=400, detail="Either document_id or selected_text must be provided.")
+    raise HTTPException(
+        status_code=400, detail="Either document_id or selected_text must be provided."
+    )
 
 
-@router.post("/analytics/file", response_model=AnalyticsResponse, summary="Upload PDF and Compute Analytics")
+@router.post(
+    "/analytics/file", response_model=AnalyticsResponse, summary="Upload PDF and Compute Analytics"
+)
 async def compute_analytics_file_endpoint(
     file: UploadFile = File(...),
     page_range: Optional[str] = Form(None),
@@ -443,7 +443,12 @@ async def compute_analytics_file_endpoint(
 # Milestone 1: Smart Summarization Endpoints
 # ---------------------------------------------------------------------------
 
-@router.post("/summarize", response_model=SummarizeResponse, summary="Smart Multi-Tier Document Summarization")
+
+@router.post(
+    "/summarize",
+    response_model=SummarizeResponse,
+    summary="Smart Multi-Tier Document Summarization",
+)
 async def summarize_document_endpoint(
     req: SummarizeRequest,
     db: Session = Depends(get_db),
@@ -478,11 +483,12 @@ async def summarize_document_endpoint(
 
         chunks = db.query(AIChunk).filter_by(document_id=req.document_id).all()
         if chunks:
-            full_text = "\n\n".join(c.content for c in chunks)
-            pages = sorted(list(set(c.page for c in chunks)))
+            full_text = "\n\n".join(str(c.content) for c in chunks)
+            pages = sorted([int(c.page) for c in chunks if c.page is not None])
+            unique_pages = sorted(list(set(pages)))
             pages_text = [
-                (f"Page {p}", "\n".join(c.content for c in chunks if c.page == p))
-                for p in pages
+                (f"Page {p}", "\n".join(str(c.content) for c in chunks if c.page == p))
+                for p in unique_pages
             ]
             t_start = time.perf_counter()
             summary_text, insights = summarize_text_extractive(
@@ -507,10 +513,14 @@ async def summarize_document_endpoint(
             )
         raise HTTPException(status_code=404, detail="Document not found or session expired.")
 
-    raise HTTPException(status_code=400, detail="Either document_id or selected_text must be provided.")
+    raise HTTPException(
+        status_code=400, detail="Either document_id or selected_text must be provided."
+    )
 
 
-@router.post("/summarize/file", response_model=SummarizeResponse, summary="Upload PDF and Summarize")
+@router.post(
+    "/summarize/file", response_model=SummarizeResponse, summary="Upload PDF and Summarize"
+)
 async def summarize_file_endpoint(
     file: UploadFile = File(...),
     page_range: Optional[str] = Form(None),
@@ -549,6 +559,7 @@ async def summarize_file_endpoint(
 # Milestone 3: Multi-Format Ingestion & Translation Endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.post(
     "/ingest-multi-format",
     response_model=MultiFormatIngestResponse,
@@ -586,7 +597,9 @@ async def ingest_multi_format_endpoint(
     )
 
 
-@router.get("/documents/{document_id}/download", summary="Download viewable PDF for ingested document")
+@router.get(
+    "/documents/{document_id}/download", summary="Download viewable PDF for ingested document"
+)
 async def download_ingested_pdf_endpoint(
     document_id: str,
     db: Session = Depends(get_db),
@@ -639,7 +652,9 @@ async def translate_text_endpoint(
     return execute_document_translation(req)
 
 
-@router.post("/translate/file", response_model=TranslationResponse, summary="Upload PDF/Doc and Translate")
+@router.post(
+    "/translate/file", response_model=TranslationResponse, summary="Upload PDF/Doc and Translate"
+)
 async def translate_file_endpoint(
     file: UploadFile = File(...),
     target_language: str = Form("es"),
@@ -650,6 +665,7 @@ async def translate_file_endpoint(
 ) -> TranslationResponse:
     """Uploads file directly and runs bilingual layout-preserving translation."""
     import time
+
     import fitz
 
     file_bytes = await file.read()
@@ -690,10 +706,5 @@ async def list_translation_glossaries_endpoint() -> dict[str, Any]:
         "status": "success",
         "supported_languages": SUPPORTED_LANGUAGES,
         "domains": list(DOMAIN_GLOSSARIES.keys()),
-        "glossaries": {
-            dom: list(terms.keys())
-            for dom, terms in DOMAIN_GLOSSARIES.items()
-        },
+        "glossaries": {dom: list(terms.keys()) for dom, terms in DOMAIN_GLOSSARIES.items()},
     }
-
-

@@ -7,7 +7,6 @@ Runs strictly in-process with zero cloud network calls.
 
 from __future__ import annotations
 
-import math
 import re
 from collections import Counter
 from typing import Any, Optional
@@ -17,24 +16,181 @@ import fitz  # PyMuPDF
 # Standard English stopwords (comprehensive list of closed-class function words)
 STOPWORDS = frozenset(
     {
-        "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are",
-        "aren't", "as", "at", "be", "because", "been", "before", "being", "below", "between",
-        "both", "but", "by", "can", "can't", "cannot", "could", "couldn't", "did", "didn't",
-        "do", "does", "doesn't", "doing", "don't", "down", "during", "each", "few", "for",
-        "from", "further", "had", "hadn't", "has", "hasn't", "have", "haven't", "having",
-        "he", "he'd", "he'll", "he's", "her", "here", "here's", "hers", "herself", "him",
-        "himself", "his", "how", "how's", "i", "i'd", "i'll", "i'm", "i've", "if", "in",
-        "into", "is", "isn't", "it", "it's", "its", "itself", "let's", "me", "more", "most",
-        "mustn't", "my", "myself", "no", "nor", "not", "of", "off", "on", "once", "only",
-        "or", "other", "ought", "our", "ours", "ourselves", "out", "over", "own", "same",
-        "shan't", "she", "she'd", "she'll", "she's", "should", "shouldn't", "so", "some",
-        "such", "than", "that", "that's", "the", "their", "theirs", "them", "themselves",
-        "then", "there", "there's", "these", "they", "they'd", "they'll", "they're", "they've",
-        "this", "those", "through", "to", "too", "under", "until", "up", "very", "was",
-        "wasn't", "we", "we'd", "we'll", "we're", "we've", "were", "weren't", "what", "what's",
-        "when", "when's", "where", "where's", "which", "while", "who", "who's", "whom", "why",
-        "why's", "with", "won't", "would", "wouldn't", "you", "you'd", "you'll", "you're",
-        "you've", "your", "yours", "yourself", "yourselves"
+        "a",
+        "about",
+        "above",
+        "after",
+        "again",
+        "against",
+        "all",
+        "am",
+        "an",
+        "and",
+        "any",
+        "are",
+        "aren't",
+        "as",
+        "at",
+        "be",
+        "because",
+        "been",
+        "before",
+        "being",
+        "below",
+        "between",
+        "both",
+        "but",
+        "by",
+        "can",
+        "can't",
+        "cannot",
+        "could",
+        "couldn't",
+        "did",
+        "didn't",
+        "do",
+        "does",
+        "doesn't",
+        "doing",
+        "don't",
+        "down",
+        "during",
+        "each",
+        "few",
+        "for",
+        "from",
+        "further",
+        "had",
+        "hadn't",
+        "has",
+        "hasn't",
+        "have",
+        "haven't",
+        "having",
+        "he",
+        "he'd",
+        "he'll",
+        "he's",
+        "her",
+        "here",
+        "here's",
+        "hers",
+        "herself",
+        "him",
+        "himself",
+        "his",
+        "how",
+        "how's",
+        "i",
+        "i'd",
+        "i'll",
+        "i'm",
+        "i've",
+        "if",
+        "in",
+        "into",
+        "is",
+        "isn't",
+        "it",
+        "it's",
+        "its",
+        "itself",
+        "let's",
+        "me",
+        "more",
+        "most",
+        "mustn't",
+        "my",
+        "myself",
+        "no",
+        "nor",
+        "not",
+        "of",
+        "off",
+        "on",
+        "once",
+        "only",
+        "or",
+        "other",
+        "ought",
+        "our",
+        "ours",
+        "ourselves",
+        "out",
+        "over",
+        "own",
+        "same",
+        "shan't",
+        "she",
+        "she'd",
+        "she'll",
+        "she's",
+        "should",
+        "shouldn't",
+        "so",
+        "some",
+        "such",
+        "than",
+        "that",
+        "that's",
+        "the",
+        "their",
+        "theirs",
+        "them",
+        "themselves",
+        "then",
+        "there",
+        "there's",
+        "these",
+        "they",
+        "they'd",
+        "they'll",
+        "they're",
+        "they've",
+        "this",
+        "those",
+        "through",
+        "to",
+        "too",
+        "under",
+        "until",
+        "up",
+        "very",
+        "was",
+        "wasn't",
+        "we",
+        "we'd",
+        "we'll",
+        "we're",
+        "we've",
+        "were",
+        "weren't",
+        "what",
+        "what's",
+        "when",
+        "when's",
+        "where",
+        "where's",
+        "which",
+        "while",
+        "who",
+        "who's",
+        "whom",
+        "why",
+        "why's",
+        "with",
+        "won't",
+        "would",
+        "wouldn't",
+        "you",
+        "you'd",
+        "you'll",
+        "you're",
+        "you've",
+        "your",
+        "yours",
+        "yourself",
+        "yourselves",
     }
 )
 
@@ -56,7 +212,9 @@ def count_syllables_in_word(word: str) -> int:
     # Replace common suffixes that affect count
     if w.endswith("es") or w.endswith("ed"):
         # e.g. 'cared' -> 1 syllable, 'passes' -> 2 syllables
-        if not re.search(r"[aeiouy]{2}(?:ed|es)$", w) and not re.search(r"[cdfgjklmnpqrstvwxz]es$", w):
+        if not re.search(r"[aeiouy]{2}(?:ed|es)$", w) and not re.search(
+            r"[cdfgjklmnpqrstvwxz]es$", w
+        ):
             w = w[:-2]
     elif w.endswith("e") and not w.endswith("le"):
         w = w[:-1]
@@ -79,12 +237,102 @@ def detect_language_simple(text: str) -> tuple[str, str]:
 
     word_set = set(words)
     lang_markers = {
-        ("es", "Spanish"): {"de", "la", "el", "en", "y", "a", "los", "se", "del", "las", "por", "un", "para", "con"},
-        ("fr", "French"): {"de", "la", "le", "et", "les", "des", "en", "un", "du", "une", "que", "est", "pour", "dans"},
-        ("de", "German"): {"der", "die", "und", "in", "den", "von", "zu", "das", "mit", "sich", "des", "auf", "für", "ist"},
-        ("it", "Italian"): {"di", "e", "il", "la", "che", "in", "per", "un", "del", "della", "non", "si", "da", "con"},
-        ("pt", "Portuguese"): {"de", "a", "o", "que", "e", "do", "da", "em", "um", "para", "com", "não", "uma", "os"},
-        ("en", "English"): {"the", "and", "is", "in", "to", "of", "that", "it", "with", "as", "for", "on", "was", "at"}
+        ("es", "Spanish"): {
+            "de",
+            "la",
+            "el",
+            "en",
+            "y",
+            "a",
+            "los",
+            "se",
+            "del",
+            "las",
+            "por",
+            "un",
+            "para",
+            "con",
+        },
+        ("fr", "French"): {
+            "de",
+            "la",
+            "le",
+            "et",
+            "les",
+            "des",
+            "en",
+            "un",
+            "du",
+            "une",
+            "que",
+            "est",
+            "pour",
+            "dans",
+        },
+        ("de", "German"): {
+            "der",
+            "die",
+            "und",
+            "in",
+            "den",
+            "von",
+            "zu",
+            "das",
+            "mit",
+            "sich",
+            "des",
+            "auf",
+            "für",
+            "ist",
+        },
+        ("it", "Italian"): {
+            "di",
+            "e",
+            "il",
+            "la",
+            "che",
+            "in",
+            "per",
+            "un",
+            "del",
+            "della",
+            "non",
+            "si",
+            "da",
+            "con",
+        },
+        ("pt", "Portuguese"): {
+            "de",
+            "a",
+            "o",
+            "que",
+            "e",
+            "do",
+            "da",
+            "em",
+            "um",
+            "para",
+            "com",
+            "não",
+            "uma",
+            "os",
+        },
+        ("en", "English"): {
+            "the",
+            "and",
+            "is",
+            "in",
+            "to",
+            "of",
+            "that",
+            "it",
+            "with",
+            "as",
+            "for",
+            "on",
+            "was",
+            "at",
+        },
     }
 
     best_score = 0
@@ -204,7 +452,9 @@ def compute_document_analytics(
         read_time_human = f"{mins} min {secs} sec" if secs > 0 else f"{mins} min"
 
     # Stopword-filtered keywords (unigrams)
-    clean_words = [w.lower() for w in words if len(w) > 2 and w.lower() not in STOPWORDS and not w.isdigit()]
+    clean_words = [
+        w.lower() for w in words if len(w) > 2 and w.lower() not in STOPWORDS and not w.isdigit()
+    ]
     word_counter = Counter(clean_words)
     total_clean = max(1, len(clean_words))
     top_keywords = [
@@ -232,14 +482,14 @@ def compute_document_analytics(
             trigrams.append(f"{w1} {w2} {w3}")
     trigram_counter = Counter(trigrams)
 
-    top_phrases = [
+    top_phrases: list[dict[str, Any]] = [
         {"phrase": phrase, "count": count, "type": "bigram"}
         for phrase, count in bigram_counter.most_common(8)
     ] + [
         {"phrase": phrase, "count": count, "type": "trigram"}
         for phrase, count in trigram_counter.most_common(4)
     ]
-    top_phrases.sort(key=lambda x: x["count"], reverse=True)
+    top_phrases.sort(key=lambda x: int(x["count"]), reverse=True)
 
     # Language detection
     lang_code, lang_name = detect_language_simple(text)
@@ -275,7 +525,9 @@ def analyze_pdf_document(
     """
     if selected_text and selected_text.strip():
         # User provided direct selection
-        return compute_document_analytics(selected_text.strip(), page_count=1, filtered_page_count=1)
+        return compute_document_analytics(
+            selected_text.strip(), page_count=1, filtered_page_count=1
+        )
 
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     total_pages = len(doc)

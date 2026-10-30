@@ -18,9 +18,9 @@ import io
 import os
 import re
 import time
-import zipfile
 import xml.etree.ElementTree as ET
-from typing import Any, Optional
+import zipfile
+from typing import Any
 
 import pymupdf
 from sqlalchemy.orm import Session
@@ -33,6 +33,7 @@ from app.ai.storage import store_document_and_chunks
 
 def _get_transient_store():
     from app.ai.router import _TRANSIENT_PDF_STORE, purge_expired_transient_ai_data
+
     return _TRANSIENT_PDF_STORE, purge_expired_transient_ai_data
 
 
@@ -150,14 +151,22 @@ def parse_xlsx_to_structure(content: bytes) -> dict[str, Any]:
     sheet_names: dict[str, str] = {}
     if "xl/workbook.xml" in zf.namelist():
         wb_tree = ET.fromstring(zf.read("xl/workbook.xml"))
-        sheets_el = wb_tree.find("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheets")
+        sheets_el = wb_tree.find(
+            "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheets"
+        )
         if sheets_el is not None:
-            for s in sheets_el.findall("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheet"):
-                s_id = s.attrib.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id", "")
+            for s in sheets_el.findall(
+                "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheet"
+            ):
+                s_id = s.attrib.get(
+                    "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id", ""
+                )
                 name = s.attrib.get("name", "Sheet")
                 sheet_names[s_id] = name
 
-    sheet_files = sorted([n for n in zf.namelist() if n.startswith("xl/worksheets/sheet") and n.endswith(".xml")])
+    sheet_files = sorted(
+        [n for n in zf.namelist() if n.startswith("xl/worksheets/sheet") and n.endswith(".xml")]
+    )
     blocks: list[dict[str, Any]] = []
     total_tables = 0
 
@@ -165,19 +174,29 @@ def parse_xlsx_to_structure(content: bytes) -> dict[str, Any]:
         sheet_title = f"Sheet {idx + 1}"
         tree = ET.fromstring(zf.read(s_file))
         rows: list[list[str]] = []
-        sheet_data = tree.find("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheetData")
+        sheet_data = tree.find(
+            "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheetData"
+        )
 
         if sheet_data is not None:
-            for row_el in sheet_data.findall("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}row"):
+            for row_el in sheet_data.findall(
+                "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}row"
+            ):
                 row_vals: list[str] = []
-                for c in row_el.findall("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}c"):
+                for c in row_el.findall(
+                    "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}c"
+                ):
                     val_el = c.find("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}v")
                     if val_el is not None and val_el.text:
                         raw_val = val_el.text
                         if c.get("t") == "s":
                             try:
                                 s_idx = int(raw_val)
-                                raw_val = shared_strings[s_idx] if s_idx < len(shared_strings) else raw_val
+                                raw_val = (
+                                    shared_strings[s_idx]
+                                    if s_idx < len(shared_strings)
+                                    else raw_val
+                                )
                             except ValueError:
                                 pass
                         row_vals.append(raw_val.strip())
@@ -377,7 +396,9 @@ def synthesize_pdf_from_structure(doc_data: dict[str, Any], filename: str = "doc
         elif b_type == "list_item":
             text = block.get("text", "")
             bullet_indent = 16.0
-            rect = pymupdf.Rect(margin_x + bullet_indent, cursor_y, margin_x + content_width, cursor_y + 200)
+            rect = pymupdf.Rect(
+                margin_x + bullet_indent, cursor_y, margin_x + content_width, cursor_y + 200
+            )
             ensure_space(20)
             # Draw bullet circle
             current_page.draw_circle(
@@ -402,7 +423,9 @@ def synthesize_pdf_from_structure(doc_data: dict[str, Any], filename: str = "doc
             lines_est = max(1, len(text) // 85 + 1)
             p_height = lines_est * 14 + 6
             ensure_space(min(p_height, 60))
-            rect = pymupdf.Rect(margin_x, cursor_y, margin_x + content_width, cursor_y + p_height + 20)
+            rect = pymupdf.Rect(
+                margin_x, cursor_y, margin_x + content_width, cursor_y + p_height + 20
+            )
             current_page.insert_textbox(
                 rect,
                 text,
@@ -426,19 +449,27 @@ def synthesize_pdf_from_structure(doc_data: dict[str, Any], filename: str = "doc
 
             for r_idx, row in enumerate(rows):
                 ensure_space(row_height + 4)
-                row_rect = pymupdf.Rect(margin_x, cursor_y, margin_x + content_width, cursor_y + row_height)
+                row_rect = pymupdf.Rect(
+                    margin_x, cursor_y, margin_x + content_width, cursor_y + row_height
+                )
 
                 # Background fill
                 if r_idx == 0:
-                    current_page.draw_rect(row_rect, color=(0.80, 0.85, 0.92), fill=(0.93, 0.95, 1.0))
+                    current_page.draw_rect(
+                        row_rect, color=(0.80, 0.85, 0.92), fill=(0.93, 0.95, 1.0)
+                    )
                 elif r_idx % 2 == 1:
-                    current_page.draw_rect(row_rect, color=(0.90, 0.92, 0.94), fill=(0.97, 0.98, 0.99))
+                    current_page.draw_rect(
+                        row_rect, color=(0.90, 0.92, 0.94), fill=(0.97, 0.98, 0.99)
+                    )
                 else:
                     current_page.draw_rect(row_rect, color=(0.90, 0.92, 0.94), fill=(1.0, 1.0, 1.0))
 
                 for c_idx, cell_text in enumerate(row):
                     cell_x = margin_x + (c_idx * col_width)
-                    cell_rect = pymupdf.Rect(cell_x + 4, cursor_y + 3, cell_x + col_width - 4, cursor_y + row_height - 3)
+                    cell_rect = pymupdf.Rect(
+                        cell_x + 4, cursor_y + 3, cell_x + col_width - 4, cursor_y + row_height - 3
+                    )
                     font_color = (0.06, 0.09, 0.16) if r_idx == 0 else (0.20, 0.25, 0.33)
                     font_size = 8.5 if r_idx == 0 else 8.0
                     truncated = cell_text[:35] + ("..." if len(cell_text) > 35 else "")

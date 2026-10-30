@@ -6,20 +6,19 @@ Multi-Format Document Ingestion & Bilingual Layout-Preserving Translation Subsys
 from __future__ import annotations
 
 import io
+
 import docx
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
 from app.ai.models import TranslationRequest
 from app.ai.translation import (
-    DOMAIN_GLOSSARIES,
-    OFFLINE_PHRASE_MAPPINGS,
     TranslationMemory,
     execute_document_translation,
     split_text_into_segments,
     translate_segment_deterministic,
 )
+from app.main import app
 from app.services.multi_format import (
     detect_document_format,
     parse_csv_to_structure,
@@ -102,7 +101,10 @@ def test_synthesize_pdf_from_structure():
         "title": "Synthesized Test Document",
         "blocks": [
             {"type": "heading", "level": 1, "text": "Section 1: Architecture"},
-            {"type": "paragraph", "text": "This is a high-fidelity synthesized PDF rendering test."},
+            {
+                "type": "paragraph",
+                "text": "This is a high-fidelity synthesized PDF rendering test.",
+            },
             {"type": "list_item", "text": "Item A: Multi-Tenant Database Isolation"},
             {"type": "list_item", "text": "Item B: Local-First Privacy Protection"},
             {
@@ -143,7 +145,15 @@ Second sentence in paragraph.
 
 def test_translation_memory_caching():
     mem = TranslationMemory(max_size=100)
-    mem.put("en", "es", "legal", "Force Majeure", "fuerza mayor", "local_deterministic", ["force majeure"])
+    mem.put(
+        "en",
+        "es",
+        "legal",
+        "Force Majeure",
+        "fuerza mayor",
+        "local_deterministic",
+        ["force majeure"],
+    )
     cached = mem.get("en", "es", "legal", "Force Majeure")
     assert cached is not None
     assert cached["target_text"] == "fuerza mayor"
@@ -188,7 +198,9 @@ def test_translation_local_first_privacy_gate_f13():
     assert res.target_language_name == "Spanish (Español)"
     assert res.total_segments >= 2
     # Check that phrase mapping or glossary worked offline
-    assert "Informe Anual de Cumplimiento" in res.translated_text or "Cifrado" in res.translated_text
+    assert (
+        "Informe Anual de Cumplimiento" in res.translated_text or "Cifrado" in res.translated_text
+    )
 
 
 def test_typographic_expansion_and_font_scaling():
@@ -218,7 +230,11 @@ def test_api_translate_endpoint(client):
     assert data["target_language"] == "es"
     assert data["provider"] == "local_deterministic"
     assert data["total_segments"] >= 2
-    assert "fuerza mayor" in data["translated_text"] or "ley aplicable" in data["translated_text"] or "Informe" in data["translated_text"]
+    assert (
+        "fuerza mayor" in data["translated_text"]
+        or "ley aplicable" in data["translated_text"]
+        or "Informe" in data["translated_text"]
+    )
 
 
 def test_api_translate_glossaries_endpoint(client):

@@ -49,7 +49,9 @@ def calculate_grounding(
     answer_cov = len(matched_answer) / max(1, len(answer_words))
 
     top_score = max((c.score or 0.0) for c in retrieved_chunks)
-    score = round(min(1.0, 0.45 * query_cov + 0.45 * answer_cov + 0.10 * min(1.0, top_score * 50)), 2)
+    score = round(
+        min(1.0, 0.45 * query_cov + 0.45 * answer_cov + 0.10 * min(1.0, top_score * 50)), 2
+    )
     score = max(0.1, score)
 
     if score >= 0.70:
@@ -114,11 +116,56 @@ TASK:
 
 
 _OFFLINE_STOP_WORDS = {
-    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "he",
-    "in", "is", "it", "its", "of", "on", "that", "the", "to", "was", "were",
-    "will", "with", "what", "which", "who", "where", "when", "how", "why", "can",
-    "tell", "me", "please", "give", "any", "all", "this", "these", "those", "do", "does",
-    "explain", "document", "list", "identify", "summarize", "describe",
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "by",
+    "for",
+    "from",
+    "has",
+    "he",
+    "in",
+    "is",
+    "it",
+    "its",
+    "of",
+    "on",
+    "that",
+    "the",
+    "to",
+    "was",
+    "were",
+    "will",
+    "with",
+    "what",
+    "which",
+    "who",
+    "where",
+    "when",
+    "how",
+    "why",
+    "can",
+    "tell",
+    "me",
+    "please",
+    "give",
+    "any",
+    "all",
+    "this",
+    "these",
+    "those",
+    "do",
+    "does",
+    "explain",
+    "document",
+    "list",
+    "identify",
+    "summarize",
+    "describe",
 }
 
 
@@ -218,19 +265,22 @@ def _synthesize_offline_grounded_answer(prompt: str) -> tuple[str, list[str], st
             units = _extract_substantive_units(content)
             for u in units:
                 u_low = u.lower()
-                if any(
-                    w in u_low
-                    for w in [
-                        "benchmark",
-                        "objective",
-                        "purpose",
-                        "designed",
-                        "goal",
-                        "intended",
-                        "summary",
-                        "aims",
-                    ]
-                ) and len(u) > 25:
+                if (
+                    any(
+                        w in u_low
+                        for w in [
+                            "benchmark",
+                            "objective",
+                            "purpose",
+                            "designed",
+                            "goal",
+                            "intended",
+                            "summary",
+                            "aims",
+                        ]
+                    )
+                    and len(u) > 25
+                ):
                     answer = f"Based on page {page}, the primary objective is: {u}"
                     return (
                         answer,
@@ -457,8 +507,12 @@ def answer_question_with_citations(
         if cid in retrieved_ids:
             chunk = retrieved_ids[cid]
             units = _extract_substantive_units(chunk.content)
-            sub_units = [u for u in units if len(u) > 25 and not re.match(r"^\d+\.\s+[A-Za-z\s]+$", u)]
-            quote = sub_units[0] if sub_units else (units[0] if units else chunk.content.split("\n")[0])
+            sub_units = [
+                u for u in units if len(u) > 25 and not re.match(r"^\d+\.\s+[A-Za-z\s]+$", u)
+            ]
+            quote = (
+                sub_units[0] if sub_units else (units[0] if units else chunk.content.split("\n")[0])
+            )
             quote = quote.strip()
             if len(quote) > 120:
                 quote = quote[:117] + "..."
@@ -479,8 +533,12 @@ def answer_question_with_citations(
     if not valid_citations and retrieved_chunks:
         top_c = retrieved_chunks[0]
         top_units = _extract_substantive_units(top_c.content)
-        top_sub = [u for u in top_units if len(u) > 25 and not re.match(r"^\d+\.\s+[A-Za-z\s]+$", u)]
-        quote = top_sub[0] if top_sub else (top_units[0] if top_units else top_c.content.split("\n")[0])
+        top_sub = [
+            u for u in top_units if len(u) > 25 and not re.match(r"^\d+\.\s+[A-Za-z\s]+$", u)
+        ]
+        quote = (
+            top_sub[0] if top_sub else (top_units[0] if top_units else top_c.content.split("\n")[0])
+        )
         quote = quote.strip()
         if len(quote) > 120:
             quote = quote[:117] + "..."
@@ -579,8 +637,12 @@ async def stream_answer_with_citations(
         if cid in retrieved_ids:
             chunk = retrieved_ids[cid]
             units = _extract_substantive_units(chunk.content)
-            sub_units = [u for u in units if len(u) > 25 and not re.match(r"^\d+\.\s+[A-Za-z\s]+$", u)]
-            quote = sub_units[0] if sub_units else (units[0] if units else chunk.content.split("\n")[0])
+            sub_units = [
+                u for u in units if len(u) > 25 and not re.match(r"^\d+\.\s+[A-Za-z\s]+$", u)
+            ]
+            quote = (
+                sub_units[0] if sub_units else (units[0] if units else chunk.content.split("\n")[0])
+            )
             quote = quote.strip()
             if len(quote) > 120:
                 quote = quote[:117] + "..."
@@ -599,8 +661,12 @@ async def stream_answer_with_citations(
     if not valid_citations and retrieved_chunks:
         top_c = retrieved_chunks[0]
         top_units = _extract_substantive_units(top_c.content)
-        top_sub = [u for u in top_units if len(u) > 25 and not re.match(r"^\d+\.\s+[A-Za-z\s]+$", u)]
-        quote = top_sub[0] if top_sub else (top_units[0] if top_units else top_c.content.split("\n")[0])
+        top_sub = [
+            u for u in top_units if len(u) > 25 and not re.match(r"^\d+\.\s+[A-Za-z\s]+$", u)
+        ]
+        quote = (
+            top_sub[0] if top_sub else (top_units[0] if top_units else top_c.content.split("\n")[0])
+        )
         quote = quote.strip()
         if len(quote) > 120:
             quote = quote[:117] + "..."

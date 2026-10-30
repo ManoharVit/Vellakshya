@@ -102,5 +102,13 @@ class AppConfig:
     def manifest_signing_key(self) -> bytes:
         return get_manifest_signing_key()
 
+    @property
+    def gemini_api_key(self) -> str | None:
+        return os.environ.get("GEMINI_API_KEY")
+
+    @property
+    def openai_api_key(self) -> str | None:
+        return os.environ.get("OPENAI_API_KEY")
+
 
 config = AppConfig()

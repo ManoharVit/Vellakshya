@@ -13,8 +13,8 @@ Tests:
 from __future__ import annotations
 
 import json
+
 import fitz
-import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -134,7 +134,10 @@ def test_streaming_rag_multi_turn_history():
         "query": "What did the compliance division report?",
         "messages": [
             {"role": "user", "content": "What is this document about?"},
-            {"role": "assistant", "content": "It is the Vellakshya Strategic Intelligence Plan 2026."},
+            {
+                "role": "assistant",
+                "content": "It is the Vellakshya Strategic Intelligence Plan 2026.",
+            },
         ],
         "allow_external_ai": False,
         "stream": True,

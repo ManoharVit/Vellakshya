@@ -30,16 +30,25 @@ from app.ai.embeddings import DEFAULT_EMBEDDING_DIM, DEFAULT_EMBEDDING_MODEL, ge
 from app.ai.models import (
     AnalyticsRequest,
     AnalyticsResponse,
+    MultiFormatIngestResponse,
     PIIApplyRequest,
     PIIScanResponse,
     RAGQueryRequest,
     RAGResponse,
     SummarizeRequest,
     SummarizeResponse,
+    TranslationRequest,
+    TranslationResponse,
 )
 from app.ai.observability import check_rate_limit
 from app.ai.pii import apply_physical_redactions, scan_pdf_for_pii
 from app.ai.rag import answer_question_with_citations, stream_answer_with_citations
+from app.ai.translation import (
+    DOMAIN_GLOSSARIES,
+    SUPPORTED_LANGUAGES,
+    execute_document_translation,
+)
+from app.services.multi_format import process_multi_format_document
 from app.ai.storage import (
     AIChunk,
     AIDocument,
@@ -534,4 +543,157 @@ async def summarize_file_endpoint(
         output_format=output_format,
         allow_external_ai=allow_external_ai,
     )
+
+
+# ---------------------------------------------------------------------------
+# Milestone 3: Multi-Format Ingestion & Translation Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/ingest-multi-format",
+    response_model=MultiFormatIngestResponse,
+    summary="Ingest DOCX, XLSX, CSV, Markdown, or PDF",
+)
+async def ingest_multi_format_endpoint(
+    file: UploadFile = File(...),
+    allow_external_ai: bool = Query(
+        False, description="Local-first privacy gate (F13). When False, zero network egress."
+    ),
+    authorization: Optional[str] = Header(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
+    token: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+) -> MultiFormatIngestResponse:
+    """Ingests multi-format documents, converts them to high-fidelity PDF, and indexes chunks."""
+    actor = _resolve_ai_actor(authorization, x_user_id, token)
+    if config.is_prod and not actor:
+        raise HTTPException(
+            status_code=401, detail="Authentication required to ingest document into AI repository."
+        )
+    owner_id = actor or "demo_user"
+
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    filename = file.filename or "uploaded_document"
+    return process_multi_format_document(
+        file_bytes=file_bytes,
+        filename=filename,
+        owner_id=owner_id,
+        db=db,
+        allow_external_ai=allow_external_ai,
+    )
+
+
+@router.get("/documents/{document_id}/download", summary="Download viewable PDF for ingested document")
+async def download_ingested_pdf_endpoint(
+    document_id: str,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Returns the synthesized or ingested viewable PDF bytes."""
+    purge_expired_transient_ai_data()
+    item = _TRANSIENT_PDF_STORE.get(document_id)
+    if not item or not item.get("bytes"):
+        raise HTTPException(status_code=404, detail="Document PDF stream not found or expired.")
+
+    return Response(
+        content=item["bytes"],
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"inline; filename={document_id}.pdf",
+            "Cache-Control": "public, max-age=3600",
+        },
+    )
+
+
+@router.post("/translate", response_model=TranslationResponse, summary="Translate Document or Text")
+async def translate_text_endpoint(
+    req: TranslationRequest,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
+    token: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+) -> TranslationResponse:
+    """Bilingual layout-preserving translation with domain glossaries and privacy gates."""
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    if not check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Please wait a minute.")
+
+    # Enforce tenant isolation if document_id is provided
+    if req.document_id:
+        ai_doc = db.query(AIDocument).filter_by(id=req.document_id).first()
+        if ai_doc and ai_doc.owner_id != "demo_user":
+            actor = _resolve_ai_actor(authorization, x_user_id, token)
+            if not actor:
+                raise HTTPException(
+                    status_code=401, detail="Authentication required to translate this document."
+                )
+            if actor != ai_doc.owner_id and actor != "admin":
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access denied: You do not own this document in the AI index.",
+                )
+
+    return execute_document_translation(req)
+
+
+@router.post("/translate/file", response_model=TranslationResponse, summary="Upload PDF/Doc and Translate")
+async def translate_file_endpoint(
+    file: UploadFile = File(...),
+    target_language: str = Form("es"),
+    source_language: str = Form("auto"),
+    domain: str = Form("general"),
+    allow_external_ai: bool = Form(False),
+    scope: str = Form("full_document"),
+) -> TranslationResponse:
+    """Uploads file directly and runs bilingual layout-preserving translation."""
+    import time
+    import fitz
+
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Empty uploaded file.")
+
+    sha256 = hashlib.sha256(file_bytes).hexdigest()
+    doc_id = f"doc_{sha256[:16]}"
+    purge_expired_transient_ai_data()
+
+    # Extract text from PDF or text bytes
+    extracted_text = ""
+    try:
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
+        _TRANSIENT_PDF_STORE[doc_id] = {"bytes": file_bytes, "created_at": time.time()}
+        extracted_text = "\n\n".join(page.get_text() for page in doc)
+        doc.close()
+    except Exception:
+        # Fallback to UTF-8 decoding
+        extracted_text = file_bytes.decode("utf-8", errors="replace")
+
+    req = TranslationRequest(
+        document_id=doc_id,
+        selected_text=extracted_text,
+        source_language=source_language,
+        target_language=target_language,
+        domain=domain,
+        scope=scope,
+        allow_external_ai=allow_external_ai,
+    )
+    return execute_document_translation(req)
+
+
+@router.get("/translate/glossaries", summary="List Available Translation Glossaries and Languages")
+async def list_translation_glossaries_endpoint() -> dict[str, Any]:
+    """Returns list of supported domain glossaries and language codes."""
+    return {
+        "status": "success",
+        "supported_languages": SUPPORTED_LANGUAGES,
+        "domains": list(DOMAIN_GLOSSARIES.keys()),
+        "glossaries": {
+            dom: list(terms.keys())
+            for dom, terms in DOMAIN_GLOSSARIES.items()
+        },
+    }
+
 

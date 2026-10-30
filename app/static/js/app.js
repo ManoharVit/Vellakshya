@@ -66,7 +66,8 @@ const LUCIDE_ICONS = {
   "maximize-2": `<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/>`,
   "link": `<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>`,
   "map-pin": `<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>`,
-  "copy": `<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>`
+  "copy": `<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>`,
+  "languages": `<path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/>`
 };
 
 function getLucideSvg(name, size = 14, className = "") {
@@ -388,6 +389,11 @@ const toolsConfig = {
     icon: getLucideSvg("message-square", 18),
     render: renderAiChatTool,
   },
+  "translate": {
+    title: "Document Translation & Bilingual View",
+    icon: getLucideSvg("languages", 18),
+    render: renderTranslateTool,
+  },
 };
 
 // Initialization
@@ -586,7 +592,7 @@ function setupCenterDropzone() {
 
   fileInput.addEventListener("change", (e) => {
     if (e.target.files && e.target.files[0]) {
-      setActivePdf(e.target.files[0]);
+      handleIncomingDropFile(e.target.files[0]);
     }
   });
 
@@ -610,14 +616,44 @@ function setupCenterDropzone() {
 
   emptyState.addEventListener("drop", (e) => {
     if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      if (file.name.toLowerCase().endsWith(".pdf") || file.type.includes("pdf")) {
-        setActivePdf(file);
-      } else {
-        showAppToast("Please drop a valid PDF document.", "error");
-      }
+      handleIncomingDropFile(e.dataTransfer.files[0]);
     }
   });
+}
+
+async function handleIncomingDropFile(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".pdf") || file.type.includes("pdf")) {
+    setActivePdf(file);
+    return;
+  }
+  const multiFormatExts = [".docx", ".xlsx", ".csv", ".tsv", ".md", ".txt", ".json", ".xml", ".yaml"];
+  if (multiFormatExts.some((ext) => name.endsWith(ext))) {
+    showNotification(`Ingesting ${file.name} and synthesizing high-fidelity PDF...`, "info", 3000);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/api/ai/ingest-multi-format?allow_external_ai=false", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      state.aiDocumentId = data.document_id;
+
+      const pdfRes = await fetch(data.pdf_url);
+      if (!pdfRes.ok) throw new Error("Failed to load synthesized PDF stream.");
+      const pdfBlob = await pdfRes.blob();
+      const cleanName = file.name.replace(/\.[^/.]+$/, "");
+      const convertedFile = new File([pdfBlob], `${cleanName}.pdf`, { type: "application/pdf" });
+      setActivePdf(convertedFile);
+      showNotification(`Converted & loaded ${file.name} (${data.detected_format}, ${data.page_count} pages)`, "success", 4000);
+    } catch (err) {
+      showNotification(`Failed to ingest multi-format file: ${err.message}`, "error", 5000);
+    }
+  } else {
+    showNotification("Please upload a PDF, Word (.docx), Excel (.xlsx), CSV, or Markdown file.", "error");
+  }
 }
 
 function setupQuickStartSamples() {
@@ -843,6 +879,10 @@ function updateTabVisibility() {
   }
   codeView.style.display = state.activeTab === "code" ? "block" : "none";
   inspectorView.style.display = state.activeTab === "info" ? "block" : "none";
+  const bilingualCanvas = document.getElementById("bilingualCanvasContainer");
+  if (bilingualCanvas) {
+    bilingualCanvas.style.display = state.activeTab === "bilingual" ? "flex" : "none";
+  }
 }
 
 function switchTool(toolKey) {
@@ -8674,6 +8714,343 @@ async function handleChatSubmit() {
     scrollChatToBottom();
   }
 }
+
+// =============================================================
+// Milestone 3: Bilingual Translation & Multi-Format View
+// =============================================================
+
+function renderTranslateTool() {
+  toolConfigPanel.innerHTML = `
+    <div class="panel-section">
+      <div class="section-label">Active Document</div>
+      <div id="translateUploadArea"></div>
+      <div id="translateFileInfo"></div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Language Pair &amp; Terminology</div>
+      <div class="form-row" style="display: flex; gap: 8px; margin-bottom: 8px;">
+        <div style="flex: 1;">
+          <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">Source Language</label>
+          <select id="translateSourceLang" class="form-select" style="width: 100%;">
+            <option value="auto">Auto-Detect</option>
+            <option value="en" selected>English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="zh">Chinese</option>
+            <option value="ja">Japanese</option>
+            <option value="hi">Hindi</option>
+            <option value="pt">Portuguese</option>
+            <option value="it">Italian</option>
+            <option value="ar">Arabic</option>
+            <option value="ru">Russian</option>
+          </select>
+        </div>
+        <div style="flex: 1;">
+          <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">Target Language</label>
+          <select id="translateTargetLang" class="form-select" style="width: 100%;">
+            <option value="es" selected>Spanish (Español)</option>
+            <option value="fr">French (Français)</option>
+            <option value="de">German (Deutsch)</option>
+            <option value="en">English</option>
+            <option value="zh">Chinese (中文)</option>
+            <option value="ja">Japanese (日本語)</option>
+            <option value="hi">Hindi (हिन्दी)</option>
+            <option value="pt">Portuguese (Português)</option>
+            <option value="it">Italian (Italiano)</option>
+            <option value="ar">Arabic (العربية)</option>
+            <option value="ru">Russian (Русский)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top: 8px;">
+        <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">Domain Glossary</label>
+        <select id="translateDomain" class="form-select" style="width: 100%;">
+          <option value="general" selected>General Business</option>
+          <option value="legal">Legal &amp; Contracts (Force Majeure, Severability)</option>
+          <option value="financial">Financial &amp; Audit (EBITDA, Balance Sheet)</option>
+          <option value="medical">Medical &amp; Life Sciences (Clinical Trials, Placebo)</option>
+          <option value="technical">Technical &amp; Engineering (Encryption, Multi-Tenant)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Translation Scope</div>
+      <div class="segmented-control" style="display: flex; gap: 4px; margin-bottom: 8px;">
+        <label class="scope-radio-btn" style="flex: 1; font-size: 11px; text-align: center; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer;">
+          <input type="radio" name="translateScope" value="full_document" checked style="display: none;" />
+          <span>Full Document</span>
+        </label>
+        <label class="scope-radio-btn" style="flex: 1; font-size: 11px; text-align: center; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer;">
+          <input type="radio" name="translateScope" value="current_page" style="display: none;" />
+          <span>Current Page</span>
+        </label>
+        <label class="scope-radio-btn" style="flex: 1; font-size: 11px; text-align: center; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer;">
+          <input type="radio" name="translateScope" value="selection" style="display: none;" />
+          <span>Custom Text</span>
+        </label>
+      </div>
+
+      <div id="translateCustomTextWrap" style="display: none; margin-top: 8px;">
+        <textarea id="translateCustomText" class="form-control" rows="4" placeholder="Enter text to translate..." style="width: 100%; font-size: 12px;"></textarea>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Privacy &amp; Security (F13)</div>
+      <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--text-secondary);">
+        <input type="checkbox" id="translateLocalFirst" checked style="margin-top: 2px;" />
+        <div>
+          <label for="translateLocalFirst" style="font-weight: 600; color: var(--text-main); cursor: pointer;">Local-First Privacy Gate (Zero Egress)</label>
+          <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--text-muted);">
+            Processing stays 100% offline using local translation memory and curated domain glossaries.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <button type="button" class="btn-primary" id="btnRunTranslation" style="width: 100%; justify-content: center; height: 34px; gap: 6px;">
+        ${getLucideSvg("languages", 14)} <span>Translate Document</span>
+      </button>
+    </div>
+
+    <div id="translationResultsContainer" style="display: none; margin-top: 12px;"></div>
+  `;
+
+  // Handle scope radio styling and text box toggle
+  const scopeRadios = toolConfigPanel.querySelectorAll('input[name="translateScope"]');
+  const customWrap = document.getElementById("translateCustomTextWrap");
+  scopeRadios.forEach((radio) => {
+    radio.parentElement.style.background = radio.checked ? "var(--bg-hover)" : "var(--bg-card)";
+    radio.addEventListener("change", () => {
+      scopeRadios.forEach((r) => {
+        r.parentElement.style.background = r.checked ? "var(--bg-hover)" : "var(--bg-card)";
+        r.parentElement.style.borderColor = r.checked ? "var(--accent-blue)" : "var(--border-color)";
+      });
+      if (customWrap) {
+        customWrap.style.display = radio.value === "selection" ? "block" : "none";
+      }
+    });
+  });
+
+  // Dropzone for translation
+  document.getElementById("translateUploadArea").appendChild(
+    buildDropZone(".pdf,.docx,.xlsx,.csv,.txt,.md", false, (file) => {
+      handleIncomingDropFile(file);
+    })
+  );
+
+  // Execute translation
+  document.getElementById("btnRunTranslation").addEventListener("click", async () => {
+    const customText = document.getElementById("translateCustomText")?.value.trim() || "";
+    const selectedScope = toolConfigPanel.querySelector('input[name="translateScope"]:checked')?.value || "full_document";
+    const srcLang = document.getElementById("translateSourceLang")?.value || "auto";
+    const tgtLang = document.getElementById("translateTargetLang")?.value || "es";
+    const domain = document.getElementById("translateDomain")?.value || "general";
+    const localFirst = document.getElementById("translateLocalFirst")?.checked ?? true;
+    const allowExternal = !localFirst;
+
+    if (!state.currentPdfFile && !customText) {
+      renderErrorSummary(toolConfigPanel, "Please upload a document or enter custom text to translate.");
+      return;
+    }
+    clearErrorSummary(toolConfigPanel);
+
+    const btn = document.getElementById("btnRunTranslation");
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="loading-spinner"></span> Translating (${tgtLang.toUpperCase()})...`;
+
+    try {
+      let respData = null;
+      if (selectedScope === "selection" && customText) {
+        const payload = {
+          selected_text: customText,
+          source_language: srcLang,
+          target_language: tgtLang,
+          domain: domain,
+          scope: "selection",
+          allow_external_ai: allowExternal,
+        };
+        const res = await fetch("/api/ai/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        respData = await res.json();
+      } else {
+        const formData = new FormData();
+        formData.append("file", state.currentPdfFile);
+        formData.append("source_language", srcLang);
+        formData.append("target_language", tgtLang);
+        formData.append("domain", domain);
+        formData.append("scope", selectedScope);
+        formData.append("allow_external_ai", allowExternal ? "true" : "false");
+
+        const res = await fetch("/api/ai/translate/file", {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) throw new Error(await res.text());
+        respData = await res.json();
+      }
+
+      showBilingualCanvas(respData);
+      showNotification(`Translation completed: ${respData.total_segments} segments aligned.`, "success");
+    } catch (err) {
+      renderErrorSummary(toolConfigPanel, `Translation failed: ${err.message || String(err)}`);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  });
+}
+
+function showBilingualCanvas(data) {
+  const container = document.getElementById("bilingualCanvasContainer");
+  const tabBtn = document.getElementById("bilingualTabBtn");
+  if (!container) return;
+
+  // Header badges
+  const domainBadge = document.getElementById("bilingualDomainBadge");
+  const langPair = document.getElementById("bilingualLangPair");
+  const statsBadge = document.getElementById("bilingualStatsBadge");
+
+  if (domainBadge) domainBadge.textContent = `${(data.domain || "general").toUpperCase()} DOMAIN`;
+  if (langPair) langPair.textContent = `${data.source_language_name} ➔ ${data.target_language_name}`;
+  if (statsBadge) {
+    statsBadge.textContent = `${data.total_segments} segments • Expansion: ${data.average_expansion_factor}x (${data.overflow_risk} risk) • ${data.provider === "local_deterministic" ? "Offline" : "Cloud"}`;
+  }
+
+  // Populate source and target segments
+  const srcCol = document.getElementById("bilingualSourceSegments");
+  const tgtCol = document.getElementById("bilingualTargetSegments");
+  const srcHeader = document.getElementById("bilingualSourceColHeader");
+  const tgtHeader = document.getElementById("bilingualTargetColHeader");
+
+  if (srcHeader) srcHeader.textContent = `Source (${data.source_language_name})`;
+  if (tgtHeader) tgtHeader.textContent = `Target (${data.target_language_name})`;
+
+  if (srcCol) srcCol.replaceChildren();
+  if (tgtCol) tgtCol.replaceChildren();
+
+  (data.segments || []).forEach((seg) => {
+    // Source item
+    const srcEl = document.createElement("div");
+    srcEl.className = `bilingual-segment seg-${seg.segment_type}`;
+    srcEl.setAttribute("data-seg-id", String(seg.segment_id));
+    srcEl.textContent = seg.source_text;
+    srcCol?.appendChild(srcEl);
+
+    // Target item
+    const tgtEl = document.createElement("div");
+    tgtEl.className = `bilingual-segment seg-${seg.segment_type}`;
+    tgtEl.setAttribute("data-seg-id", String(seg.segment_id));
+    if (seg.suggested_font_scale && seg.suggested_font_scale < 1.0) {
+      tgtEl.style.fontSize = `${Math.round(13 * seg.suggested_font_scale)}px`;
+    }
+    tgtEl.textContent = seg.target_text;
+
+    if (seg.glossary_terms_applied && seg.glossary_terms_applied.length > 0) {
+      const badge = document.createElement("span");
+      badge.className = "seg-meta-badge";
+      badge.textContent = seg.glossary_terms_applied.join(", ");
+      tgtEl.appendChild(badge);
+    }
+    tgtCol?.appendChild(tgtEl);
+  });
+
+  // Setup segment hover pairing
+  const allSegs = container.querySelectorAll(".bilingual-segment");
+  allSegs.forEach((el) => {
+    el.addEventListener("mouseenter", () => {
+      const segId = el.getAttribute("data-seg-id");
+      container.querySelectorAll(`.bilingual-segment[data-seg-id="${segId}"]`).forEach((pair) => {
+        pair.classList.add("seg-hover");
+      });
+    });
+    el.addEventListener("mouseleave", () => {
+      const segId = el.getAttribute("data-seg-id");
+      container.querySelectorAll(`.bilingual-segment[data-seg-id="${segId}"]`).forEach((pair) => {
+        pair.classList.remove("seg-hover");
+      });
+    });
+    el.addEventListener("click", () => {
+      const segId = el.getAttribute("data-seg-id");
+      const targetOpposite = el.closest(".bilingual-source-col")
+        ? tgtCol?.querySelector(`.bilingual-segment[data-seg-id="${segId}"]`)
+        : srcCol?.querySelector(`.bilingual-segment[data-seg-id="${segId}"]`);
+      if (targetOpposite) {
+        targetOpposite.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+  });
+
+  // Synchronized scroll lock
+  let isSyncing = true;
+  const btnSync = document.getElementById("btnToggleScrollSync");
+  const syncLabel = document.getElementById("scrollSyncLabel");
+  if (btnSync) {
+    btnSync.onclick = () => {
+      isSyncing = !isSyncing;
+      if (syncLabel) syncLabel.textContent = `Sync Scroll: ${isSyncing ? "ON" : "OFF"}`;
+      btnSync.style.borderColor = isSyncing ? "var(--accent-blue)" : "var(--border-color)";
+    };
+  }
+
+  const srcPanel = document.getElementById("bilingualSourceCol");
+  const tgtPanel = document.getElementById("bilingualTargetCol");
+  let scrollTimeout = null;
+
+  function syncScroll(from, to) {
+    if (!isSyncing || scrollTimeout) return;
+    const maxFrom = from.scrollHeight - from.clientHeight;
+    if (maxFrom <= 0) return;
+    const pct = from.scrollTop / maxFrom;
+    const maxTo = to.scrollHeight - to.clientHeight;
+    scrollTimeout = setTimeout(() => {
+      to.scrollTop = pct * maxTo;
+      scrollTimeout = null;
+    }, 10);
+  }
+
+  if (srcPanel && tgtPanel) {
+    srcPanel.onscroll = () => syncScroll(srcPanel, tgtPanel);
+    tgtPanel.onscroll = () => syncScroll(tgtPanel, srcPanel);
+  }
+
+  // Copy translated text
+  const btnCopy = document.getElementById("btnCopyTranslatedText");
+  if (btnCopy) {
+    btnCopy.onclick = () => {
+      if (data.translated_text) {
+        navigator.clipboard.writeText(data.translated_text);
+        showNotification("Copied translated document to clipboard.", "success");
+      }
+    };
+  }
+
+  // Close view
+  const btnClose = document.getElementById("btnCloseBilingualView");
+  if (btnClose) {
+    btnClose.onclick = () => {
+      const previewTab = document.querySelector('.preview-tab[data-tab="preview"]');
+      if (previewTab) previewTab.click();
+    };
+  }
+
+  // Switch to bilingual tab view
+  if (tabBtn) {
+    tabBtn.style.display = "inline-flex";
+    tabBtn.click();
+  }
+}
+
 
 
 

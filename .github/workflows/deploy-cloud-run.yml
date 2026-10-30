@@ -10,6 +10,7 @@ on:
       - 'Dockerfile'
       - 'requirements.txt'
       - 'deploy/**'
+      - 'README.md'
       - '.github/workflows/deploy-cloud-run.yml'
   workflow_dispatch:
 

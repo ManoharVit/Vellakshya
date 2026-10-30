@@ -1,13 +1,13 @@
 # Vellakshya: Enterprise Document Workstation & PDF Intelligence System (v2.0)
 
 [![CI/CD Pipeline](https://github.com/ManoharVit/Vellakshya/actions/workflows/ci-full.yml/badge.svg)](https://github.com/ManoharVit/Vellakshya/actions/workflows/ci-full.yml)
-[![Google Cloud Run](https://img.shields.io/badge/GCP_Cloud_Run-vellakshya--gcp-4285F4?style=flat&logo=googlecloud&logoColor=white)](https://console.cloud.google.com/run?project=vellakshya-gcp)
-[![Firebase Hosting](https://img.shields.io/badge/Firebase_Hosting-vellakshya--gcp.web.app-FFCA28?style=flat&logo=firebase&logoColor=black)](https://vellakshya-gcp.web.app)
-[![Automated Tests](https://img.shields.io/badge/Tests-Passed_58%2F58-brightgreen)](https://github.com/ManoharVit/Vellakshya/actions)
+[![Google Cloud Run](https://img.shields.io/badge/GCP_Cloud_Run-Deployed-4285F4?style=flat&logo=googlecloud&logoColor=white)](https://vellakshya-xb7gehmo6q-uc.a.run.app)
+[![Firebase Hosting](https://img.shields.io/badge/Firebase_Hosting-CDN_Active-FFCA28?style=flat&logo=firebase&logoColor=black)](https://vellakshya-gcp.web.app)
+[![Automated Tests](https://img.shields.io/badge/Tests-189_Pytest_%7C_91_E2E-brightgreen)](https://github.com/ManoharVit/Vellakshya/actions)
 [![Python Version](https://img.shields.io/badge/Python-3.12-blue)](pyproject.toml)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-> **One-Line Pitch:** An enterprise-ready, privacy-first PDF intelligence platform combining real-time canvas redaction with coordinate-grounded RAG, server-side citations, and local-first statutory PII sanitization.
+> **Executive Overview:** Vellakshya is an enterprise-grade, privacy-first PDF workstation and document intelligence platform. It couples sub-millisecond local canvas manipulation and client-side offline text editing with coordinate-grounded hybrid RAG, destructive multi-pass PII sanitization, and cryptographic audit manifests.
 
 ---
 
@@ -15,111 +15,209 @@
 
 | Channel | Address | Purpose |
 | :--- | :--- | :--- |
-| **Primary Short URL (Google CDN)** | [https://vellakshya-gcp.web.app](https://vellakshya-gcp.web.app) | Production web application via Firebase CDN proxy |
+| **Primary Web Application (Google CDN)** | [https://vellakshya-gcp.web.app](https://vellakshya-gcp.web.app) | Production web application via Firebase global edge CDN |
 | **Secondary Clean URL** | [https://vellakshya-gcp.firebaseapp.com](https://vellakshya-gcp.firebaseapp.com) | High-availability global failover URL |
-| **Instant Short Vanity Link** | [https://is.gd/vellakshya](https://is.gd/vellakshya) | Clean vanity redirect directly to production |
+| **Instant Short Vanity Link** | [https://is.gd/vellakshya](https://is.gd/vellakshya) | Direct vanity redirect to production |
 | **Alternative Short Vanity Link** | [https://v.gd/vellakshya](https://v.gd/vellakshya) | Secondary clean vanity redirect |
 | **Direct Cloud Run Origin** | [https://vellakshya-xb7gehmo6q-uc.a.run.app](https://vellakshya-xb7gehmo6q-uc.a.run.app) | Direct Google Cloud Run microservice endpoint |
 | **Interactive API Documentation** | [https://vellakshya-xb7gehmo6q-uc.a.run.app/docs](https://vellakshya-xb7gehmo6q-uc.a.run.app/docs) | Interactive OpenAPI / Swagger interface |
-| **Target Cloud Project** | `vellakshya-gcp` (Project # `489012899784`, Region `us-central1`) | Google Cloud Platform managed deployment |
 
 ---
 
 ## Author & Engineering Attribution
-- **Lead Architect & Developer:** Giri Manohar Vemula
-- **LinkedIn Profile:** [https://www.linkedin.com/in/manoharv511](https://www.linkedin.com/in/manoharv511)
-- **GitHub Profile:** [https://github.com/ManoharVit](https://github.com/ManoharVit)
+
+* **Lead Architect & Developer:** Giri Manohar Vemula
+* **LinkedIn Profile:** [https://www.linkedin.com/in/manoharv511](https://www.linkedin.com/in/manoharv511)
+* **GitHub Profile:** [https://github.com/ManoharVit](https://github.com/ManoharVit)
 
 ---
 
 ## 1. System Architecture
 
-Vellakshya is designed for enterprise document workflows requiring strict data privacy, low-latency spatial canvas manipulation, and grounded question answering without hallucinated coordinates.
+Vellakshya is engineered for high-consequence enterprise document workflows requiring mathematical spatial precision, uncompromised tenant boundary isolation, and real-time interactive collaboration.
+
+```mermaid
+flowchart TD
+    subgraph Client_Workspace["Client Workspace Layer (Browser)"]
+        UI["Modern UI Design System (WCAG 2.2 AA)"]
+        PDFJS["PDF.js & Custom HTML Canvas Layer"]
+        OFFLINE["Offline In-Browser Replacement Engine (@cantoo/pdf-lib)"]
+        COLLAB_CLIENT["WebSocket Collaboration Client"]
+    end
+
+    subgraph API_Gateway["Application & Gateway Layer (FastAPI)"]
+        GATEWAY["Asynchronous FastAPI Router (/api & Short Aliases)"]
+        AUTH["Zero-Trust Auth & Org-Scoped Tenant Gate"]
+        AUDIT["Immutable Audit Chain & Checkpoint Engine"]
+        RATE["Sliding Window Rate Limiter"]
+    end
+
+    subgraph Worker_Pool["Document Processing & Sandbox Layer"]
+        PROCESS_POOL["PyMuPDF Isolated Process Pool (C-Extension Sandbox)"]
+        CONVERT["Dual-Lane Layout Engine (Fixed & Semantic HTML)"]
+        DOCX_ENG["High-Fidelity Word (.docx) Engine"]
+        OCR_ENG["Tesseract / Surya OCR Engine"]
+    end
+
+    subgraph Intelligence_Subsystem["Document Intelligence & AI Layer"]
+        RAG["Hybrid RAG Pipeline (RRF k=60)"]
+        ANALYTICS["Statistical Document Analytics & Readability Engine"]
+        SUMMARIZER["Smart Multi-Level Summarizer"]
+        TRANSLATE["Bilingual Translation Engine & Domain Glossaries"]
+        PII["Statutory Presidio & Regex Sanitizer"]
+    end
+
+    subgraph Storage_Tier["Data & Cache Persistence Tier"]
+        PG["PostgreSQL 16 + pgvector (HNSW Indexing)"]
+        REDIS["Redis / Valkey Session Cache"]
+    end
+
+    UI --> GATEWAY
+    OFFLINE -.-> UI
+    COLLAB_CLIENT <--> GATEWAY
+    GATEWAY --> AUTH
+    AUTH --> PROCESS_POOL
+    AUTH --> RAG
+    AUTH --> ANALYTICS
+    AUTH --> SUMMARIZER
+    AUTH --> TRANSLATE
+    AUTH --> PII
+    PROCESS_POOL --> CONVERT
+    PROCESS_POOL --> DOCX_ENG
+    PROCESS_POOL --> OCR_ENG
+    RAG --> PG
+    GATEWAY --> REDIS
+    AUDIT --> PG
+```
+
+### Core Architecture Decisions
+1. **Server-Side Coordinate Citations ([ADR 0003](docs/adr/0003-citations-by-chunk-id.md)):** Language models are strictly barred from computing or outputting raw spatial coordinates. LLMs emit chunk identifiers; the server maps identifiers to pre-indexed, physical PDF page coordinates, eliminating spatial hallucination.
+2. **Hybrid Search with Reciprocal Rank Fusion ([ADR 0001](docs/adr/0001-hybrid-search-over-pure-vector.md)):** Interleaves dense vector similarity (`pgvector` with HNSW) and lexical full-text matching (`tsvector` via GIN) using reciprocal rank fusion ($$k=60$$):
+   $$RRF(d) = \sum_{m \in M} \frac{1}{60 + \text{rank}_m(d)}$$
+3. **Local-First Statutory PII Scrubbing ([ADR 0004](docs/adr/0004-local-first-pii-detection.md)):** Preserves air-gapped security for sensitive identifiers. Scans for Indian statutory IDs (`IN_PAN`, `IN_AADHAAR`, `IN_PASSPORT`, `IN_VOTER`, `IN_VEHICLE_REGISTRATION`) and international identifiers (`EMAIL`, `PHONE`, `SSN`, `CREDIT_CARD`) entirely in local memory before any external transmission.
+4. **Isolated Process Pool for Native Operations ([ADR 0006](docs/adr/0006-pdf-work-in-process-pool.md)):** Executes compute-heavy PyMuPDF operations inside an isolated worker pool, keeping the async event loop free of blocking C-extension calls.
+5. **In-Browser Zero-Backend Text Replacement ([ADR 0007](docs/adr/0007-pymupdf-licensing-and-engine-abstraction.md)):** Uses `@cantoo/pdf-lib` to execute precise text modifications and replacements directly in the client browser when network connectivity is degraded or backend services are unavailable.
+
+---
+
+## 2. Platform Capabilities
+
+### A. Core Engine & Conversions
+* **PDF to Fixed & Semantic HTML:** Generates exact pixel-perfect coordinate layouts or responsive, semantic, tag-aware HTML adhering to modern accessibility guidelines.
+* **PDF to Word (.docx):** Dual-lane conversion pipeline that reconstructs complex tables, multi-column typography, baselines, and headers.
+* **Structured Markdown & Images:** Extracts clean Markdown tables and paragraphs via PyMuPDF4LLM; archives high-resolution page rasters into ZIP containers.
+
+### B. Page Organization & Geometry
+* **Visual Page Arrangement:** Merge multiple documents, split by custom page intervals, extract selected sheets, or delete unwanted pages.
+* **Rotation & Margins:** Lossless rotation ($$0^\circ, 90^\circ, 180^\circ, 270^\circ$$) with coordinate re-projection; precise margin cropping and page dimension normalization.
+
+### C. Annotations & Interactive Editing
+* **In-Browser Search & Replace:** Instant client-side text replacement without backend roundtrips, alongside server-side physical redaction.
+* **Canvas Tools:** Insert dynamic text boxes, erase and whiteout sensitive content, overlay customizable text/image watermarks, apply automated Bates numbering, and generate headers/footers.
+
+### D. Document Intelligence & Analysis
+* **Statistical Document Analytics:** Computes comprehensive document metrics, including reading time, word count, character density, and readability grades (Flesch-Kincaid Grade Level, Flesch Reading Ease, Gunning Fog Index), accompanied by n-gram frequency distributions.
+* **Smart Multi-Level Summarizer:** Produces executive summaries, exhaustive deep-dives, bulleted action items, or structured risk reports with customizable tone and length constraints.
+* **Bilingual Translation Engine:** Side-by-side bilingual split-view canvas with synchronous scrolling (`Sync Scroll`), domain glossaries (Legal, Financial, Technical, Medical), translation memory caching, and multi-format document ingestion (Markdown `.md`, Word `.docx`, CSV, plain text).
+* **AI Chat Sidecar:** Conversational hybrid RAG with page-level citations, interactive bounding box highlights, prompt recommendation chips, and streaming server-sent events (SSE).
+
+### E. Protection, Redaction & Cryptography
+* **Destructive 4-Tier Redaction:** Completely purges underlying text tokens, vector paths, raster pixel data, and structural object streams.
+* **Digital Signatures & Verification:** PKI-based X.509 cryptographic signing and verification with visual signature badge rendering.
+* **Password Encryption:** Strong AES-256 encryption with customizable permissions for printing, extraction, and editing.
+
+### F. Governance, Collaboration & Auditing
+* **Immutable Audit Manifests:** Generates cryptographic HMAC-SHA256 signature chains tracking all document modifications and verified against checkpoint records.
+* **Version History:** Multi-revision rollback capabilities with visual diff inspections.
+* **Real-Time Collaboration:** Multi-peer WebSocket presence sync, collaborative cursors, threaded annotations, and resolution tracking.
+* **Adversarial Sandbox Defense:** Built-in safeguards against polyglot files, zip bombs, and runaway memory expansion attacks.
+
+---
+
+## 3. UI/UX Architecture & Usability Standards
+
+Vellakshya adheres to enterprise usability principles, accessible component design, and WCAG 2.2 Level AA guidelines:
 
 ```mermaid
 flowchart LR
-  UI[Browser Canvas & Lucide UI Layer] --> API[FastAPI Gateway]
-  API --> PDF[PyMuPDF Isolated Process Pool]
-  API --> DB[(PostgreSQL 16 + pgvector)]
-  API --> R[(Redis / Valkey Sliding Window Cache)]
-  API --> LLM[LLM Gateway: Gemini 1.5 Flash -> GPT-4o-mini -> Ollama]
+    A["Header Controls"] --> B["Sidebar Navigation"]
+    B --> C["Workspace Config Panel"]
+    C --> D["Interactive Canvas & Previews"]
+    D --> E["Collapsible Intelligence Drawers"]
 ```
 
-### Architectural Highlights
-1. **Grounded Server-Side Citations (ADR 0003):** The LLM never invents or calculates bounding coordinates. It returns used chunk IDs only; the server maps IDs to exact page numbers and unrotated PDF rectangles stored in the database, eliminating coordinate drift.
-2. **Local-First PII Redaction (ADR 0004):** High-precision local detection for Indian statutory IDs (`IN_PAN`, `IN_AADHAAR`, `IN_PASSPORT`, `IN_VOTER`, `IN_VEHICLE_REGISTRATION`) and international identifiers (`EMAIL`, `PHONE`, `SSN`, `CREDIT_CARD`). Sensitive text never leaves local memory.
-3. **Hybrid Retrieval with RRF (ADR 0001):** Merges dense vector embeddings (`text-embedding-004` via `pgvector` HNSW) and lexical keyword matching (`tsvector` via GIN) using Reciprocal Rank Fusion ($$k=60$$):
-   $$RRF(d) = \sum_{m \in M} \frac{1}{60 + \text{rank}_m(d)}$$
-4. **PyMuPDF Process Pool (ADR 0006):** Isolates C-extension operations off the main FastAPI asyncio event loop, protecting against segmentation faults and multithreading lock contention.
-5. **Pinned Embedding Integrity (ADR 0005):** Provider fallback applies strictly to generation only; embedding vectors remain pinned to prevent index divergence.
-6. **Unified Design System:** 100% line icon consistency using standard Lucide SVG paths with `stroke="currentColor"`, WCAG 2.2 AA contrast compliance, and dual-coded status indicators.
+* **Responsive Collapsible Sidebar:** Toggle the navigation sidebar via `#btnToggleSidebar`, fast collapse `#btnCollapseSidebar`, workspace restore button `#btnRestoreSidebar`, or keyboard shortcuts (`Ctrl+B` / `Cmd+B` and `Ctrl+\` / `Cmd+\`).
+* **Section Dropdown Accordions:** All $$7$$ sidebar sections operate as keyboard-navigable accordions with animated $$-90^\circ$$ chevron rotation and search auto-expansion.
+* **Theme System:** Semantic CSS tokens (`--surface`, `--bg-hover`, `--border-color`, `--selected-bg`, `--text-accent`) powering high-contrast Dark and Light modes with separated theme switchers and dropdown menus.
+* **WCAG 2.2 Level AA Compliance:** Full keyboard operability (`Tab`, `Enter`, `Space`, arrows), high-contrast `:focus-visible` rings ($$2\text{px}$$ solid `#38bdf8`), and zero third-party font network requests via self-hosted WOFF2 typography.
 
 ---
 
-## 2. Automated Evaluation Benchmark Results
+## 4. Automated Evaluation & Quality Benchmarks
 
-Vellakshya includes a deterministic CI evaluation harness ([tests/evals/test_deterministic_evals.py](tests/evals/test_deterministic_evals.py) and [scripts/generate_eval_report.py](scripts/generate_eval_report.py)) executed on every pull request to enforce quality gates without incurring external API costs:
+Vellakshya incorporates an automated evaluation harness ([tests/evals/test_deterministic_evals.py](tests/evals/test_deterministic_evals.py)) executed on pull requests to enforce strict quality gates:
 
 | Benchmark Metric | Measured Result | Production Target | Quality Gate | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **Retrieval Hit Rate@3 (Golden Set)** | **$$96.0\%$$** (25 questions) | $$\ge 80.0\%$$ | CI Blocker | **PASS** |
+| **Retrieval Hit Rate@3 (Golden Corpus)** | **$$96.0\%$$** (25 questions) | $$\ge 80.0\%$$ | CI Blocker | **PASS** |
 | **Retrieval Latency (p95)** | **$$1.37\text{ ms}$$** | $$< 150\text{ ms}$$ | CI Blocker | **PASS** |
-| **Local PII Detection Recall** | **$$100.0\%$$** (10 docs) | $$\ge 90.0\%$$ | CI Blocker | **PASS** |
-| **Redaction Multi-Pass Scrubbing** | **$$100\%$$ (4-tier verified)** | 0 residual text bytes | CI Blocker | **PASS** |
-| **Prompt Injection Defense** | **Verified (XML Isolation)** | Untrusted data isolation | CI Blocker | **PASS** |
-| **Coordinate Rotation Invariance** | **$$100\%$$ ($$0^\circ, 90^\circ, 180^\circ, 270^\circ$$)** | Complete spatial alignment | CI Blocker | **PASS** |
+| **Local Statutory PII Recall** | **$$100.0\%$$** (10 test documents) | $$\ge 90.0\%$$ | CI Blocker | **PASS** |
+| **Destructive Redaction Multi-Pass Scrubbing** | **$$100\%$$ (4-tier verified)** | 0 residual text bytes | CI Blocker | **PASS** |
+| **Coordinate Rotation Invariance** | **$$100\%$$ ($$0^\circ, 90^\circ, 180^\circ, 270^\circ$$)** | Exact bounding alignment | CI Blocker | **PASS** |
+| **Prompt Injection XML Boundary Defense** | **$$100\%$$ (Verified)** | Complete data isolation | CI Blocker | **PASS** |
 
 ---
 
-## 3. Architecture Decision Records (ADRs)
+## 5. Architectural Decision Records (ADRs)
 
-Key architectural trade-offs are documented under [`docs/adr/`](docs/adr/):
-* **[ADR 0001: Hybrid Search with RRF Over Pure Vector Search](docs/adr/0001-hybrid-search-over-pure-vector.md)** — Combines dense semantic recall with exact keyword precision ($$96.0\%$$ Hit Rate@3).
-* **[ADR 0002: PostgreSQL + pgvector Over Dedicated Vector Databases](docs/adr/0002-postgresql-pgvector-vs-specialized-vector-dbs.md)** — ACID transactional consistency across metadata and embeddings.
-* **[ADR 0003: Server-Side Citations by Chunk ID](docs/adr/0003-citations-by-chunk-id.md)** — Eliminates geometric coordinate hallucination.
-* **[ADR 0004: Local-First Statutory PII Detection](docs/adr/0004-local-first-pii-detection.md)** — Guarantees privacy and regulatory compliance.
-* **[ADR 0005: Pinned Embedding Model with Generation-Only Fallback](docs/adr/0005-one-embedding-model-with-generation-only-fallback.md)** — Preserves geometric vector index integrity.
-* **[ADR 0006: PyMuPDF in Process Pool Isolation](docs/adr/0006-pdf-work-in-process-pool.md)** — Guarantees event loop responsiveness and thread safety.
-* **[ADR 0007: PyMuPDF Licensing & Engine Abstraction](docs/adr/0007-pymupdf-licensing-and-engine-abstraction.md)** — Dual-engine architecture with in-browser `@cantoo/pdf-lib` offline fallback.
-* **[ADR 0008: CRDT Collaboration & Yjs Presence Sync](docs/adr/0008-crdt-collaboration-and-yjs-sync.md)** — Conflict-free peer synchronization and document revision management.
+Detailed trade-offs and rationale are maintained in [`docs/adr/`](docs/adr/):
 
----
-
-## 4. Short & Simple API Route Aliases
-
-All primary endpoints support clean, intuitive top-level routes alongside legacy `/api/` paths:
-
-| Endpoint Route | HTTP Method | Description |
-| :--- | :--- | :--- |
-| **`/health`** | `GET` | Container health probe (`{"status":"healthy","version":"2.0.0"}`) |
-| **`/convert`** | `POST` | High-fidelity fixed or semantic responsive HTML conversion |
-| **`/docx`** | `POST` | Direct Microsoft Word conversion via dual-lane `pdf2docx` engine |
-| **`/markdown`** | `POST` | Structured Markdown extraction via PyMuPDF4LLM |
-| **`/images`** | `POST` | Multi-page high-resolution PNG extraction in ZIP archive |
-| **`/sample/invoice`** | `GET` | Instant synthetic sample invoice generator for preflight testing |
-| **`/docs`** | `GET` | Interactive Swagger UI API documentation |
+* **[ADR 0001: Hybrid Search with RRF Over Pure Vector Search](docs/adr/0001-hybrid-search-over-pure-vector.md)** — Combines semantic recall with exact keyword precision ($$96.0\%$$ Hit Rate@3).
+* **[ADR 0002: PostgreSQL + pgvector Over Dedicated Vector Databases](docs/adr/0002-postgresql-pgvector-vs-specialized-vector-dbs.md)** — Unifies metadata transactions with vector indexing.
+* **[ADR 0003: Server-Side Citations by Chunk ID](docs/adr/0003-citations-by-chunk-id.md)** — Eliminates spatial coordinate hallucination by mapping server IDs.
+* **[ADR 0004: Local-First Statutory PII Detection](docs/adr/0004-local-first-pii-detection.md)** — Enforces privacy boundaries without transmitting raw PII externally.
+* **[ADR 0005: Pinned Embedding Model with Generation Fallback](docs/adr/0005-one-embedding-model-with-generation-only-fallback.md)** — Prevents vector space divergence on provider failover.
+* **[ADR 0006: PyMuPDF Isolated Process Pool](docs/adr/0006-pdf-work-in-process-pool.md)** — Isolates C-extension processing from the FastAPI event loop.
+* **[ADR 0007: Dual-Engine Client-Side Fallback](docs/adr/0007-pymupdf-licensing-and-engine-abstraction.md)** — Provides in-browser offline text manipulation via `@cantoo/pdf-lib`.
+* **[ADR 0008: CRDT Collaboration & Yjs Presence Sync](docs/adr/0008-crdt-collaboration-and-yjs-sync.md)** — Conflict-free multi-user document synchronization.
 
 ---
 
-## 5. Quickstart: One-Command Local Deployment
+## 6. Short & Canonical API Routes
 
-### Option A: Docker Compose (Production Stack)
-Boot the complete stack (FastAPI backend with live reload, PostgreSQL 16 with `pgvector`, and Redis) with a single command:
+All primary endpoints provide intuitive top-level alias routes alongside `/api/` paths:
+
+| Route Alias | Canonical Route | HTTP Method | Description |
+| :--- | :--- | :--- | :--- |
+| **`/health`** | `/api/health` | `GET` | Service readiness probe (`{"status":"healthy","version":"2.0.0"}`) |
+| **`/convert`** | `/api/convert/html` | `POST` | PDF to high-fidelity fixed or semantic responsive HTML |
+| **`/docx`** | `/api/convert/docx` | `POST` | High-fidelity Microsoft Word (.docx) conversion |
+| **`/markdown`** | `/api/convert/markdown` | `POST` | Structured Markdown extraction via PyMuPDF4LLM |
+| **`/images`** | `/api/convert/images` | `POST` | Multi-page high-resolution PNG extraction in ZIP format |
+| **`/sample/invoice`** | `/api/sample/invoice` | `GET` | Instant synthetic sample invoice generator for preflight testing |
+| **`/docs`** | `/docs` | `GET` | Interactive OpenAPI / Swagger UI documentation |
+
+---
+
+## 7. Local Quickstart
+
+### Option A: Docker Compose (Full Stack)
+Boot the complete production-grade stack (FastAPI application, PostgreSQL 16 with `pgvector`, and Redis) with a single command:
 
 ```bash
 docker compose up --build
 ```
-* **API & Web Interface:** [http://localhost:8000](http://localhost:8000)
-* **PostgreSQL pgvector:** `localhost:5432`
+* **Web Workstation:** [http://localhost:8000](http://localhost:8000)
+* **PostgreSQL + pgvector:** `localhost:5432`
 * **Redis Cache:** `localhost:6379`
 
-### Option B: Local Python Development
+### Option B: Local Python Environment
 ```bash
 # 1. Clone repository
 git clone https://github.com/ManoharVit/Vellakshya.git
 cd Vellakshya
 
-# 2. Set up virtual environment
+# 2. Configure virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
 
@@ -132,63 +230,47 @@ PYTHONPATH=. uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
 ---
 
-## 6. UI/UX Design Systems & Usability Standards
+## 8. Verification & Test Execution
 
-Vellakshya's user interface is engineered according to established enterprise design systems and accessibility standards:
-
-### Design System Patterns & Component References
-* **100% Emoji Eradication:** All tools, sample files, stepper icons, status pills, and action controls use unified Lucide SVG line icons with `stroke="currentColor"`.
-* **GOV.UK Design System Patterns:**
-  * **Accessible Error Summary:** Implemented `.app-error-summary` adhering to GOV.UK guidance (`role="alert"`, `tabindex="-1"`, automatic focus shift on validation failure, and actionable bulleted error items). Replaced all disruptive browser `alert()` modal dialogs.
-  * **File Upload & Drop Zones:** Accessible drag-and-drop zones with full keyboard operation (`tabindex="0"`, `role="button"`, `Enter` and `Space` key event listeners), clear accepted MIME type hints, and active file chips.
-  * **Step-by-Step Navigation:** Multi-stage workflow steppers (`.workflow-stepper`) tracking progress across complex workflows (Upload $$\to$$ Layout Strategy $$\to$$ Converted).
-* **Material Design 3 & IBM Carbon Design System:**
-  * **Non-Blocking Toasts & Status Notifications:** Accessible notification queue (`.app-toast`, `role="status"`, `aria-live="polite"`) with automatic dismissal, clear status icons (Success, Warning, Error, Info), and keyboard dismiss actions.
-  * **Dual-Coded Status:** Indicators combine distinct geometric SVG shapes (`circle-check`, `loader`, `circle-alert`) with explicit text labels ("Ready", "Busy", "Error") to comply with WCAG 2.1 SC 1.4.1 (Use of Color).
-* **WCAG 2.2 Level AA Compliance:**
-  * **SC 2.1.1 Keyboard Accessibility:** Every interactive tool, upload zone, drawer, and tab is fully navigable and actionable via keyboard alone.
-  * **SC 2.4.7 & SC 2.4.11 Focus Appearance:** Enforced high-contrast focus rings (`:focus-visible` with `2px solid #38bdf8` and `2px` offset) across all buttons, inputs, links, and select dropdowns.
-  * **SC 1.4.3 Contrast:** All text meets $$\ge 4.5:1$$ textual contrast and $$\ge 3:1$$ graphical contrast in both dark and light modes.
-* **Zero External Network Font Requests:** 100% self-hosted Inter and Manrope WOFF2 fonts eliminate third-party font tracking and guarantee offline performance.
-
----
-
-## 7. Verification & Testing
-
-Execute the test suites locally:
+Run the complete test suite locally across backend, frontend, accessibility, and static analysis:
 
 ```bash
-# Run complete test suite (Playwright E2E, a11y, governance, and PDF engine)
-npx playwright test tests/e2e
+# Execute backend unit, security, and integration tests (189 tests)
+PYTHONPATH=. pytest tests/ -v
 
-# Run the automated AI evaluation harness report
-python scripts/generate_eval_report.py
+# Execute Playwright E2E, a11y, and visual regression tests (91 tests)
+npx playwright test
 
-# Run static analysis and linting
-ruff check app/ tests/
-ruff format --check app/ tests/
+# Execute Vitest client unit tests (4 tests)
+npm run test:unit
+
+# Run static code hygiene and strict type checking
+ruff check .
+ruff format --check .
 mypy app/ai
 ```
 
 ---
 
-## 8. Technical Limitations & Constraints
+## 9. Google Cloud Platform Deployment & CI/CD
 
-* **Non-Text Scans:** Scanned PDFs lacking an embedded text layer require OCR preprocessing; non-text scans are flagged gracefully.
-* **Ephemeral Container Storage:** Cloud Run instance storage is ephemeral; all persistent documents and chunks are indexed in PostgreSQL.
-* **Upload Payload Cap:** Maximum file upload size is bounded at **30 MiB** to strictly comply with Cloud Run HTTP/1.x payload thresholds.
-* **Free-Tier Cold Starts:** Scale-to-zero container deployments incur an initial 3–5 second cold start on first request after prolonged idle periods.
+Vellakshya utilizes an automated GitHub Actions deployment pipeline ([deploy-cloud-run.yml](.github/workflows/deploy-cloud-run.yml)) that triggers on pushes to `main`:
 
----
+```mermaid
+flowchart LR
+    PUSH["Git Push to main"] --> CI["Code Hygiene & Test Suite"]
+    CI --> BUILD["Cloud Build Container Image"]
+    BUILD --> RUN["Deploy to Google Cloud Run (Managed)"]
+    RUN --> CDN["Firebase Global CDN Ingress"]
+```
 
-## 9. Resume Impact Statements
-
-> *"Architected an asynchronous PDF intelligence platform in Python 3.12 (FastAPI, PyMuPDF, pgvector), integrating coordinate-grounded RAG and local-first statutory PII redaction; built an automated GitHub Actions evaluation harness achieving a 96.0% retrieval hit rate across a 25-question benchmark and p95 retrieval latency of 1.37 ms."*
-
-> *"Engineered a hybrid retrieval system with Reciprocal Rank Fusion (RRF) on PostgreSQL (`pgvector`), eliminating coordinate hallucinations by mapping server-side chunk IDs to physical document bounding boxes with 100% spatial precision."*
+* **Continuous Integration (`ci-full.yml`):** Runs Ruff linter and formatter checks, Mypy strict type checking on `app/ai`, 189 Pytest backend tests against a live PostgreSQL 16 + pgvector container, 4 Vitest unit tests, and 91 Playwright E2E browser tests.
+* **Continuous Delivery (`deploy-cloud-run.yml`):** Builds the production container image via Google Cloud Build and deploys directly to Google Cloud Run with scale-to-zero autoscaling, 1 GiB RAM, and 1 vCPU allocation.
 
 ---
 
 ## 10. License
 
-Authored and maintained by **Giri Manohar Vemula** ([LinkedIn Profile](https://www.linkedin.com/in/manoharv511) | [GitHub Profile](https://github.com/ManoharVit)). Licensed under the Apache-2.0 License.
+Authored and maintained by **Giri Manohar Vemula** ([LinkedIn Profile](https://www.linkedin.com/in/manoharv511) | [GitHub Profile](https://github.com/ManoharVit)).
+
+Licensed under the [Apache-2.0 License](LICENSE).

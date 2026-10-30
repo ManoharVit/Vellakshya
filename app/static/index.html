@@ -12,6 +12,9 @@
     <!-- Top Header -->
     <header class="app-header">
         <div class="header-left">
+            <button type="button" class="btn-hdr-action btn-sidebar-toggle active" id="btnToggleSidebar" title="Hide Sidebar (Tools) [Ctrl+B / Cmd+B]" aria-label="Toggle Navigation Sidebar">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
+            </button>
             <div class="brand">
                 <div class="brand-icon" aria-hidden="true" title="Vellakshya PDF Workstation">
                     <svg width="32" height="32" viewBox="0 0 64 64" fill="currentColor">
@@ -67,6 +70,10 @@
                         <button type="button" class="status-shortcut-btn" id="btnToggleAiChat" title="Chat with Document (AI Assistant)">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>
                             <span>AI Chat</span>
+                        </button>
+                        <button type="button" class="status-shortcut-btn" id="btnToggleSidebarShortcut" title="Toggle Navigation Sidebar">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
+                            <span>Sidebar</span>
                         </button>
                         <button type="button" class="status-shortcut-btn" id="btnToggleThumbnails" title="Toggle Page Thumbnails Filmstrip">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
@@ -185,13 +192,19 @@
     <!-- Main Application Layout -->
     <div class="app-layout">
         <!-- Sidebar Navigation -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebarNav">
             <div class="sidebar-search-box">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input type="text" id="sidebarToolSearch" placeholder="Search 20+ tools..." aria-label="Search tools" />
+                <button type="button" class="btn-sidebar-collapse" id="btnCollapseSidebar" title="Hide Sidebar (Tools) [Ctrl+B / Cmd+B]" aria-label="Hide Sidebar">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+                </button>
             </div>
 
-            <div class="sidebar-category">Core Engine</div>
+            <div class="sidebar-category" role="button" tabindex="0" aria-expanded="true">
+                <span>Core Engine</span>
+                <svg class="category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
             <ul class="sidebar-nav">
                 <li class="nav-item highlight-html active" data-tool="pdf-to-html">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
@@ -203,7 +216,10 @@
                 </li>
             </ul>
 
-            <div class="sidebar-category">Organize Pages</div>
+            <div class="sidebar-category" role="button" tabindex="0" aria-expanded="true">
+                <span>Organize Pages</span>
+                <svg class="category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
             <ul class="sidebar-nav">
                 <li class="nav-item" data-tool="merge-pdf">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="14" height="14" rx="2"/><path d="M6 2h14a2 2 0 0 1 2 2v14"/></svg>
@@ -235,7 +251,10 @@
                 </li>
             </ul>
 
-            <div class="sidebar-category">Edit &amp; Annotate</div>
+            <div class="sidebar-category" role="button" tabindex="0" aria-expanded="true">
+                <span>Edit &amp; Annotate</span>
+                <svg class="category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
             <ul class="sidebar-nav">
                 <li class="nav-item" data-tool="replace-text">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -267,7 +286,10 @@
                 </li>
             </ul>
 
-            <div class="sidebar-category">Intelligence &amp; Analysis</div>
+            <div class="sidebar-category" role="button" tabindex="0" aria-expanded="true">
+                <span>Intelligence &amp; Analysis</span>
+                <svg class="category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
             <ul class="sidebar-nav">
                 <li class="nav-item" data-tool="ai-chat">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -287,7 +309,10 @@
                 </li>
             </ul>
 
-            <div class="sidebar-category">Protect &amp; Redact</div>
+            <div class="sidebar-category" role="button" tabindex="0" aria-expanded="true">
+                <span>Protect &amp; Redact</span>
+                <svg class="category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
             <ul class="sidebar-nav">
                 <li class="nav-item" data-tool="encrypt">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -307,7 +332,10 @@
                 </li>
             </ul>
 
-            <div class="sidebar-category">Governance &amp; Audit</div>
+            <div class="sidebar-category" role="button" tabindex="0" aria-expanded="true">
+                <span>Governance &amp; Audit</span>
+                <svg class="category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
             <ul class="sidebar-nav">
                 <li class="nav-item" data-tool="version-history">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -323,7 +351,10 @@
                 </li>
             </ul>
 
-            <div class="sidebar-category">Forms &amp; Export</div>
+            <div class="sidebar-category" role="button" tabindex="0" aria-expanded="true">
+                <span>Forms &amp; Export</span>
+                <svg class="category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
             <ul class="sidebar-nav">
                 <li class="nav-item highlight-export" data-tool="export-hub">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -359,6 +390,10 @@
         <!-- Main Workspace -->
         <main class="workspace">
             <div class="workspace-header">
+                <button type="button" class="btn-sidebar-restore" id="btnRestoreSidebar" title="Show Sidebar (Tools) [Ctrl+B / Cmd+B]" style="display: none;" aria-label="Show Navigation Sidebar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
+                    <span>Tools</span>
+                </button>
                 <div class="workspace-title" id="currentToolTitle">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
                     <span>PDF to HTML Engine</span>

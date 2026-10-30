@@ -399,6 +399,7 @@ const toolsConfig = {
 // Initialization
 document.addEventListener("DOMContentLoaded", () => {
   setupThemeToggle();
+  setupSidebarToggle();
   setupNavigation();
   setupSidebarSearch();
   setupCenterDropzone();
@@ -568,7 +569,13 @@ function setupSidebarSearch() {
       }
       if (nextUl && nextUl.classList.contains("sidebar-nav")) {
         const visibleItems = nextUl.querySelectorAll('.nav-item:not([style*="display: none"])');
-        cat.style.display = visibleItems.length > 0 ? "block" : "none";
+        cat.style.display = visibleItems.length > 0 ? "flex" : "none";
+        // If searching and items match, auto-expand section so matching items are visible
+        if (query && visibleItems.length > 0) {
+          cat.classList.remove("collapsed");
+          cat.setAttribute("aria-expanded", "true");
+          nextUl.classList.remove("collapsed");
+        }
       }
     });
   });
@@ -706,26 +713,121 @@ async function loadSampleDocument(type) {
   }
 }
 
+function setupSidebarToggle() {
+  const sidebar = document.getElementById("sidebarNav");
+  const btnToggle = document.getElementById("btnToggleSidebar");
+  const btnCollapse = document.getElementById("btnCollapseSidebar");
+  const btnRestore = document.getElementById("btnRestoreSidebar");
+  const btnShortcut = document.getElementById("btnToggleSidebarShortcut");
+
+  if (!sidebar) return;
+
+  const setSidebarCollapsed = (collapsed, notify = true) => {
+    state.isSidebarHidden = collapsed;
+    localStorage.setItem("vellakshya_sidebar_hidden", collapsed ? "true" : "false");
+
+    if (collapsed) {
+      sidebar.classList.add("collapsed");
+      if (btnToggle) {
+        btnToggle.classList.remove("active");
+        btnToggle.title = "Show Sidebar (Tools) [Ctrl+B / Cmd+B]";
+        btnToggle.setAttribute("aria-expanded", "false");
+      }
+      if (btnRestore) {
+        btnRestore.style.display = "inline-flex";
+      }
+      if (notify) {
+        showNotification("Sidebar hidden. Press Ctrl+B or click Tools in workspace header to restore.", "info", 2000);
+      }
+    } else {
+      sidebar.classList.remove("collapsed");
+      if (btnToggle) {
+        btnToggle.classList.add("active");
+        btnToggle.title = "Hide Sidebar (Tools) [Ctrl+B / Cmd+B]";
+        btnToggle.setAttribute("aria-expanded", "true");
+      }
+      if (btnRestore) {
+        btnRestore.style.display = "none";
+      }
+      if (notify) {
+        showNotification("Sidebar shown.", "success", 2000);
+      }
+    }
+
+    // Trigger window resize event so PDF canvas and overlays re-calculate layout
+    window.dispatchEvent(new Event("resize"));
+  };
+
+  const toggleSidebar = () => {
+    const isCurrentlyCollapsed = sidebar.classList.contains("collapsed");
+    setSidebarCollapsed(!isCurrentlyCollapsed, true);
+  };
+
+  if (btnToggle) {
+    btnToggle.addEventListener("click", toggleSidebar);
+  }
+  if (btnCollapse) {
+    btnCollapse.addEventListener("click", () => setSidebarCollapsed(true, true));
+  }
+  if (btnRestore) {
+    btnRestore.addEventListener("click", () => setSidebarCollapsed(false, true));
+  }
+  if (btnShortcut) {
+    btnShortcut.addEventListener("click", () => {
+      toggleSidebar();
+      const statusMenu = document.getElementById("statusDropdownMenu");
+      if (statusMenu) statusMenu.style.display = "none";
+    });
+  }
+
+  // Keyboard shortcut Ctrl+B / Cmd+B or Ctrl+\ / Cmd+\
+  document.addEventListener("keydown", (e) => {
+    const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+    if (isCtrlOrCmd && (e.key === "b" || e.key === "B" || e.key === "\\")) {
+      const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : "";
+      if (tag === "input" || tag === "textarea") {
+        if (document.activeElement.id !== "sidebarToolSearch") {
+          return;
+        }
+      }
+      e.preventDefault();
+      toggleSidebar();
+    }
+  });
+
+  // Restore saved state
+  const savedState = localStorage.getItem("vellakshya_sidebar_hidden");
+  if (savedState === "true") {
+    setSidebarCollapsed(true, false);
+  }
+}
+
 function setupNavigation() {
   // Collapsible category accordions
   document.querySelectorAll(".sidebar-category").forEach((cat) => {
     cat.tabIndex = 0;
     cat.setAttribute("role", "button");
-    cat.setAttribute("aria-expanded", "true");
-    const toggleCat = () => {
+    if (!cat.hasAttribute("aria-expanded")) {
+      cat.setAttribute("aria-expanded", "true");
+    }
+    const toggleCat = (e) => {
+      if (e) e.stopPropagation();
       cat.classList.toggle("collapsed");
       const isCollapsed = cat.classList.contains("collapsed");
       cat.setAttribute("aria-expanded", (!isCollapsed).toString());
-      const navList = cat.nextElementSibling;
-      if (navList && navList.classList.contains("sidebar-nav")) {
-        navList.classList.toggle("collapsed", isCollapsed);
+      let nextUl = cat.nextElementSibling;
+      while (nextUl && !nextUl.classList.contains("sidebar-nav")) {
+        nextUl = nextUl.nextElementSibling;
+      }
+      if (nextUl && nextUl.classList.contains("sidebar-nav")) {
+        nextUl.classList.toggle("collapsed", isCollapsed);
       }
     };
     cat.addEventListener("click", toggleCat);
     cat.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        toggleCat();
+        toggleCat(e);
       }
     });
   });
@@ -738,7 +840,10 @@ function setupNavigation() {
       const parentNav = item.closest(".sidebar-nav");
       if (parentNav && parentNav.classList.contains("collapsed")) {
         parentNav.classList.remove("collapsed");
-        const prevCat = parentNav.previousElementSibling;
+        let prevCat = parentNav.previousElementSibling;
+        while (prevCat && !prevCat.classList.contains("sidebar-category")) {
+          prevCat = prevCat.previousElementSibling;
+        }
         if (prevCat && prevCat.classList.contains("sidebar-category")) {
           prevCat.classList.remove("collapsed");
           prevCat.setAttribute("aria-expanded", "true");

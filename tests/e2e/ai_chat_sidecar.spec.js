@@ -25,9 +25,10 @@ test.describe('Milestone 2: Streaming RAG & Sidecar Chat E2E', () => {
     await expect(btnHeaderAiChat).toBeVisible();
     await btnHeaderAiChat.click();
 
-    // Verify AI Chat drawer is visible
+    // Verify AI Chat drawer is visible and backdrop is NOT visible (companion sidecar)
     const drawer = page.locator('#drawerAiChat');
     await expect(drawer).toBeVisible();
+    await expect(page.locator('#drawerBackdrop')).not.toBeVisible();
     await expect(page.locator('#chatDocPill')).toContainText('Sample_Enterprise_Report.pdf');
 
     // Type a grounded question
@@ -80,9 +81,10 @@ test.describe('Milestone 2: Streaming RAG & Sidecar Chat E2E', () => {
     await expect(navAiChat).toBeVisible();
     await navAiChat.click();
 
-    // Drawer opens automatically
+    // Drawer opens automatically without backdrop
     const drawer = page.locator('#drawerAiChat');
     await expect(drawer).toBeVisible();
+    await expect(page.locator('#drawerBackdrop')).not.toBeVisible();
 
     // Click a prompt chip
     const chip = page.locator('.prompt-chip').first();

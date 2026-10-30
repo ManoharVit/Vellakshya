@@ -8294,7 +8294,10 @@ async function ensureAiDocumentIngested() {
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     state.aiDocumentId = data.document_id;
-    if (pill) pill.textContent = `${state.currentPdfFile.name} (${data.chunks_indexed} passages)`;
+    if (pill) {
+      pill.textContent = state.currentPdfFile.name;
+      pill.title = `${state.currentPdfFile.name} (${data.chunks_indexed} passages indexed)`;
+    }
     return data.document_id;
   } catch (err) {
     if (pill) pill.textContent = `Indexing failed: ${err.message}`;
@@ -8302,10 +8305,16 @@ async function ensureAiDocumentIngested() {
   }
 }
 
-function openAiChatDrawer() {
+function openAiChatDrawer(forceOpen = false) {
   const drawerAiChat = document.getElementById("drawerAiChat");
   const backdrop = document.getElementById("drawerBackdrop");
   if (!drawerAiChat) return;
+
+  // Toggle if already visible and not forceOpen
+  if (!forceOpen && drawerAiChat.style.display === "flex") {
+    drawerAiChat.style.display = "none";
+    return;
+  }
 
   // Close other open drawers
   const drawerHistory = document.getElementById("drawerVersionHistory");
@@ -8315,20 +8324,24 @@ function openAiChatDrawer() {
   if (drawerCollab) drawerCollab.style.display = "none";
   if (drawerSecurity) drawerSecurity.style.display = "none";
 
-  if (backdrop) backdrop.style.display = "block";
+  // AI Chat sidecar is an interactive companion panel and MUST NOT display
+  // the dark modal backdrop, allowing unobstructed document viewing & interaction
+  if (backdrop) backdrop.style.display = "none";
   drawerAiChat.style.display = "flex";
 
   const pill = document.getElementById("chatDocPill");
   if (pill) {
     if (state.currentPdfFile) {
-      pill.textContent = state.aiDocumentId
-        ? `${state.currentPdfFile.name} (Ready)`
-        : `${state.currentPdfFile.name}`;
+      pill.textContent = state.currentPdfFile.name;
+      pill.title = state.aiDocumentId
+        ? `${state.currentPdfFile.name} (Indexed & Ready)`
+        : `${state.currentPdfFile.name} (Indexing...)`;
       if (!state.aiDocumentId) {
         ensureAiDocumentIngested().catch(() => {});
       }
     } else {
       pill.textContent = "No Document Loaded";
+      pill.title = "";
     }
   }
 
@@ -8385,12 +8398,12 @@ function renderAiChatTool() {
   );
 
   document.getElementById("btnOpenSidecarChat").addEventListener("click", () => {
-    openAiChatDrawer();
+    openAiChatDrawer(true);
   });
 
   document.querySelectorAll(".prompt-side-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      openAiChatDrawer();
+      openAiChatDrawer(true);
       const inputEl = document.getElementById("chatInputText");
       if (inputEl) {
         inputEl.value = btn.dataset.query;
@@ -8400,7 +8413,7 @@ function renderAiChatTool() {
   });
 
   // Automatically open the sidecar drawer when tool is activated
-  openAiChatDrawer();
+  openAiChatDrawer(true);
 }
 
 function setupAiChatSystem() {

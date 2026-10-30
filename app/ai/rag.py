@@ -113,6 +113,188 @@ TASK:
     return prompt
 
 
+_OFFLINE_STOP_WORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "he",
+    "in", "is", "it", "its", "of", "on", "that", "the", "to", "was", "were",
+    "will", "with", "what", "which", "who", "where", "when", "how", "why", "can",
+    "tell", "me", "please", "give", "any", "all", "this", "these", "those", "do", "does",
+    "explain", "document", "list", "identify", "summarize", "describe",
+}
+
+
+def _extract_substantive_units(content: str) -> list[str]:
+    """Splits chunk text into clean, coherent sentences or lines without truncating on numbered list digits."""
+    lines = [ln.strip() for ln in content.split("\n") if ln.strip()]
+    units: list[str] = []
+    for line in lines:
+        parts = re.split(r"(?<!\b\d)\.\s+(?=[A-Z])", line)
+        for p in parts:
+            p_clean = p.strip()
+            if p_clean:
+                units.append(p_clean)
+    return units
+
+
+def _synthesize_offline_grounded_answer(prompt: str) -> tuple[str, list[str], str, int, int]:
+    """
+    Intelligent, query-aware offline deterministic synthesis (F13 Privacy Gate Default).
+    Extracts query intent and retrieves grounded answers and verifiable citations from passage context.
+    """
+    q_match = re.search(r"USER QUESTION:\s*\n(.*?)\n\nTASK:", prompt, re.DOTALL)
+    query = q_match.group(1).strip() if q_match else ""
+
+    passages = re.findall(
+        r'<PASSAGE chunk_id="([^"]+)" page="(\d+)">\n(.*?)\n</PASSAGE>', prompt, re.DOTALL
+    )
+    if not passages:
+        return (
+            "I cannot find this information in the provided document.",
+            [],
+            "deterministic-offline-model",
+            len(prompt.split()),
+            10,
+        )
+
+    query_lower = query.lower()
+
+    # 1. Overview / Summary / Explain Intent
+    is_explain = (
+        bool(
+            re.search(
+                r"\b(explain|summarize|summary|overview|describe|walkthrough)\b",
+                query_lower,
+            )
+        )
+        or "what is this document" in query_lower
+    )
+    if is_explain and len(passages) >= 1:
+        points: list[str] = []
+        used_cids: list[str] = []
+        for cid, page, content in passages:
+            units = _extract_substantive_units(content)
+            heading = ""
+            body = ""
+            for u in units:
+                if re.match(r"^\d+\.\s+.*", u) or any(
+                    h in u.lower()
+                    for h in ["executive summary", "compliance", "sign-off", "invoice", "overview"]
+                ):
+                    heading = u
+                    break
+            for u in reversed(units):
+                if len(u) > 30 and u != heading:
+                    body = u
+                    break
+            if not body and units:
+                body = units[-1]
+            desc = (
+                f"{heading}: {body}"
+                if heading and body and heading != body
+                else (body or (units[0] if units else ""))
+            )
+            if desc:
+                points.append(f"• Page {page}: {desc}")
+                if cid not in used_cids:
+                    used_cids.append(cid)
+        if points:
+            answer = "Here is an overview of the key sections in this document:\n" + "\n".join(
+                points
+            )
+            return (
+                answer,
+                used_cids,
+                "deterministic-offline-model",
+                len(prompt.split()),
+                len(answer.split()),
+            )
+
+    # 2. Objective / Purpose / Goal Intent
+    is_objective = (
+        bool(re.search(r"\b(objective|purpose|goal|aim|mission)\b", query_lower))
+        or "why was this document" in query_lower
+    )
+    if is_objective:
+        for cid, page, content in passages:
+            units = _extract_substantive_units(content)
+            for u in units:
+                u_low = u.lower()
+                if any(
+                    w in u_low
+                    for w in [
+                        "benchmark",
+                        "objective",
+                        "purpose",
+                        "designed",
+                        "goal",
+                        "intended",
+                        "summary",
+                        "aims",
+                    ]
+                ) and len(u) > 25:
+                    answer = f"Based on page {page}, the primary objective is: {u}"
+                    return (
+                        answer,
+                        [cid],
+                        "deterministic-offline-model",
+                        len(prompt.split()),
+                        len(answer.split()),
+                    )
+
+    # 3. Term / Fact Matching
+    query_words = set(re.findall(r"[a-z0-9]+", query_lower))
+    non_stop = {w for w in query_words if w not in _OFFLINE_STOP_WORDS and len(w) > 2}
+    scored: list[tuple[float, int, str, str]] = []
+    for cid, page, content in passages:
+        units = _extract_substantive_units(content)
+        for u in units:
+            u_lower = u.lower()
+            u_words = set(re.findall(r"[a-z0-9]+", u_lower))
+            overlap = float(len(non_stop & u_words))
+            for w in non_stop:
+                if w in u_lower:
+                    overlap += 0.5
+            if overlap > 0:
+                scored.append((overlap, int(page), cid, u))
+
+    if scored:
+        scored.sort(key=lambda x: (x[0], len(x[3])), reverse=True)
+        best_sc, best_p, best_c, best_u = scored[0]
+        additional: list[str] = []
+        used_c = [best_c]
+        for sc, p, c_id, u_text in scored[1:]:
+            if sc >= best_sc * 0.75 and u_text != best_u and u_text not in best_u:
+                additional.append(u_text)
+                if c_id not in used_c:
+                    used_c.append(c_id)
+                if len(additional) >= 1:
+                    break
+        if additional:
+            answer = f"Based on page {best_p}, {best_u} {additional[0]}"
+        else:
+            answer = f"Based on page {best_p}, {best_u}"
+        return (
+            answer,
+            used_c,
+            "deterministic-offline-model",
+            len(prompt.split()),
+            len(answer.split()),
+        )
+
+    # 4. Fallback: return the first substantive sentence
+    cid, page, content = passages[0]
+    units = _extract_substantive_units(content)
+    sub = [u for u in units if len(u) > 25 and not re.match(r"^\d+\.\s+[A-Za-z\s]+$", u)]
+    first = sub[0] if sub else (units[0] if units else content[:120])
+    answer = f"Based on page {page}, {first}"
+    return (
+        answer,
+        [cid],
+        "deterministic-offline-model",
+        len(prompt.split()),
+        len(answer.split()),
+    )
+
+
 def _call_llm_with_fallback(
     prompt: str, allow_external: bool = False
 ) -> tuple[str, list[str], str, int, int]:
@@ -211,27 +393,7 @@ def _call_llm_with_fallback(
             pass  # Explicitly configured for local offline synthesis
 
     # Offline / Local-First Deterministic Synthesis (F13 Privacy Gate Default)
-    match = re.search(
-        r'<PASSAGE chunk_id="([^"]+)" page="(\d+)">\n(.*?)\n</PASSAGE>', prompt, re.DOTALL
-    )
-    if match:
-        cid, page, text_sample = match.groups()
-        first_sentence = text_sample.split(".")[0].strip() + "."
-        return (
-            f"Based on page {page}, {first_sentence}",
-            [cid],
-            "deterministic-offline-model",
-            len(prompt.split()),
-            len(first_sentence.split()),
-        )
-
-    return (
-        "I cannot find this information in the provided document.",
-        [],
-        "deterministic-offline-model",
-        0,
-        0,
-    )
+    return _synthesize_offline_grounded_answer(prompt)
 
 
 def answer_question_with_citations(
@@ -294,8 +456,10 @@ def answer_question_with_citations(
     for cid in reported_chunk_ids:
         if cid in retrieved_ids:
             chunk = retrieved_ids[cid]
-            # Use first sentence as quote
-            quote = chunk.content.split(".")[0].strip()
+            units = _extract_substantive_units(chunk.content)
+            sub_units = [u for u in units if len(u) > 25 and not re.match(r"^\d+\.\s+[A-Za-z\s]+$", u)]
+            quote = sub_units[0] if sub_units else (units[0] if units else chunk.content.split("\n")[0])
+            quote = quote.strip()
             if len(quote) > 120:
                 quote = quote[:117] + "..."
 
@@ -314,11 +478,17 @@ def answer_question_with_citations(
     # If the LLM returned no IDs but gave an answer, fallback to the top retrieved chunk
     if not valid_citations and retrieved_chunks:
         top_c = retrieved_chunks[0]
+        top_units = _extract_substantive_units(top_c.content)
+        top_sub = [u for u in top_units if len(u) > 25 and not re.match(r"^\d+\.\s+[A-Za-z\s]+$", u)]
+        quote = top_sub[0] if top_sub else (top_units[0] if top_units else top_c.content.split("\n")[0])
+        quote = quote.strip()
+        if len(quote) > 120:
+            quote = quote[:117] + "..."
         valid_citations.append(
             CitationSource(
                 chunk_id=top_c.id,
                 page=top_c.page,
-                quote=top_c.content.split(".")[0].strip()[:120],
+                quote=quote,
                 rects=top_c.rects,
                 page_w=top_c.page_w,
                 page_h=top_c.page_h,
@@ -408,7 +578,10 @@ async def stream_answer_with_citations(
     for cid in reported_chunk_ids:
         if cid in retrieved_ids:
             chunk = retrieved_ids[cid]
-            quote = chunk.content.split(".")[0].strip()
+            units = _extract_substantive_units(chunk.content)
+            sub_units = [u for u in units if len(u) > 25 and not re.match(r"^\d+\.\s+[A-Za-z\s]+$", u)]
+            quote = sub_units[0] if sub_units else (units[0] if units else chunk.content.split("\n")[0])
+            quote = quote.strip()
             if len(quote) > 120:
                 quote = quote[:117] + "..."
             valid_citations.append(
@@ -425,11 +598,17 @@ async def stream_answer_with_citations(
 
     if not valid_citations and retrieved_chunks:
         top_c = retrieved_chunks[0]
+        top_units = _extract_substantive_units(top_c.content)
+        top_sub = [u for u in top_units if len(u) > 25 and not re.match(r"^\d+\.\s+[A-Za-z\s]+$", u)]
+        quote = top_sub[0] if top_sub else (top_units[0] if top_units else top_c.content.split("\n")[0])
+        quote = quote.strip()
+        if len(quote) > 120:
+            quote = quote[:117] + "..."
         valid_citations.append(
             CitationSource(
                 chunk_id=top_c.id,
                 page=top_c.page,
-                quote=top_c.content.split(".")[0].strip()[:120],
+                quote=quote,
                 rects=top_c.rects,
                 page_w=top_c.page_w,
                 page_h=top_c.page_h,

@@ -57,7 +57,6 @@ from app.ai.translation import (
     SUPPORTED_LANGUAGES,
     execute_document_translation,
 )
-from app.core.config import config
 from app.models.db import get_db
 from app.services import auth
 from app.services.multi_format import process_multi_format_document
@@ -126,10 +125,6 @@ async def ingest_document_for_rag(
     import time
 
     actor = _resolve_ai_actor(authorization, x_user_id, token)
-    if config.is_prod and not actor:
-        raise HTTPException(
-            status_code=401, detail="Authentication required to ingest document into AI repository."
-        )
     owner_id = actor or "demo_user"
 
     pdf_bytes = await file.read()
@@ -577,10 +572,6 @@ async def ingest_multi_format_endpoint(
 ) -> MultiFormatIngestResponse:
     """Ingests multi-format documents, converts them to high-fidelity PDF, and indexes chunks."""
     actor = _resolve_ai_actor(authorization, x_user_id, token)
-    if config.is_prod and not actor:
-        raise HTTPException(
-            status_code=401, detail="Authentication required to ingest document into AI repository."
-        )
     owner_id = actor or "demo_user"
 
     file_bytes = await file.read()

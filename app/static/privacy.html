@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy &amp; Data Governance - Vellakshya PDF Workstation</title>
+    <meta name="description" content="Vellakshya Data Governance and Privacy Policy: Local-first document processing, zero network egress guarantees, ephemeral memory retention, and client-side encryption.">
+    <link rel="stylesheet" href="/css/styles.css?v=2.0.0">
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png">
+    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
+    <link rel="apple-touch-icon" sizes="180x180" href="/brand/apple-touch-icon.png">
+    <style>
+        .privacy-page-container {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+            font-family: var(--font-body);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+        .privacy-header {
+            margin-bottom: 36px;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 24px;
+        }
+        .privacy-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            background-color: rgba(74, 222, 128, 0.15);
+            color: #4ade80;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .privacy-title {
+            font-family: var(--font-title);
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .privacy-meta {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        .privacy-section {
+            margin-bottom: 32px;
+        }
+        .privacy-section h2 {
+            font-family: var(--font-title);
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            color: var(--text-primary);
+        }
+        .privacy-section p {
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+        }
+        .privacy-callout {
+            background-color: var(--surface);
+            border-left: 4px solid #4f46e5;
+            border-radius: 0 8px 8px 0;
+            padding: 16px 20px;
+            margin: 18px 0;
+            color: var(--text-primary);
+        }
+        .privacy-nav-actions {
+            margin-top: 48px;
+            display: flex;
+            gap: 16px;
+        }
+        .btn-privacy-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            background-color: #4f46e5;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background-color 0.15s ease;
+        }
+        .btn-privacy-home:hover {
+            background-color: #4338ca;
+        }
+    </style>
+</head>
+<body>
+    <main class="privacy-page-container">
+        <header class="privacy-header">
+            <div class="privacy-badge">Verified Security &amp; Data Governance</div>
+            <h1 class="privacy-title">Vellakshya Privacy Policy &amp; Data Sovereignty Guarantee</h1>
+            <div class="privacy-meta">Effective Date: November 2026 • Version 2.0.0 • Lead Architect: Giri Manohar Vemula</div>
+        </header>
+
+        <section class="privacy-section">
+            <h2>1. Local-First Architecture (Zero Network Egress)</h2>
+            <p>
+                Vellakshya is engineered as a privacy-first document workstation. All standard document manipulation features—including PDF merging, page splitting, rotation, margin cropping, and client-side font-matching text replacement—execute directly inside your local web browser session via WebAssembly and HTML5 Canvas.
+            </p>
+            <div class="privacy-callout">
+                <strong>The F13 Privacy Gate:</strong> Under default settings, the "Allow External Cloud AI" privacy gate is strictly disabled. When disabled, all summarization, spatial retrieval, and keyword analytics run in-process using local deterministic extractors with <strong>zero external network transmission</strong>.
+            </div>
+        </section>
+
+        <section class="privacy-section">
+            <h2>2. Ephemeral In-Memory Storage &amp; Automated Retention TTL</h2>
+            <p>
+                When documents are processed via our serverless API for server-side layout parsing or vector search:
+            </p>
+            <ul>
+                <li><strong>Transient In-Memory Store:</strong> Documents are stored strictly in volatile, transient memory buffers.</li>
+                <li><strong>1-Hour Retention TTL:</strong> In accordance with our security benchmark (F12), all transient document sessions automatically expire and are permanently purged after 3600 seconds (1 hour).</li>
+                <li><strong>No Model Training:</strong> Neither user documents nor extracted text are ever used to train machine learning models.</li>
+            </ul>
+        </section>
+
+        <section class="privacy-section">
+            <h2>3. Cryptographic Governance &amp; Client-Side Security</h2>
+            <p>
+                For sensitive workflows, Vellakshya integrates client-side AES-256-GCM encryption, ensuring documents are sealed with user-defined keys before any persistence. Document audit manifests are verified via asymmetric Ed25519 digital signatures to prevent tampering.
+            </p>
+        </section>
+
+        <section class="privacy-section">
+            <h2>4. Cookieless Operation &amp; Telemetry</h2>
+            <p>
+                Vellakshya does not use tracking cookies, advertising identifiers, or invasive third-party analytics trackers. Workstation preferences (such as light/dark theme and sidebar collapsed state) are stored exclusively in your browser's private <code>localStorage</code>. Our telemetry client strictly honors the browser's <code>Do Not Track</code> (DNT) setting.
+            </p>
+        </section>
+
+        <section class="privacy-section">
+            <h2>5. Contact &amp; Governance</h2>
+            <p>
+                For data governance inquiries or technical audits, refer to our official open-source repository at <a href="https://github.com/ManoharVit/Vellakshya" style="color: #60a5fa;" target="_blank" rel="noopener">GitHub (ManoharVit/Vellakshya)</a> or reach out via <a href="https://www.linkedin.com/in/manoharv511" style="color: #60a5fa;" target="_blank" rel="noopener">LinkedIn</a>.
+            </p>
+        </section>
+
+        <div class="privacy-nav-actions">
+            <a href="/" class="btn-privacy-home">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span>Return to Workstation</span>
+            </a>
+        </div>
+    </main>
+</body>
+</html>

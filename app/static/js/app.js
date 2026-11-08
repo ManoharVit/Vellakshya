@@ -3546,6 +3546,17 @@ function setupUndoRedo() {
 function setActivePdf(file) {
   state.currentPdfFile = file;
   state.aiDocumentId = null;
+
+  // Dynamic document title update (Item 3)
+  if (file && file.name) {
+    document.title = `${file.name} • Vellakshya PDF Workstation`;
+    if (window.VellakshyaAnalytics) {
+      window.VellakshyaAnalytics.trackEvent("Document", "Open", file.name.split('.').pop() || "pdf");
+    }
+  } else {
+    document.title = "Vellakshya - Professional PDF Workstation & Document Intelligence";
+  }
+
   const chatPill = document.getElementById("chatDocPill");
   if (chatPill) chatPill.textContent = file ? file.name : "No Document Ingested";
   if (!state.originalPdfFile || state.editCount === 0) {
@@ -3736,6 +3747,7 @@ function renderPdfToHtmlTool() {
     const btn = document.getElementById("btnRunConvertHtml");
     btn.innerHTML = `<span class="spinner"></span> Converting...`;
     btn.disabled = true;
+    btn.setAttribute("aria-busy", "true");
 
     try {
       const formData = new FormData();
@@ -3778,6 +3790,7 @@ function renderPdfToHtmlTool() {
     } finally {
       btn.innerHTML = `Convert PDF to HTML`;
       btn.disabled = false;
+      btn.removeAttribute("aria-busy");
     }
   });
 }

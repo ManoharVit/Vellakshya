@@ -14,7 +14,7 @@ from typing import Any, Optional
 import fitz
 from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 try:
@@ -71,6 +71,8 @@ app.add_middleware(
 @app.middleware("http")
 async def add_no_cache_header(request: Request, call_next):
     response = await call_next(request)
+    if response.status_code == 404 and request.url.path.startswith("/api/"):
+        return JSONResponse(status_code=404, content={"detail": "Not Found"})
     path = request.url.path
     if path == "/" or path.endswith((".js", ".css", ".html")):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -1774,6 +1776,21 @@ async def recover_draft_state(
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found for this session.")
     return {"session_id": session_id, "draft_state": draft}
+
+
+@app.exception_handler(404)
+async def custom_404_handler(request: Request, exc: Exception):
+    """
+    Renders branded 404 HTML page for browser navigation while preserving JSON for API routes.
+    """
+    if request.url.path.startswith("/api/"):
+        detail = getattr(exc, "detail", "Not Found")
+        return JSONResponse(status_code=404, content={"detail": detail})
+
+    custom_404_path = STATIC_DIR / "404.html"
+    if custom_404_path.exists():
+        return FileResponse(str(custom_404_path), status_code=404)
+    return JSONResponse(status_code=404, content={"detail": "Not Found"})
 
 
 # Mount static directory for the single-page application UI

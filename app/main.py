@@ -71,7 +71,11 @@ app.add_middleware(
 @app.middleware("http")
 async def add_no_cache_header(request: Request, call_next):
     response = await call_next(request)
-    if response.status_code == 404 and request.url.path.startswith("/api/"):
+    if (
+        response.status_code == 404
+        and request.url.path.startswith("/api/")
+        and not response.headers.get("content-type", "").startswith("application/json")
+    ):
         return JSONResponse(status_code=404, content={"detail": "Not Found"})
     path = request.url.path
     if path == "/" or path.endswith((".js", ".css", ".html")):
